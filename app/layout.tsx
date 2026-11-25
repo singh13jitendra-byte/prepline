@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
+import { Analytics } from "@vercel/analytics/next";
 import "@fontsource/instrument-serif/latin-400-italic.css";
 import "./globals.css";
 
@@ -18,7 +19,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={GeistSans.variable}>
-      <body className="font-sans text-[15px] leading-relaxed antialiased">{children}</body>
+      <body className="font-sans text-[15px] leading-relaxed antialiased">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
