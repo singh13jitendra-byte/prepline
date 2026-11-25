@@ -1,7 +1,10 @@
-import io
+"""Dead-scroll scan: steps the page 120px at a time and reports steps where the screen does not change.
+Usage: python3 scripts/check-dead-scroll.py [base_url]   (defaults to http://localhost:3100; CSS field forced for determinism)
+"""
+import io, sys
 from PIL import Image, ImageChops, ImageStat
 from playwright.sync_api import sync_playwright
-URL = "http://localhost:3110/?world=css"
+URL = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:3100").rstrip("/") + "/?world=css"
 with sync_playwright() as p:
     b = p.chromium.launch()
     pg = b.new_page(viewport={"width":1440,"height":900})
