@@ -4,7 +4,9 @@
  * THE READING LENS — fine pointers only (storyboard 3).
  *
  * A 140px-radius ring that follows the cursor over the field in Act I, with a
- * mono micro-label for the nearest role and its verdict. This component only
+ * mono micro-label for the nearest role and its verdict. Until a pointer has
+ * moved it parks on the first of the twelve (after the hero demonstration has
+ * shown what the line does), so the first frame has a subject. This component only
  * lends its two elements: the canvas loop moves them, because the lens is part
  * of the shader (specks inside it sharpen, grow, and the twelve glint) and the
  * label has to name the same speck the shader lifts. No WebGL, touch, small
@@ -28,8 +30,16 @@ export function Lens() {
       worldBus.overControl = Boolean((e.target as Element | null)?.closest?.("a,button,input,textarea,select,label,[role='button']"));
     };
     document.addEventListener("pointerover", onOver, { passive: true });
+    // The lens is parked on the first of the twelve until a real pointer moves.
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return;
+      worldBus.pointerMoved = true;
+      window.removeEventListener("pointermove", onMove);
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
     return () => {
       document.removeEventListener("pointerover", onOver);
+      window.removeEventListener("pointermove", onMove);
       worldBus.lensRing = worldBus.lensLabel = null;
       worldBus.overControl = false;
     };

@@ -44,6 +44,7 @@ html[data-chapter="day"]:not([data-wipe]) .cf{visibility:hidden}
 html.world-on .cf{opacity:0;visibility:hidden}
 
 .world-line{position:fixed;top:0;left:0;width:100%;height:100%;z-index:var(--z-line);pointer-events:none;overflow:visible;transition:color .25s linear}
+.world-line-glow{mix-blend-mode:plus-lighter}
 .world-line-label{position:fixed;top:0;left:0;z-index:var(--z-line);pointer-events:none;white-space:nowrap;line-height:11px;transition:color .25s linear;will-change:transform,opacity}
 
 .world-lens{position:fixed;top:0;left:0;z-index:var(--z-nav);pointer-events:none;border-radius:50%;border:1px solid #fff;will-change:transform,opacity}

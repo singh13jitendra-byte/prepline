@@ -5,13 +5,17 @@ import { LENS_RADIUS } from "./bus";
 /**
  * THE LIGHT — draw call 2 of 2. One full-screen quad, drawn under the field.
  *
- * Three soft sources, never more than one doing the talking (storyboard 4):
- *   the line's gold bloom   night side only, with a faint spill on the side it has read
- *   the lamp                Act III, warm, behind and above the sheet
- *   the dawn                Act IV, slow amber fbm below the line, strongest low
- * plus the reading lens' glass. Output is premultiplied; light on the night
- * side is added (alpha 0), the dawn is laid over the cream (alpha > 0).
- * A little ordered noise is added so no gradient ever bands.
+ *   the line        a white-hot core with a tight gold bloom, and a warm wake behind it in its
+ *                   direction of travel whose length and strength follow its speed
+ *   the lamp        a wide elliptical pool, up and left of the sheet (Act III). It begins on the
+ *                   board, as the glow under the Interview column, and travels there at nightfall
+ *   the dawn        slow amber light below the line, strongest low (Act IV)
+ *   the exposure    a 280ms breath of warm white from the line outward at the two day-breaks
+ *   the lens        its glass
+ *
+ * Output is premultiplied. Only the line's core is added; every other warm light is laid over
+ * the backdrop with alpha, because warm light added to navy turns grey. A little noise is
+ * added so no gradient bands. The dawn is two calls of a 3-octave fbm.
  */
 
 const frag = /* glsl */ `
@@ -20,17 +24,28 @@ const frag = /* glsl */ `
   uniform float uDpr;
   uniform float uTime;
   uniform float uDayTop;
-  uniform vec4 uLine;   // x0, x1, y, weight
+  uniform vec4 uLine;    // x0, x1, y, weight
   uniform float uBloom;
-  uniform float uWake;  // +1 the read side is above the line, -1 below
+  uniform float uWakeV;  // the line's vertical speed, px/s, signed (+ moving down)
   uniform float uSweep;
-  uniform vec3 uLamp;
-  uniform float uLampR;
+  uniform vec3 uLamp;    // x, y, strength
+  uniform vec2 uLampR;   // radii of the pool
+  uniform float uLampDay; // strength of the same light on the day side (the board glow)
   uniform float uDawn;
+  uniform float uFlash;
   uniform vec3 uLens;
   ${noiseGLSL}
 
-  const vec3 GOLD = vec3(1.0, 0.843, 0.478);
+  float fbm3(vec2 p) {
+    float v = 0.5 * vnoise(p);
+    p = p * 2.03 + vec2(17.1, 9.2);
+    v += 0.25 * vnoise(p);
+    p = p * 2.03 + vec2(17.1, 9.2);
+    return v + 0.125 * vnoise(p);
+  }
+  vec4 lay(vec4 under, vec3 col, float a) {
+    return under * (1.0 - a) + vec4(col * a, a);
+  }
 
   void main() {
     vec2 p = vec2(gl_FragCoord.x / uDpr, uRes.y - gl_FragCoord.y / uDpr);
@@ -38,37 +53,59 @@ const frag = /* glsl */ `
     vec3 add = vec3(0.0);
     vec4 over = vec4(0.0);
 
-    // Distance to the line segment.
     float cx = clamp(p.x, uLine.x, uLine.y);
     float dy = p.y - uLine.z;
     float d = length(vec2(p.x - cx, dy));
 
-    if (uBloom > 0.001) {
-      float core = exp(-d * d / (2.0 * (2.5 + uLine.w) * (2.5 + uLine.w)));
-      float mid = exp(-d / 26.0);
-      float wide = exp(-d / 120.0);
-      float side = clamp(-dy * uWake / 90.0, 0.0, 1.0);
-      float b = core * 0.34 + mid * 0.13 + wide * (0.035 + 0.05 * side);
-      add += GOLD * b * uBloom * night;
+    if (uLamp.z > 0.001) {
+      vec2 lv = (p - uLamp.xy) / uLampR;
+      float ld = length(lv);
+      float pool = exp(-pow(ld, 1.6) * 2.6);
+      float heart = exp(-ld * ld * 7.0);
+      float breathe = 0.96 + 0.04 * vnoise(p * 0.004 + vec2(uTime * 0.07, -uTime * 0.05));
+      float aN = (pool * 0.34 + heart * 0.12) * breathe * uLamp.z;
+      vec3 cN = mix(vec3(0.80, 0.42, 0.16), vec3(1.0, 0.74, 0.44), heart);
+      float aD = pool * 0.30 * uLampDay;
+      over = lay(over, mix(vec3(1.0, 0.73, 0.38), cN, night), mix(aD, aN, night));
+    }
+
+    if (uDawn > 0.001 && night < 0.5) {
+      vec2 uv = p / uRes;
+      vec2 q0 = vec2(uv.x * uRes.x / uRes.y, uv.y);
+      float t = uTime * 0.05;
+      float w = fbm3(q0 * 1.3 + t);
+      float f = fbm3(q0 * 1.7 + vec2(w, 1.0 - w) * 1.9 + vec2(t * 0.6, -t * 0.4));
+      vec3 col = mix(vec3(1.0, 0.90, 0.66), vec3(1.0, 0.77, 0.42), smoothstep(0.30, 0.52, f));
+      col = mix(col, vec3(0.95, 0.60, 0.28), smoothstep(0.54, 0.76, f));
+      float rise = pow(smoothstep(0.08, 1.0, uv.y), 1.5) * (0.8 + 0.2 * smoothstep(0.2, 0.9, uv.x));
+      over = lay(over, col, rise * (0.16 + 0.34 * smoothstep(0.26, 0.70, f)) * uDawn);
+    }
+
+    // The wake: warm light the line leaves behind it, longer and stronger the faster it travels.
+    float speed = clamp(abs(uWakeV) / 1500.0, 0.0, 1.0);
+    if (speed > 0.004 && uBloom + uSweep > 0.001) {
+      float behind = -dy * sign(uWakeV);
+      float inX = step(uLine.x - 1.0, p.x) * step(p.x, uLine.y + 1.0);
+      float wk = exp(-max(behind, 0.0) / mix(50.0, 170.0, speed)) * smoothstep(-2.0, 3.0, behind) * speed * inX;
+      over = lay(over, mix(vec3(1.0, 0.70, 0.34), vec3(1.0, 0.56, 0.17), night), wk * mix(0.26, 0.34, night) * max(uBloom, uSweep));
     }
     // Day rising: a warm edge just under the line while it sweeps.
     if (uSweep > 0.001) {
-      float under = (1.0 - night) * exp(-max(dy, 0.0) / 70.0);
-      over += vec4(vec3(1.0, 0.70, 0.34), 1.0) * under * 0.22 * uSweep;
+      over = lay(over, vec3(1.0, 0.70, 0.34), (1.0 - night) * exp(-max(dy, 0.0) / 46.0) * 0.16 * uSweep);
+    }
+    // The line's own light: a tight gold bloom laid over the night, and a white-hot core added.
+    if (uBloom > 0.001) {
+      float tight = exp(-d / 5.5);
+      float far = exp(-d / 30.0);
+      over = lay(over, vec3(1.0, 0.62, 0.20), (tight * 0.42 + far * 0.07) * uBloom * night);
+      float sg = 1.1 + 0.45 * uLine.w;
+      add += vec3(1.0, 0.90, 0.66) * exp(-d * d / (2.0 * sg * sg)) * 0.55 * uBloom * night;
     }
 
-    // The lamp is laid over the night rather than added to it: warm light added to navy turns grey.
-    if (uLamp.z > 0.001) {
-      vec2 lv = (p - uLamp.xy) / uLampR;
-      lv.y *= 1.1;
-      float ld = length(lv);
-      float pool = exp(-pow(ld, 1.5) * 3.2);
-      float heart = exp(-ld * ld * 11.0);
-      float breathe = 0.95 + 0.05 * vnoise(p * 0.004 + vec2(uTime * 0.07, -uTime * 0.05));
-      float a = (pool * 0.30 + heart * 0.26) * breathe * uLamp.z * night;
-      vec3 lc = mix(vec3(0.82, 0.44, 0.17), vec3(1.0, 0.76, 0.46), heart);
-      over = over * (1.0 - a) + vec4(lc * a, a);
-      add += vec3(1.0, 0.82, 0.58) * heart * 0.07 * uLamp.z * night;
+    if (uFlash > 0.001) {
+      float fl = uFlash * exp(-abs(dy) / (uRes.y * 0.5));
+      add += vec3(1.0, 0.95, 0.86) * 0.06 * fl * night;
+      over = lay(over, vec3(1.0, 0.99, 0.95), 0.12 * fl * (1.0 - night));
     }
 
     if (uLens.z > 0.001) {
@@ -76,23 +113,6 @@ const frag = /* glsl */ `
       float R = ${LENS_RADIUS.toFixed(1)};
       float glass = (1.0 - smoothstep(0.0, R, ld)) * 0.030 + smoothstep(R - 26.0, R, ld) * (1.0 - step(R, ld)) * 0.035;
       add += vec3(0.86, 0.92, 1.0) * glass * uLens.z * night;
-    }
-
-    if (uDawn > 0.001 && night < 0.5) {
-      vec2 uv = p / uRes;
-      vec2 q0 = vec2(uv.x * uRes.x / uRes.y, uv.y);
-      float t = uTime * 0.05;
-      vec2 w = vec2(fbm(q0 * 1.3 + t), fbm(q0 * 1.3 - t + 4.7));
-      float f = fbm(q0 * 1.7 + w * 1.8 + vec2(t * 0.6, -t * 0.4));
-      vec3 light = vec3(1.0, 0.90, 0.66);
-      vec3 amber = vec3(1.0, 0.77, 0.42);
-      vec3 deep = vec3(0.95, 0.60, 0.28);
-      vec3 col = mix(light, amber, smoothstep(0.35, 0.6, f));
-      col = mix(col, deep, smoothstep(0.62, 0.88, f));
-      // Strongest low, fading upward; a touch stronger toward the right, where the ticket sits.
-      float rise = pow(smoothstep(0.08, 1.0, uv.y), 1.5) * (0.8 + 0.2 * smoothstep(0.2, 0.9, uv.x));
-      float a = rise * (0.16 + 0.34 * smoothstep(0.3, 0.8, f)) * uDawn;
-      over = over * (1.0 - a) + vec4(col * a, a);
     }
 
     float n = (hash21(gl_FragCoord.xy + fract(uTime) * 61.0) - 0.5) / 255.0;
@@ -109,11 +129,13 @@ export type LightUniforms = {
   uDayTop: { value: number };
   uLine: { value: THREE_NS.Vector4 };
   uBloom: { value: number };
-  uWake: { value: number };
+  uWakeV: { value: number };
   uSweep: { value: number };
   uLamp: { value: THREE_NS.Vector3 };
-  uLampR: { value: number };
+  uLampR: { value: THREE_NS.Vector2 };
+  uLampDay: { value: number };
   uDawn: { value: number };
+  uFlash: { value: number };
   uLens: { value: THREE_NS.Vector3 };
 };
 
@@ -125,11 +147,13 @@ export function createLight(THREE: Three, width: number, height: number) {
     uDayTop: { value: 1e6 },
     uLine: { value: new THREE.Vector4(0, 0, -100, 2) },
     uBloom: { value: 0 },
-    uWake: { value: 0 },
+    uWakeV: { value: 0 },
     uSweep: { value: 0 },
     uLamp: { value: new THREE.Vector3(0, 0, 0) },
-    uLampR: { value: 500 },
+    uLampR: { value: new THREE.Vector2(500, 500) },
+    uLampDay: { value: 0 },
     uDawn: { value: 0 },
+    uFlash: { value: 0 },
     uLens: { value: new THREE.Vector3(0, 0, 0) },
   };
   const material = new THREE.ShaderMaterial({
