@@ -1,7 +1,7 @@
--- Prepline beta waitlist.
--- The landing page inserts with the project's publishable (anon) key, so row-level
--- security allows INSERT only. Nobody can read, change or delete rows with that key;
--- view sign-ups in the Supabase dashboard (Table editor -> waitlist).
+-- Prepline beta waitlist (applied to the "prepline" Supabase project on 2026-11-26).
+-- The landing page inserts with the project's publishable (anon) key. Row-level
+-- security has a single INSERT policy, so that key can add sign-ups but cannot read,
+-- change or delete them. View sign-ups in Supabase -> Table editor -> waitlist.
 
 create table if not exists public.waitlist (
   id uuid primary key default gen_random_uuid(),
@@ -14,13 +14,8 @@ create unique index if not exists waitlist_email_key on public.waitlist (email);
 
 alter table public.waitlist enable row level security;
 
-drop policy if exists "Anyone can join the waitlist" on public.waitlist;
 create policy "Anyone can join the waitlist"
   on public.waitlist
   for insert
   to anon
   with check (true);
-
--- Belt and braces: the anon and authenticated roles get insert only.
-revoke all on public.waitlist from anon, authenticated;
-grant insert (email, source) on public.waitlist to anon;
