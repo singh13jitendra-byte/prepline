@@ -80,9 +80,9 @@ function Lines({ text, className }: { text: string; className?: string }) {
 
 function DomRow({ role }: { role: RankedRole }) {
   return (
-    <div className="rv-box" data-skin="night">
-      <div className="rv-chrome" />
-      <div className="rv-scale">
+    <div className="pl-row-box" data-skin="night">
+      <div className="pl-row-chrome" />
+      <div className="pl-row-scale">
         <RowView role={role} />
       </div>
     </div>
@@ -115,7 +115,7 @@ export function ReadPanel() {
       offs.forEach((off) => off());
       offs = [];
       for (let n = 2; n <= 12; n++) {
-        const row = list.querySelector<HTMLElement>(`[data-row="${n}"] .rv-box`);
+        const row = list.querySelector<HTMLElement>(`[data-row="${n}"] .pl-row-box`);
         const el = mq.matches && n > 6 ? more : row;
         if (el) offs.push(registerAnchor(`row-${n}` as AnchorId, el));
       }

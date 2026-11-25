@@ -27,14 +27,14 @@ function ChipBody({ index }: { index: number }) {
   return (
     <>
       {index === 2 ? (
-        <svg className="tf-cal" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+        <svg className="pl-tile-cal" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
           <rect x="1.25" y="2.25" width="9.5" height="8.5" rx="2" />
           <path d="M1.25 5h9.5M4 1v2.4M8 1v2.4" />
         </svg>
       ) : index === 0 ? (
-        <span className="tf-spark" aria-hidden="true" />
+        <span className="pl-tile-spark" aria-hidden="true" />
       ) : null}
-      <span className="tf-chip-t">{labels[index]}</span>
+      <span className="pl-tile-chip-t">{labels[index]}</span>
     </>
   );
 }
@@ -73,25 +73,25 @@ export function TileFace(_props: FaceProps) {
   }, []);
 
   return (
-    <div className="tf">
-      <div className="tf-top">
-        <span className="tf-ini" aria-hidden="true">
+    <div className="pl-tile">
+      <div className="pl-tile-top">
+        <span className="pl-tile-ini" aria-hidden="true">
           {role.initials}
         </span>
-        <span className="tf-score">
+        <span className="pl-tile-score">
           <span className="sr-only">Scored </span>
           <b>{role.score}</b>
-          <span className="tf-of">{storyCopy.ranked.scoreSuffix}</span>
+          <span className="pl-tile-of">{storyCopy.ranked.scoreSuffix}</span>
         </span>
       </div>
-      <p className="tf-title">{role.title}</p>
-      <p className="tf-meta">{role.company}</p>
-      <div className="tf-foot">
-        <div ref={chipRef} className="tf-chip" data-state="2">
+      <p className="pl-tile-title">{role.title}</p>
+      <p className="pl-tile-meta">{role.company}</p>
+      <div className="pl-tile-foot">
+        <div ref={chipRef} className="pl-tile-chip" data-state="2">
           {labels.map((_, i) => (
             <span
               key={i}
-              className="tf-chip-b"
+              className="pl-tile-chip-b"
               style={i === 2 ? undefined : { display: "none" }}
               ref={(el) => {
                 bodyRefs.current[i] = el;
@@ -101,7 +101,7 @@ export function TileFace(_props: FaceProps) {
             </span>
           ))}
         </div>
-        <svg className="tf-tick" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+        <svg className="pl-tile-tick" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
           <path ref={tickRef} d="M3.5 8.4l3 3 6-6.6" strokeDasharray={TICK} style={{ strokeDashoffset: 0 }} />
         </svg>
       </div>

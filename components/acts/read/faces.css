@@ -5,9 +5,9 @@
    ══════════════════════════════════════════════════════════════════════════ */
 
 /* ── shared ── */
-.rv,
-.cf,
-.tf {
+.pl-row,
+.pl-card,
+.pl-tile {
   position: absolute;
   inset: 0;
   color: var(--face-fg);
@@ -30,13 +30,13 @@
 }
 
 /* ── row ── */
-.rv {
+.pl-row {
   display: flex;
   align-items: center;
   padding: 0 16px 0 12px;
   white-space: nowrap;
 }
-.rv-dot {
+.pl-row-dot {
   flex: none;
   width: 5px;
   height: 5px;
@@ -44,7 +44,7 @@
   background: var(--face-accent);
   margin-right: 9px;
 }
-.rv-rank {
+.pl-row-rank {
   flex: none;
   width: 20px;
   font-family: var(--font-mono);
@@ -54,7 +54,7 @@
   font-variant-numeric: tabular-nums;
   color: var(--face-muted);
 }
-.rv-ini {
+.pl-row-ini {
   flex: none;
   display: grid;
   place-items: center;
@@ -69,14 +69,14 @@
   letter-spacing: 0.04em;
   font-feature-settings: "case";
 }
-.rv-main {
+.pl-row-main {
   flex: 1;
   min-width: 0;
   margin-left: 11px;
   display: flex;
   flex-direction: column;
 }
-.rv-title {
+.pl-row-title {
   font-size: 13.5px;
   line-height: 16px;
   font-weight: 560;
@@ -84,14 +84,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.rv-sub {
+.pl-row-sub {
   position: relative;
   display: block;
   height: 14px;
   overflow: hidden;
 }
-.rv-meta,
-.rv-reason {
+.pl-row-meta,
+.pl-row-reason {
   position: absolute;
   inset: 0 auto auto 0;
   max-width: 100%;
@@ -105,59 +105,59 @@
     transform 0.4s var(--ease-out-expo),
     opacity 0.4s var(--ease-out-expo);
 }
-.rv-reason {
+.pl-row-reason {
   transform: translateY(100%);
   opacity: 0;
   color: var(--face-fg);
 }
-.rv[data-hover] .rv-meta,
-.rd-row:hover .rv-meta {
+.pl-row[data-hover] .pl-row-meta,
+.rd-row:hover .pl-row-meta {
   transform: translateY(-100%);
   opacity: 0;
   transition-duration: 0.22s;
 }
-.rv[data-hover] .rv-reason,
-.rd-row:hover .rv-reason {
+.pl-row[data-hover] .pl-row-reason,
+.rd-row:hover .pl-row-reason {
   transform: none;
   opacity: 1;
   transition-duration: 0.22s;
 }
-.rv-score {
+.pl-row-score {
   flex: none;
   margin-left: 14px;
   font-variant-numeric: tabular-nums;
 }
-.rv-score b {
+.pl-row-score b {
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
-.rv-of {
+.pl-row-of {
   font-size: 11px;
   color: var(--face-muted);
   margin-left: 1px;
 }
 
 /* ── card ── */
-.cf {
+.pl-card {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   padding: 26px 28px 28px;
 }
-.cf-spec {
+.pl-card-spec {
   position: absolute;
   inset: 0;
   pointer-events: none;
   background: radial-gradient(260px circle at var(--spec-x, 50%) var(--spec-y, 0%), var(--face-spec), transparent 70%);
   opacity: var(--spec-a, 0);
 }
-.cf-top {
+.pl-card-top {
   display: flex;
   align-items: flex-start;
   gap: 14px;
 }
-.cf-ini {
+.pl-card-ini {
   flex: none;
   display: grid;
   place-items: center;
@@ -171,53 +171,53 @@
   letter-spacing: 0.04em;
   font-feature-settings: "case";
 }
-.cf-id {
+.pl-card-id {
   flex: 1;
   min-width: 0;
   padding-top: 1px;
 }
-.cf-title {
+.pl-card-title {
   font-size: 22px;
   line-height: 1.12;
   font-weight: 560;
   letter-spacing: -0.024em;
 }
-.cf-meta {
+.pl-card-meta {
   margin-top: 6px;
   font-size: 14px;
   line-height: 1.3;
   letter-spacing: -0.005em;
   color: var(--face-muted);
 }
-.cf-ring {
+.pl-card-ring {
   position: relative;
   flex: none;
   width: 64px;
   height: 64px;
   margin: -4px -4px 0 0;
 }
-.cf-ring svg {
+.pl-card-ring svg {
   display: block;
   overflow: visible;
 }
-.cf-ring-track,
-.cf-ring-prog {
+.pl-card-ring-track,
+.pl-card-ring-prog {
   fill: none;
   stroke-width: 3;
 }
-.cf-ring-track {
+.pl-card-ring-track {
   stroke: var(--face-border);
 }
-.cf-ring-prog {
+.pl-card-ring-prog {
   stroke: var(--face-accent);
   stroke-linecap: round;
 }
-.cf-ring-tick {
+.pl-card-ring-tick {
   stroke: var(--face-muted);
   stroke-width: 1;
   opacity: 0.45;
 }
-.cf-num {
+.pl-card-num {
   position: absolute;
   inset: 0;
   display: grid;
@@ -228,7 +228,7 @@
   font-variant-numeric: tabular-nums;
   padding-bottom: 1px;
 }
-.cf-label {
+.pl-card-label {
   font-family: var(--font-mono);
   font-size: 10.5px;
   line-height: 1;
@@ -238,13 +238,13 @@
   font-feature-settings: "case";
   color: var(--face-muted);
 }
-.cf-chips {
+.pl-card-chips {
   display: flex;
   gap: 8px;
   margin-top: 12px;
   height: 32px;
 }
-.cf-chip {
+.pl-card-chip {
   display: inline-flex;
   align-items: center;
   height: 32px;
@@ -262,35 +262,35 @@
     opacity 0.18s ease-out,
     transform 0.4s var(--ease-out-expo);
 }
-.cf-chip[data-on] {
+.pl-card-chip[data-on] {
   opacity: 1;
   transform: none;
 }
-.cf-caret {
+.pl-card-caret {
   display: none;
   width: 1.5px;
   height: 14px;
   margin-left: 2px;
   background: var(--face-accent);
 }
-.cf-chip[data-typing] .cf-caret {
+.pl-card-chip[data-typing] .pl-card-caret {
   display: inline-block;
 }
-.cf-score {
+.pl-card-score {
   font-size: 14px;
   line-height: 1;
   font-weight: 560;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
-.cf-track {
+.pl-card-track {
   position: relative;
   height: 3px;
   margin-top: 12px;
   border-radius: 3px;
   background: var(--face-border);
 }
-.cf-fill {
+.pl-card-fill {
   position: absolute;
   inset: 0;
   border-radius: 3px;
@@ -299,17 +299,17 @@
 }
 
 /* ── tile ── */
-.tf {
+.pl-tile {
   display: flex;
   flex-direction: column;
   padding: 10px 10px 9px 11px;
 }
-.tf-top {
+.pl-tile-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.tf-ini {
+.pl-tile-ini {
   display: grid;
   place-items: center;
   width: 20px;
@@ -321,20 +321,20 @@
   font-weight: 600;
   letter-spacing: 0.04em;
 }
-.tf-score {
+.pl-tile-score {
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
-.tf-score b {
+.pl-tile-score b {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
-.tf-of {
+.pl-tile-of {
   font-size: 9px;
   color: var(--face-muted);
 }
-.tf-title {
+.pl-tile-title {
   margin-top: 7px;
   font-size: 11px;
   line-height: 13px;
@@ -344,19 +344,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.tf-meta {
+.pl-tile-meta {
   font-size: 10px;
   line-height: 12px;
   color: var(--face-muted);
 }
-.tf-foot {
+.pl-tile-foot {
   position: relative;
   margin-top: auto;
   display: flex;
   align-items: center;
   perspective: 240px;
 }
-.tf-chip {
+.pl-tile-chip {
   display: inline-flex;
   align-items: center;
   height: 18px;
@@ -371,31 +371,31 @@
   transform-origin: 50% 50%;
   backface-visibility: hidden;
 }
-.tf-chip-b {
+.pl-tile-chip-b {
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
-.tf-chip[data-state="2"] {
+.pl-tile-chip[data-state="2"] {
   color: var(--face-fg);
   border-color: color-mix(in srgb, var(--face-accent) 35%, transparent);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.tf-spark {
+.pl-tile-spark {
   width: 4px;
   height: 4px;
   border-radius: 50%;
   background: var(--face-accent);
 }
-.tf-cal {
+.pl-tile-cal {
   color: var(--face-accent);
   fill: none;
   stroke: currentColor;
   stroke-width: 1.2;
   stroke-linecap: round;
 }
-.tf-tick {
+.pl-tile-tick {
   position: absolute;
   right: -1px;
   top: 50%;
@@ -407,11 +407,16 @@
   stroke-linejoin: round;
 }
 
-/* Glass: the night card blurs what is behind it (the list, the field). */
+/* Glass: the night card is a dense, tinted pane that blurs what is behind it (the list, the field). */
+.face[data-face="card"][data-skin="night"] {
+  --face-bg: linear-gradient(160deg, rgba(40, 64, 104, 0.72), rgba(16, 36, 68, 0.78));
+  --face-border: rgba(255, 255, 255, 0.22);
+}
 .face[data-face="card"][data-skin="night"] .face-chrome,
 [data-skin="night"] .face[data-face="card"] .face-chrome {
-  -webkit-backdrop-filter: blur(22px) saturate(1.15);
-  backdrop-filter: blur(22px) saturate(1.15);
+  -webkit-backdrop-filter: blur(32px) saturate(1.25);
+  backdrop-filter: blur(32px) saturate(1.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 /*
  * The Actor's flip layer is preserve-3d (for the dawn flip), which disables
@@ -423,5 +428,5 @@ html.motion:is([data-beat="ranked"], [data-beat="reason"], [data-beat="daybreak"
 }
 /* While the line splits the card, its clip stops the blur: use the blurred glass's own colour. */
 html[data-wipe="daybreak"] .face[data-face="card"][data-skin="night"] {
-  --face-bg: rgba(33, 54, 86, 0.97);
+  --face-bg: linear-gradient(160deg, rgb(36, 59, 97), rgb(18, 38, 70));
 }
