@@ -48,7 +48,7 @@ export function webglAvailable() {
  */
 export async function mountGL(
   host: HTMLElement,
-  build: (THREE: Three, size: { width: number; height: number }) => SceneSetup,
+  build: (THREE: Three, size: { width: number; height: number }, renderer: THREE_NS.WebGLRenderer) => SceneSetup,
   { animate, maxDpr = 1.75 }: Options,
 ): Promise<GLController | null> {
   if (!webglAvailable()) return null;
@@ -70,7 +70,7 @@ export async function mountGL(
   const size = () => ({ width: Math.max(1, host.clientWidth), height: Math.max(1, host.clientHeight) });
   const first = size();
   renderer.setSize(first.width, first.height, false);
-  const setup = build(THREE, first);
+  const setup = build(THREE, first, renderer);
   host.appendChild(canvas);
 
   let visible = false;

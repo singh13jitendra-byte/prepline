@@ -5,6 +5,7 @@ import "@fontsource/instrument-serif/latin-400-italic.css";
 import "lenis/dist/lenis.css";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import { introBootScript } from "@/lib/intro";
 
 export const metadata: Metadata = {
   title: "Prepline: find the right roles, walk in ready",
@@ -20,7 +21,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={GeistSans.variable}>
+    <html lang="en" className={GeistSans.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: introBootScript }} />
+      </head>
       <body className="font-sans text-[15px] leading-relaxed antialiased">
         <Providers>{children}</Providers>
         <Analytics />

@@ -35,6 +35,32 @@ body {
   color: var(--color-ink);
 }
 
+/* Intro curtain: only shown when the boot script sets html.intro (first visit, JS on, motion allowed). */
+.intro-overlay {
+  display: none;
+}
+html.intro .intro-overlay {
+  display: flex;
+}
+html.intro {
+  overflow: hidden;
+}
+/* Hero pieces wait (invisible) until GSAP has set their starting positions. */
+html.hp [data-hero-hide] {
+  visibility: hidden;
+}
+/* Headline letters lift a little under the pointer once they've landed. */
+.hchar {
+  display: inline-block;
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), color 0.3s;
+}
+@media (hover: hover) {
+  .hchar:hover {
+    transform: translateY(-0.07em) rotate(-3deg);
+    color: #ffd77a;
+  }
+}
+
 /* Endless marquee: the list is doubled, so moving it by half loops seamlessly. */
 .marquee {
   animation: marquee 38s linear infinite;

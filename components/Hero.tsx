@@ -4,6 +4,7 @@ import {
   AnimatePresence,
   motion,
   useMotionValue,
+  useMotionValueEvent,
   useReducedMotion,
   useScroll,
   useSpring,
@@ -11,23 +12,75 @@ import {
 } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { BETA_SEATS, HERO_VIDEO_SRC, heroToasts, matches } from "@/lib/content";
-import { CountUp, ease, Words } from "./fx";
+import { CountUp, ease } from "./fx";
 import { HeroLight } from "./gl/HeroLight";
+import { HeroStage, type StageState } from "./gl/HeroStage";
+import { prefersReducedMotion } from "@/lib/gl";
+import { gsap, SplitText } from "@/lib/gsap";
+import { onReveal } from "@/lib/intro";
 import { Sparkle } from "./Icons";
 import { WaitlistForm } from "./WaitlistForm";
 
 export function Hero() {
   const ref = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const slotRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef(0);
   const reduce = useReducedMotion();
+  const [stage, setStage] = useState<StageState>("pending");
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const videoScale = useTransform(scrollYProgress, [0, 1], [1, 1.12]);
-  const contentY = useTransform(scrollYProgress, [0, 1], [0, -80]);
-  const contentOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
+  const contentY = useTransform(scrollYProgress, [0, 1], [0, -90]);
+  const contentOpacity = useTransform(scrollYProgress, [0, 0.65], [1, 0]);
+  useMotionValueEvent(scrollYProgress, "change", (v) => (scrollRef.current = v));
 
   useEffect(() => {
     if (reduce) videoRef.current?.pause();
   }, [reduce]);
+
+  // Kinetic entrance: letters drop in on their own baselines once the curtain lifts.
+  useEffect(() => {
+    const root = textRef.current;
+    if (!root) return;
+    const html = document.documentElement;
+    if (prefersReducedMotion()) {
+      html.classList.remove("hp");
+      return;
+    }
+    const ctx = gsap.context(() => {
+      const splits = gsap.utils.toArray<HTMLElement>("[data-line]").map((el) =>
+        SplitText.create(el, { type: "chars", charsClass: "hchar" }),
+      );
+      const chars = splits.flatMap((s) => s.chars);
+      const ready = root.querySelector("[data-ready]");
+      const line = root.querySelector<SVGPathElement>("[data-underline]");
+      const rest = root.querySelectorAll("[data-rise]");
+      gsap.set(chars, { yPercent: 118, rotate: 9, transformOrigin: "0% 100%" });
+      gsap.set(ready, { autoAlpha: 0, scale: 0.4, rotate: -14, y: 30 });
+      gsap.set(rest, { autoAlpha: 0, y: 22 });
+      if (line) gsap.set(line, { strokeDasharray: 240, strokeDashoffset: 240 });
+      html.classList.remove("hp");
+
+      onReveal(() => {
+        const tl = gsap.timeline({ delay: 0.25 });
+        tl.to(chars, {
+          yPercent: 0,
+          rotate: 0,
+          duration: 1.1,
+          ease: "expo.out",
+          stagger: 0.028,
+          clearProps: "transform",
+        })
+          .to(ready, { autoAlpha: 1, scale: 1, rotate: 0, y: 0, duration: 1.3, ease: "elastic.out(1, 0.55)" }, "-=0.55")
+          .to(line, { strokeDashoffset: 0, duration: 0.9, ease: "power3.inOut" }, "-=0.8")
+          .to(rest, { autoAlpha: 1, y: 0, duration: 0.9, ease: "power3.out", stagger: 0.1 }, "-=1.1");
+      });
+    }, root);
+    return () => ctx.revert();
+  }, []);
+
+  const glReady = stage === "ready";
 
   return (
     <section
@@ -41,30 +94,31 @@ export function Hero() {
         ref={videoRef}
         aria-hidden
         style={{ scale: videoScale }}
-        className="absolute inset-0 -z-10 h-full w-full object-cover"
+        className={`absolute inset-0 -z-10 h-full w-full object-cover transition-opacity duration-700 ${glReady ? "opacity-0" : ""}`}
         src={HERO_VIDEO_SRC}
+        crossOrigin="anonymous"
         autoPlay
         muted
         loop
         playsInline
-        preload="metadata"
+        preload="auto"
       />
       <div
         aria-hidden
-        className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_30%_45%,rgba(10,30,60,0.55),rgba(10,30,60,0.15)_60%),linear-gradient(180deg,rgba(10,30,60,0.35),rgba(10,30,60,0)_35%,rgba(10,30,60,0)_60%,rgba(10,30,60,0.55))]"
+        className={`absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_30%_45%,rgba(10,30,60,0.55),rgba(10,30,60,0.15)_60%),linear-gradient(180deg,rgba(10,30,60,0.35),rgba(10,30,60,0)_35%,rgba(10,30,60,0)_60%,rgba(10,30,60,0.55))] transition-opacity duration-700 ${glReady ? "opacity-0" : ""}`}
       />
+      <HeroStage videoRef={videoRef} slotRef={slotRef} scrollRef={scrollRef} onState={setStage} />
       <HeroLight />
 
       <motion.div
         style={{ y: contentY, opacity: contentOpacity }}
-        className="mx-auto grid min-h-[min(100svh,980px)] max-w-[1240px] grid-cols-[minmax(0,1fr)] items-center gap-12 px-5 pb-20 pt-32 md:px-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-10 lg:pt-28"
+        className="pointer-events-none mx-auto grid min-h-[min(100svh,1000px)] max-w-[1240px] grid-cols-[minmax(0,1fr)] items-center gap-10 px-5 pb-16 pt-28 md:px-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:gap-6 lg:pb-20"
       >
-        <div className="flex min-w-0 flex-col items-start gap-6 text-white">
-          <motion.a
+        <div ref={textRef} className="pointer-events-auto flex min-w-0 flex-col items-start gap-6 text-white">
+          <a
             href="#join"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2, ease }}
+            data-rise
+            data-hero-hide
             className="inline-flex items-center gap-2.5 rounded-full border border-white/30 bg-white/10 py-1.5 pl-2 pr-4 text-[13px] backdrop-blur-md hover:bg-white/15"
           >
             <span className="relative flex size-2.5 items-center justify-center">
@@ -72,72 +126,73 @@ export function Hero() {
               <span className="relative inline-flex size-2 rounded-full bg-[#7ee2a8]" />
             </span>
             Private beta · {BETA_SEATS} designer seats
-          </motion.a>
+          </a>
 
-          <h1 className="text-[44px] font-medium leading-[0.98] tracking-[-0.045em] sm:text-[60px] lg:text-[clamp(50px,4.4vw,70px)]">
-            <Words text="Find the right roles." delay={0.3} className="block lg:whitespace-nowrap" />
-            <span className="block lg:whitespace-nowrap">
-              <Words text="Walk in" delay={0.55} />{" "}
-              <span className="relative inline-block">
-                <motion.span
-                  initial={{ opacity: 0, y: 20, rotate: -4 }}
-                  animate={{ opacity: 1, y: 0, rotate: 0 }}
-                  transition={{ duration: 0.9, delay: 0.75, ease }}
-                  className="inline-block font-serif font-normal italic tracking-[-0.01em] text-[#ffd77a]"
-                >
-                  ready.
-                </motion.span>
+          <h1
+            data-hero-hide
+            className="text-[54px] font-medium leading-[0.9] tracking-[-0.055em] sm:text-[76px] lg:text-[clamp(68px,7.2vw,118px)]"
+          >
+            <span className="-mb-[0.1em] block overflow-hidden pb-[0.1em]">
+              <span data-line className="block">
+                Find the
+              </span>
+            </span>
+            <span className="-mb-[0.1em] block overflow-hidden pb-[0.1em]">
+              <span data-line className="block whitespace-nowrap">
+                right roles.
+              </span>
+            </span>
+            <span className="block whitespace-nowrap">
+              <span className="-mb-[0.1em] inline-block overflow-hidden pb-[0.1em] align-bottom">
+                <span data-line className="inline-block">
+                  Walk in
+                </span>
+              </span>{" "}
+              <span data-ready className="relative inline-block">
+                <span className="inline-block font-serif font-normal italic tracking-[-0.01em] text-[#ffd77a]">ready.</span>
                 <svg
                   aria-hidden
                   viewBox="0 0 220 24"
                   preserveAspectRatio="none"
-                  className="absolute -bottom-2 left-0 h-3 w-full text-[#ffd77a]"
+                  className="absolute -bottom-1 left-0 h-[0.12em] w-full text-[#ffd77a]"
                 >
-                  <motion.path
+                  <path
+                    data-underline
                     d="M3 15 C 60 4, 130 4, 217 13"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth={4}
                     strokeLinecap="round"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 0.9, delay: 1.25, ease }}
+                    vectorEffect="non-scaling-stroke"
                   />
                 </svg>
               </span>
             </span>
           </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.9, ease }}
-            className="max-w-[520px] text-[17px] leading-relaxed text-white/90 md:text-lg"
-          >
+          <p data-rise data-hero-hide className="max-w-[480px] text-[17px] leading-relaxed text-white/90 md:text-lg">
             The job-search copilot for product designers. Roles ranked by portfolio fit, one board for your pipeline, and a
             prep sheet the moment an interview is booked.
-          </motion.p>
+          </p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 1.05, ease }}
-            className="w-full"
-          >
+          <div data-rise data-hero-hide className="w-full max-w-[520px]">
             <WaitlistForm tone="glass" />
             <p className="-mt-1 pl-5 text-[13px] text-white/80">No auto-apply. Your portfolio is never stored.</p>
-          </motion.div>
+          </div>
         </div>
 
-        <MatchesCard />
+        <div ref={slotRef} className="relative mx-auto h-[300px] w-full max-w-[460px] sm:h-[360px] lg:h-[460px] lg:max-w-[520px]">
+          {stage === "fallback" && <MatchesCard />}
+          {stage === "ready" && <Toasts />}
+        </div>
       </motion.div>
 
       <motion.a
-        href="#how"
-        aria-label="Scroll to how it works"
+        href="#matching"
+        aria-label="Scroll to how matching works"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.8 }}
+        transition={{ delay: 3 }}
         className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 md:block"
       >
         <span className="flex h-10 w-6 justify-center rounded-full border border-white/50 pt-2">
