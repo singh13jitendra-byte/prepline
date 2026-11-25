@@ -19,18 +19,19 @@ import { Panel } from "@/components/story/Stage";
 import { storyCopy } from "@/lib/content";
 import { useAnchor } from "@/lib/anchors";
 import { BEATS, story } from "@/lib/story";
-import { offsetIn, span, useScrub } from "../read/runtime";
+import { offsetIn, softBelow, span, useScrub } from "../read/runtime";
 
 const sentence = storyCopy.hinge.sentence;
 const words = sentence.split(" ");
-/** Beat progress over which the words are read (the Line arrives by 25%). */
-const READ: [number, number] = [0.26, 0.9];
+/** Beat progress over which the words are read: after the board copy has gone (12%), to the end. */
+const READ: [number, number] = [0.26, 0.98];
 const HINGE = BEATS.findIndex((b) => b.id === "hinge");
 
 type Box = { x: number; y: number; w: number; h: number; line: number };
 
 export function HingePanel() {
   const textRef = useRef<HTMLParagraphElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const underRef = useRef<HTMLSpanElement>(null);
   const anchor = useAnchor("hinge-text");
   const boxes = useRef<Box[]>([]);
@@ -65,7 +66,18 @@ export function HingePanel() {
     if (!text || !under || b.length === 0) return;
     const i = BEATS.findIndex((x) => x.id === s.beat);
     const p = i < HINGE ? 0 : i > HINGE ? 1 : s.beatProgress;
-    text.style.setProperty("--in", span(p, 0, 0.2).toFixed(4));
+    text.style.setProperty("--in", span(p, 0.14, 0.26).toFixed(4));
+    // At nightfall the night stage covers this one from the top: ink the sentence out through a
+    // 24px soft edge just below the Line instead of letting the stage clip cut through letters.
+    const root = rootRef.current;
+    if (root) {
+      const mask = s.line.sweep && s.beat === "nightfall" ? softBelow(s.line.y) : "none";
+      if (root.dataset.mask !== mask) {
+        root.dataset.mask = mask;
+        root.style.setProperty("-webkit-mask-image", mask);
+        root.style.setProperty("mask-image", mask);
+      }
+    }
 
     const r = span(p, READ[0], READ[1]) * b.length;
     text.querySelectorAll<HTMLElement>("[data-word]").forEach((el, k) => {
@@ -102,7 +114,7 @@ export function HingePanel() {
 
   return (
     <Panel beats="hinge" className="bd-hinge">
-      <div className="bd-hinge-root">
+      <div ref={rootRef} className="bd-hinge-root">
         <div className="bd-hinge-inner">
           <p ref={textRef} className="bd-sentence">
             <span className="sr-only">{sentence}</span>

@@ -55,29 +55,43 @@ function TicketFace({ skin, host }: FaceProps) {
 
   return (
     <div className="tk-root" data-skin={skin} data-host={host} data-status={status} data-fresh={fresh ? "" : undefined}>
-      <div className="tk-shadow">
-        <div className="tk-paper">
-          <div className="tk-main">
-            <p className="tk-head">
-              <i aria-hidden="true" />
-              {storyCopy.seat.ticketHeader}
-            </p>
-            <div className="tk-body">
-              {/* The flying copy carries the same form, inert (the Actor layer is inert and aria-hidden). */}
-              {done ? <Success live={live} fresh={fresh} /> : <WaitlistForm tone="ticket" onStatusChange={live ? onStatus : undefined} />}
-            </div>
-            <p className="tk-foot">{storyCopy.seat.ticketFoot}</p>
+      <div className="tk-plate" aria-hidden="true" />
+      <div className="tk-paper tk-paper-main">
+        <div className="tk-main">
+          <p className="tk-head">
+            <i aria-hidden="true" />
+            {storyCopy.seat.ticketHeader}
+          </p>
+          <div className="tk-body">
+            {/* The flying copy carries the same form, inert (the Actor layer is inert and aria-hidden). */}
+            {done ? <Success live={live} fresh={fresh} /> : <WaitlistForm tone="ticket" onStatusChange={live ? onStatus : undefined} />}
           </div>
-          <div className="tk-perf" aria-hidden="true" />
-          <div className="tk-stub" aria-hidden="true">
+          <p className="tk-foot">{storyCopy.seat.ticketFoot}</p>
+        </div>
+        <div className="tk-light" aria-hidden="true" />
+        {live ? null : (
+          <div className="tk-sheen-box" aria-hidden="true">
+            <div className="tk-sheen" />
+          </div>
+        )}
+      </div>
+      <div className="tk-perf" aria-hidden="true" />
+      {/* The stub tears along the perforation as you scroll through the seat beat (--tear, 0..1). */}
+      <div className="tk-tear" aria-hidden="true">
+        <div className="tk-paper tk-paper-stub">
+          <div className="tk-stub">
             <span className="tk-stub-label">{pkg3Copy.ticket.stubLabel}</span>
             <span className="tk-ring">
               <Check />
             </span>
             <span className="tk-stub-label">{pkg3Copy.ticket.stubOf}</span>
           </div>
-          <div className="tk-light" aria-hidden="true" />
-          {live ? null : <div className="tk-sheen" aria-hidden="true" />}
+          <div className="tk-light" />
+          {live ? null : (
+            <div className="tk-sheen-box">
+              <div className="tk-sheen" />
+            </div>
+          )}
         </div>
       </div>
       {done ? (

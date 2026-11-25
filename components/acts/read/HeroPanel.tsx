@@ -93,10 +93,15 @@ export function HeroPanel() {
     const k = span(h, 0, 0.22);
     root.style.setProperty("--drop", k.toFixed(4));
     root.style.setProperty("--cue", (1 - span(h, 0, 0.145)).toFixed(4));
-    const clip = h > 0.22 ? `inset(0 0 ${Math.max(0, s.viewport.h - s.line.y).toFixed(1)}px 0)` : "none";
-    if (root.dataset.clip !== clip) {
-      root.dataset.clip = clip;
-      root.style.setProperty("--hero-clip", clip);
+    // The Line erases the headline from the bottom up through a 24px soft edge (it inks out,
+    // it is not guillotined), while the headline steps back: scale 1 → 0.96, 40% dimmer.
+    const e = span(h, 0.22, 1);
+    root.style.setProperty("--recede", e.toFixed(4));
+    const y = s.line.y;
+    const mask = h > 0.22 ? `linear-gradient(to bottom, #000 ${(y - 24).toFixed(1)}px, transparent ${y.toFixed(1)}px)` : "none";
+    if (root.dataset.mask !== mask) {
+      root.dataset.mask = mask;
+      root.style.setProperty("--hero-mask", mask);
     }
   });
 

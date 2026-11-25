@@ -17,7 +17,7 @@ function useLocalTime() {
     const read = () => {
       try {
         const now = new Date();
-        setTime({ text: now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }), iso: now.toISOString() });
+        setTime({ text: now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }), iso: now.toISOString() });
       } catch {
         setTime(null);
       }
@@ -35,32 +35,30 @@ export function Footer() {
   const f = storyCopy.footer;
   return (
     <footer className="ft">
-      <p className="ft-time">
-        {time ? (
-          <>
-            <time dateTime={time.iso}>{time.text}</time>.{" "}
-          </>
-        ) : null}
-        <span>{time ? f.timeSuffix : f.timeFallback}</span>
-      </p>
-      <div className="ft-bottom">
-        <div className="ft-inner">
-          <p className="ft-brand">
-            <span className="nav-logo" aria-hidden="true" />
-            <span>{f.left}</span>
-          </p>
-          <nav aria-label={pkg3Copy.landmarks.footer}>
-            <ul className="ft-links">
-              {f.links.map((l) => (
-                <li key={l.label}>
-                  <a href={l.href}>{l.label}</a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </div>
-        <p className="type-mono ft-last">{f.last}</p>
+      <div className="ft-inner">
+        <p className="ft-brand">
+          <span className="nav-logo" aria-hidden="true" />
+          <span>{f.left}</span>
+        </p>
+        <nav aria-label={pkg3Copy.landmarks.footer}>
+          <ul className="ft-links">
+            {f.links.map((l) => (
+              <li key={l.label}>
+                <a href={l.href}>{l.label}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <p className="ft-time">
+          {time ? (
+            <>
+              <time dateTime={time.iso}>{time.text}</time>.{" "}
+            </>
+          ) : null}
+          <span>{time ? f.timeSuffix : f.timeFallback}</span>
+        </p>
       </div>
+      <p className="type-mono ft-last">{f.last}</p>
     </footer>
   );
 }

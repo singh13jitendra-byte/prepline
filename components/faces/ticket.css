@@ -41,49 +41,88 @@
   }
 }
 
-/* The drop shadow follows the cut paper (notches included), so it is a filter on a wrapper. */
-.tk-shadow {
-  position: absolute;
-  inset: 0;
-}
-.tk-root[data-skin="day"] .tk-shadow {
-  filter: drop-shadow(0 28px 34px rgba(60, 40, 16, calc(0.16 + 0.08 * var(--lift, 0)))) drop-shadow(0 2px 3px rgba(27, 25, 22, 0.08));
-}
-.tk-paper {
+/* One shadow plate under the whole ticket (box-shadow, never a filter: the ticket travels and flips). */
+.tk-plate {
   position: absolute;
   inset: 0;
   border-radius: 24px;
+  pointer-events: none;
+}
+.tk-root[data-skin="day"] .tk-plate {
+  box-shadow:
+    0 30px 46px -26px rgba(60, 40, 16, calc(0.34 + 0.12 * var(--lift, 0))),
+    0 2px 4px rgba(27, 25, 22, 0.06);
+}
+/* Two papers meeting at the perforation: the main ticket and the stub, which tears away with scroll. */
+.tk-paper {
+  position: absolute;
+  top: 0;
+  bottom: 0;
   overflow: hidden;
   background:
     radial-gradient(90% 120% at 100% 0%, rgba(255, 215, 122, 0.16) 0%, rgba(255, 215, 122, 0) 55%),
     linear-gradient(180deg, #fffefa 0%, #fdf8ee 100%);
-  -webkit-mask:
-    radial-gradient(circle at var(--tk-perf) 0, transparent 11px, #000 11.5px) top / 100% 51% no-repeat,
-    radial-gradient(circle at var(--tk-perf) 100%, transparent 11px, #000 11.5px) bottom / 100% 51% no-repeat;
-  mask:
-    radial-gradient(circle at var(--tk-perf) 0, transparent 11px, #000 11.5px) top / 100% 51% no-repeat,
-    radial-gradient(circle at var(--tk-perf) 100%, transparent 11px, #000 11.5px) bottom / 100% 51% no-repeat;
+  background-size: 520px 100%;
 }
-.tk-paper::before {
-  /* hairline edge */
+.tk-paper-main {
+  left: 0;
+  width: var(--tk-perf);
+  border-radius: 24px 0 0 24px;
+  background-position: 0 0;
+  -webkit-mask:
+    radial-gradient(circle at 100% 0, transparent 11px, #000 11.5px) top / 100% 51% no-repeat,
+    radial-gradient(circle at 100% 100%, transparent 11px, #000 11.5px) bottom / 100% 51% no-repeat;
+  mask:
+    radial-gradient(circle at 100% 0, transparent 11px, #000 11.5px) top / 100% 51% no-repeat,
+    radial-gradient(circle at 100% 100%, transparent 11px, #000 11.5px) bottom / 100% 51% no-repeat;
+}
+.tk-tear {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--tk-perf);
+  right: 0;
+  transform-origin: 0 100%;
+  transform: translate3d(calc(var(--tear, 0) * 5px), calc(var(--tear, 0) * 2px), 0) rotate(calc(var(--tear, 0) * 3.2deg));
+}
+.tk-paper-stub {
+  inset: 0;
+  border-radius: 0 24px 24px 0;
+  background-position: calc(-1 * var(--tk-perf)) 0;
+  -webkit-mask:
+    radial-gradient(circle at 0 0, transparent 11px, #000 11.5px) top / 100% 51% no-repeat,
+    radial-gradient(circle at 0 100%, transparent 11px, #000 11.5px) bottom / 100% 51% no-repeat;
+  mask:
+    radial-gradient(circle at 0 0, transparent 11px, #000 11.5px) top / 100% 51% no-repeat,
+    radial-gradient(circle at 0 100%, transparent 11px, #000 11.5px) bottom / 100% 51% no-repeat;
+}
+/* The torn edge darkens a little as the stub comes away. */
+.tk-paper-stub::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  background: linear-gradient(90deg, rgba(80, 56, 24, 0.1), rgba(80, 56, 24, 0));
+  opacity: var(--tear, 0);
+  pointer-events: none;
+}
+.tk-paper::after {
+  /* hairline edge and paper fibre */
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   box-shadow: inset 0 0 0 1px rgba(27, 25, 22, 0.07);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .36  0 0 0 0 .25  0 0 0 .05 0'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>");
   pointer-events: none;
 }
-.tk-root[data-skin="night"] .tk-paper::before {
+.tk-root[data-skin="night"] .tk-paper::after {
   box-shadow: inset 0 0 0 1px rgba(255, 238, 206, 0.35);
 }
-.tk-paper::after {
-  /* paper fibre */
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: 0.45;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .36  0 0 0 0 .25  0 0 0 .06 0'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>");
+.tk-paper-main::after {
+  border-right: 0;
 }
 
 .tk-perf {
@@ -178,7 +217,7 @@
   right: 0;
   bottom: 4px;
   height: 1px;
-  background: rgba(27, 25, 22, 0.22);
+  background: rgba(27, 25, 22, 0.16);
   pointer-events: none;
 }
 .tk-underline::after {
@@ -193,8 +232,7 @@
   transform-origin: 0 50%;
   transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.tk-field:focus-within .tk-underline::after,
-.tk-root[data-invite] .tk-field .tk-underline::after {
+.tk-field:focus-within .tk-underline::after {
   transform: scaleX(1);
   transition-duration: 0.3s;
 }
@@ -223,7 +261,7 @@
   width: 2px;
   height: calc(var(--tk-input) * 1.2);
   border-radius: 1px;
-  background: var(--tk-accent);
+  background: rgba(27, 25, 22, 0.55);
   opacity: 0;
   pointer-events: none;
 }
@@ -363,10 +401,7 @@
 /* ── stub ── */
 .tk-stub {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: var(--tk-perf);
-  right: 0;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -422,11 +457,27 @@
 /* ── light: a pointer highlight (dock) and the sheen that crosses the ticket as it flips (actor) ── */
 .tk-light {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 520px;
   pointer-events: none;
   background: radial-gradient(260px 220px at var(--hx, 50%) var(--hy, 30%), rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 70%);
   opacity: calc(var(--hl, 0) * 0.65);
   mix-blend-mode: soft-light;
+}
+.tk-paper-stub .tk-light,
+.tk-paper-stub .tk-sheen-box {
+  left: calc(-1 * var(--tk-perf));
+}
+.tk-sheen-box {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 520px;
+  overflow: hidden;
+  pointer-events: none;
 }
 .tk-sheen {
   position: absolute;

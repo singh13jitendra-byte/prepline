@@ -5,14 +5,6 @@
 .seat-panel {
   color: var(--color-ink, #1b1916);
 }
-.seat-dawn {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(90% 55% at 72% 112%, rgba(255, 178, 92, 0.34) 0%, rgba(255, 196, 120, 0.14) 45%, rgba(255, 210, 150, 0) 75%),
-    radial-gradient(70% 40% at 10% 105%, rgba(255, 210, 140, 0.18) 0%, rgba(255, 210, 140, 0) 70%);
-}
 .seat-grid {
   position: relative;
   display: grid;
@@ -53,19 +45,19 @@
 .seat-accent {
   position: relative;
   display: inline-block;
-  padding-right: 0.06em;
   font-family: var(--font-serif);
   font-style: italic;
   font-weight: 400;
   letter-spacing: -0.02em;
   color: var(--color-accent, #b45309);
 }
-/* The Line rests here: same size as the hero underline. Static page: a quiet amber rule. */
+/* The Line rests here, at the same share of the word as the hero underline (left .05em,
+   right .02em of "ready."). Static page: a quiet amber rule. */
 .seat-underline {
   position: absolute;
-  left: 0.06em;
-  bottom: 0.04em;
-  width: clamp(120px, 15.3vw, 220px);
+  left: 0.05em;
+  right: 0.02em;
+  bottom: 0.02em;
   height: 3px;
   border-radius: 2px;
   transform-origin: 0 50%;
@@ -135,7 +127,7 @@ html:not(.motion) .seat-underline {
   position: absolute;
   inset: 0;
   transform-origin: 50% 50%;
-  transform: rotate(var(--rest, 0deg)) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg));
+  transform: translate3d(0, calc(var(--lift, 0) * -10px), 0) rotate(var(--rest, 0deg)) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg));
   will-change: transform;
 }
 
@@ -159,6 +151,7 @@ html:not(.motion) .seat-underline {
   width: 12px;
   height: 12px;
   border-radius: 999px;
+  /* hollow: the World's speck settles inside it */
   box-shadow: inset 0 0 0 1.25px rgba(27, 25, 22, 0.42);
   opacity: var(--g);
   transform: scale(calc(0.35 + 0.65 * var(--g)));
@@ -169,9 +162,15 @@ html:not(.motion) .seat-underline {
   background: rgba(180, 83, 9, 0.12);
   transition-duration: 0.15s;
 }
+/* Claimed. With the WebGL World running it fills the ring gold, so the DOM mark stays subtle;
+   without it (CSS field, no WebGL) the DOM fills the ring itself. */
 .seat-ring[data-filled] {
   background: var(--color-accent, #b45309);
   box-shadow: inset 0 0 0 1.5px var(--color-accent, #b45309);
+}
+.seat-ring[data-filled][data-world] {
+  background: rgba(180, 83, 9, 0.12);
+  box-shadow: inset 0 0 0 1.75px var(--color-accent, #b45309);
 }
 .seat-ring[data-fresh] {
   animation: seat-fill 0.7s cubic-bezier(0.2, 1.5, 0.4, 1) both;
@@ -205,6 +204,14 @@ html:not(.motion) .seat-underline {
 .seat-rings-caption {
   color: var(--color-muted, #5f5a53);
   white-space: nowrap;
+  /* only once the first ring exists */
+  opacity: clamp(0, calc((var(--gather, 1) - 0.03) * 8), 1);
+}
+/* The headline rides just under the dawn line, so the rising line reveals it bottom-up. */
+html.motion .seat-ride {
+  --ride-d: 46svh;
+  transform: translate3d(0, calc((1 - var(--rise, 1)) * var(--ride-d)), 0);
+  will-change: transform;
 }
 
 /* ── static page ── */
@@ -243,9 +250,11 @@ html:not(.motion) .seat-grid {
   .seat-left {
     display: contents;
   }
-  .seat-left > .seat-h,
-  .seat-left > .seat-body {
+  .seat-left > .seat-ride {
     order: 1;
+  }
+  html.motion .seat-ride {
+    --ride-d: 66svh;
   }
   .seat-promises {
     order: 3;

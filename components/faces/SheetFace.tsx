@@ -26,6 +26,8 @@ import "./sheet.css";
 const QUESTIONS = [storyCopy.q1, storyCopy.q2, storyCopy.q3] as const;
 const Q_BEATS: readonly BeatId[] = ["q1", "q2", "q3"];
 const order = (b: BeatId) => BEATS.findIndex((x) => x.id === b);
+/** Where the lamp's pool rests at the end of `votes` (and in the flying copy during the dawn). */
+const LAMP_END = 92;
 
 /* ───────────────────────────────────────────────────────────── icons ── */
 
@@ -150,8 +152,21 @@ function schedule(text: string) {
   return { starts, total: t };
 }
 
-function QuestionText({ text, live, els }: { text: string; live: boolean; els: MutableRefObject<HTMLSpanElement[]> }) {
+/**
+ * The dock copy types with one span per glyph, then swaps to a plain run once written
+ * (data-done). Flying copies only ever draw the plain run, so nothing per-glyph is
+ * re-rastered while the Actor travels, folds or flips.
+ */
+function QuestionText({ text, live, typed, els }: { text: string; live: boolean; typed: boolean; els: MutableRefObject<HTMLSpanElement[]> }) {
   const gs = useMemo(() => glyphs(text), [text]);
+  if (!live) {
+    return (
+      <>
+        {typed ? <span data-plain="">{text}</span> : null}
+        <span className="sh-blank" aria-hidden="true" />
+      </>
+    );
+  }
 
   // Words keep their letters together; spaces sit between words so lines can break.
   const words: ReactNode[] = [];
@@ -190,6 +205,9 @@ function QuestionText({ text, live, els }: { text: string; live: boolean; els: M
       {live ? <span className="sr-only">{text}</span> : null}
       <span aria-hidden="true" data-typed-run="">
         {words}
+      </span>
+      <span aria-hidden="true" data-plain="">
+        {text}
       </span>
       <span className="sh-blank" aria-hidden="true" />
     </>
@@ -245,6 +263,7 @@ function Question({ index, live, typed, vote }: QuestionProps) {
       const T = total + 0.03;
       type Box = { l: number; t: number; w: number; h: number };
       let boxes: Box[] = [];
+      let stale = true;
       let shown = -1;
       let cur = 0;
 
@@ -252,11 +271,14 @@ function Question({ index, live, typed, vote }: QuestionProps) {
         const ox = text.offsetLeft;
         const oy = text.offsetTop;
         boxes = glyphEls.current.map((el) => ({ l: ox + el.offsetLeft, t: oy + el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }));
+        stale = false;
       };
 
       const render = (t: number) => {
         cur = t;
-        if (!boxes.length) measure();
+        // Written: a plain run (no per-glyph layers). Typing: the glyph run, measured when needed.
+        text.toggleAttribute("data-done", t >= T);
+        if (t < T && stale) measure();
         const els = glyphEls.current;
         let n = 0;
         while (n < starts.length && starts[n] < t) n++;
@@ -311,7 +333,7 @@ function Question({ index, live, typed, vote }: QuestionProps) {
       tl.fromTo(chip, { autoAlpha: 0, y: 5, scale: 0.9 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.35, ease: "back.out(1.8)", clearProps: "transform" }, ">-0.02");
 
       remeasure.current = () => {
-        measure();
+        stale = true;
         shown = -1;
         render(cur);
       };
@@ -327,7 +349,7 @@ function Question({ index, live, typed, vote }: QuestionProps) {
       </span>
       <div className="sh-body">
         <p ref={textRef} id={live ? textId : undefined} className="sh-text" data-typed={live ? undefined : typed ? "true" : "false"}>
-          <QuestionText text={q.question} live={live} els={glyphEls} />
+          <QuestionText text={q.question} live={live} typed={typed} els={glyphEls} />
         </p>
         <div className="sh-row">
           <span ref={chipRef} className="sh-chip" style={!live && !typed ? { opacity: 0 } : undefined}>
@@ -401,7 +423,11 @@ function Footer({ live }: { live: boolean }) {
     <div className="sh-foot">
       <div>
         <span className="sh-label">{storyCopy.votes.label}</span>
-        <div className="sh-count">
+        <div className="sh-count" style={{ "--n-frac": (n / 3).toFixed(4) } as CSSProperties}>
+          <svg className="sh-ring" viewBox="0 0 36 36" aria-hidden="true">
+            <circle cx="18" cy="18" r="15" pathLength={100} className="sh-ring-track" />
+            <circle cx="18" cy="18" r="15" pathLength={100} className="sh-ring-fill" />
+          </svg>
           <span className="sr-only">{countText}</span>
           <span aria-hidden="true" style={{ display: "contents" }}>
             {before}
@@ -427,6 +453,7 @@ function SheetContent({ live, typedCount }: { live: boolean; typedCount: number 
   const { votes } = usePrepState();
   return (
     <div className="sh-paper">
+      <div className="sh-lampwash" aria-hidden="true" />
       <div className="sh-crease" style={{ top: 240 }} aria-hidden="true" />
       <div className="sh-crease" style={{ top: 480 }} aria-hidden="true" />
       <div className="sh-content">
@@ -447,26 +474,64 @@ function SheetContent({ live, typedCount }: { live: boolean; typedCount: number 
 function SheetDock({ skin }: { skin: FaceProps["skin"] }) {
   const rootRef = useRef<HTMLElement>(null);
 
-  // Scrubbed anticipation: the previous question dims to 60% as the next one is selected.
+  // Scrubbed, every pixel of the prep beats (the "breath"):
+  // - the previous question dims to 60% as the next one is selected;
+  // - the lamp's pool on the paper travels down with the reading, question to question, then to the count;
+  // - in `votes`, the ring around "n of 3" fills.
   useEffect(() => {
     const root = rootRef.current;
     if (!root || story.reduced()) return;
     const texts = [0, 1, 2].map((i) => root.querySelector<HTMLElement>(`[data-q="${i}"] .sh-text`));
+    const lis = [0, 1, 2].map((i) => root.querySelector<HTMLElement>(`[data-q="${i}"]`));
+    // Question centres as a share of the sheet's height, measured outside the frame loop.
+    let qy = [40, 57, 74];
+    const measure = () => {
+      qy = lis.map((li, i) => (li ? ((li.offsetTop + li.offsetHeight * 0.5) / 720) * 100 : qy[i]));
+      story.invalidate();
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    lis.forEach((li) => li && ro.observe(li));
+    // votes: the ring around "n of 3" fills with scroll (breath API).
+    const offFill = story.breath(root, "votes", { from: 0.06, name: "--vote-fill" });
     let last = "";
-    return story.subscribe((s) => {
+    const off = story.subscribe((s) => {
       const qi = Q_BEATS.indexOf(s.beat);
-      const k = clamp01(s.beatProgress / 0.2);
+      const p = s.beatProgress;
+      const k = clamp01(p / 0.2);
       const dims = [1, 1, 1];
       if (qi > 0) {
         for (let i = 0; i < qi; i++) dims[i] = i === qi - 1 ? 1 - 0.4 * k : 0.6;
       } else if (s.beat === "votes") {
         dims[0] = dims[1] = 0.6 + 0.4 * k;
       }
-      const key = dims.map((d) => d.toFixed(3)).join();
+      // One continuous path for the lamp's pool: down through each question, then to the count.
+      const stops = [qy[0] - 9, qy[1] - 9, qy[2] - 9, qy[2] + 4, LAMP_END];
+      const i = order(s.beat);
+      let lampY = stops[0];
+      let lampK = 0;
+      if (qi >= 0) {
+        lampY = stops[qi] + (stops[qi + 1] - stops[qi]) * p;
+        lampK = qi === 0 ? clamp01(p / 0.3) : 1;
+      } else if (s.beat === "votes") {
+        lampY = stops[3] + (stops[4] - stops[3]) * p;
+        lampK = 1;
+      } else if (i > order("votes")) {
+        lampY = LAMP_END;
+        lampK = 1;
+      }
+      const key = `${dims.map((d) => d.toFixed(3)).join()}|${lampY.toFixed(2)}|${lampK.toFixed(3)}`;
       if (key === last) return;
       last = key;
-      texts.forEach((el, i) => el?.style.setProperty("--q-dim", dims[i].toFixed(3)));
+      texts.forEach((el, n) => el?.style.setProperty("--q-dim", dims[n].toFixed(3)));
+      root.style.setProperty("--lamp-y", `${lampY.toFixed(2)}%`);
+      root.style.setProperty("--lamp-k", lampK.toFixed(3));
     });
+    return () => {
+      off();
+      offFill();
+      ro.disconnect();
+    };
   }, []);
 
   // The vote demo (storyboard 2.6, beat 14): runs only until the visitor presses a button.
@@ -566,7 +631,8 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
       set("p3top", 0.35 * s3);
       // The glow behind follows the visible extent of the sheet.
       const visible = 240 + Math.max(0, 240 * Math.cos(r2)) + Math.max(0, 240 * Math.cos(r2 + r3) * (a2 < 90 ? 1 : 0));
-      if (glowRef.current) glowRef.current.style.height = `${Math.max(240, Math.min(720, visible)).toFixed(1)}px`;
+      // A scale, not a height: the blurred glow is rastered once and never re-laid out.
+      if (glowRef.current) glowRef.current.style.transform = `scaleY(${(Math.max(240, Math.min(720, visible)) / 720).toFixed(4)})`;
     });
   }, []);
 
@@ -579,8 +645,15 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
   const h = storyCopy.unfold.sheetHeader;
 
   return (
-    <div ref={rootRef} className="sh-root" data-skin={skin} data-host="actor" data-writing={beat === "unfold" ? "" : undefined}>
-      <div ref={glowRef} className="sh-glow" style={{ height: 240 }} />
+    <div
+      ref={rootRef}
+      className="sh-root"
+      data-skin={skin}
+      data-host="actor"
+      data-writing={beat === "unfold" ? "" : undefined}
+      data-lamp={order(beat) > order("votes") ? "end" : undefined}
+    >
+      <div ref={glowRef} className="sh-glow" style={{ transform: "scaleY(0.3333)" }} />
       <div className="sh-3d">
         <div className="sh-panel sh-p1">
           {slice(0)}

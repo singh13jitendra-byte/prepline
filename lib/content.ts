@@ -493,4 +493,10 @@ export const storyActs12 = {
     /** Mono label above the three reason chips on the card. */
     chipsLabel: "Why it fits",
   },
+  board: {
+    /** The week strip above the board (the Line rides it; the clock runs along it). */
+    days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+    /** Visually hidden name of the strip. */
+    daysLabel: "This week, Monday to Friday",
+  },
 } as const;

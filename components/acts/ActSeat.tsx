@@ -4,17 +4,19 @@
  * ACT IV — SEAT (day, dawn light). Storyboard 2.7.
  *
  *   dawn (wipe, prep's)  the sheet folds and flips into the ticket on its way here
- *   seat                 the Line docks under "ready." (scrubbed, 0 to 30%), the 25 seat
- *                        rings gather; the ticket straightens and its fields print in (timed)
+ *   dawn (scrubbed)      "Walk in / ready." rides up under the rising line; the rings begin to gather
+ *   seat                 the Line docks under "ready." (scrubbed); the rings finish gathering, the
+ *                        ticket lifts and its stub tears (scrubbed); it straightens, the promises rise (timed)
  *   footer               the stage scrolls away
  *
  * The ticket is the real <WaitlistForm tone="ticket">, docked in a FaceSlot. On a
- * successful request one ring fills, a stamp presses onto the ticket and the Line
- * under "ready." draws itself once more.
+ * successful request the ring nearest the ticket is claimed (window event
+ * `prepline:seat-claimed`, detail { ring: 1..25 }, for the World's gold fill), a stamp
+ * presses onto the ticket and the Line under "ready." draws itself once more.
  */
 
-import { useEffect, useRef, type CSSProperties } from "react";
-import { useAnchor } from "@/lib/anchors";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { registerAnchor, useAnchor, type AnchorId } from "@/lib/anchors";
 import { storyCopy } from "@/lib/content";
 import { gsap } from "@/lib/gsap";
 import { usePerformance } from "@/lib/perform";
@@ -68,11 +70,18 @@ function TicketDock({ tiltRef }: { tiltRef: React.RefObject<HTMLDivElement | nul
   );
 }
 
-function Rings({ hostRef }: { hostRef: React.RefObject<HTMLUListElement | null> }) {
+function Rings({ hostRef, claimed, world }: { hostRef: React.RefObject<HTMLUListElement | null>; claimed: number | null; world: boolean }) {
   const { status, at } = useSeatState();
-  const done = status === "done";
-  const fresh = done && typeof performance !== "undefined" && performance.now() - at < 2500;
+  const fresh = status === "done" && typeof performance !== "undefined" && performance.now() - at < 2500;
   const near = useRef(-1);
+
+  // Each ring is an anchor (seat-ring-1..25): the World flies one speck into each during the dawn and the seat.
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const offs = Array.from(host.children).map((el, i) => registerAnchor(`seat-ring-${i + 1}` as AnchorId, el as HTMLElement));
+    return () => offs.forEach((off) => off());
+  }, [hostRef]);
 
   // Fine pointers: the ring nearest the cursor lights up (an open seat).
   const onMove = (e: React.PointerEvent<HTMLUListElement>) => {
@@ -111,14 +120,34 @@ function Rings({ hostRef }: { hostRef: React.RefObject<HTMLUListElement | null> 
           <li
             key={i}
             className="seat-ring"
-            data-filled={done && i === 0 ? "" : undefined}
-            data-fresh={fresh && i === 0 ? "" : undefined}
+            data-filled={claimed === i ? "" : undefined}
+            data-fresh={fresh && claimed === i ? "" : undefined}
+            data-world={world && claimed === i ? "" : undefined}
             style={{ "--d": (d * 0.55).toFixed(3) } as CSSProperties}
           />
         );
       })}
     </ul>
   );
+}
+
+/** The ring nearest the ticket: that is the seat a successful request claims. */
+function nearestRing(rings: HTMLElement | null, ticket: HTMLElement | null): number {
+  if (!rings || !ticket) return 0;
+  const t = ticket.getBoundingClientRect();
+  const tx = t.left + t.width / 2;
+  const ty = t.bottom;
+  let best = 0;
+  let bestD = Infinity;
+  Array.from(rings.children).forEach((el, i) => {
+    const r = el.getBoundingClientRect();
+    const d = Math.hypot(r.left + r.width / 2 - tx, r.top + r.height / 2 - ty);
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
+  });
+  return best;
 }
 
 export function ActSeat() {
@@ -129,19 +158,63 @@ export function ActSeat() {
   const ringsRef = useRef<HTMLUListElement>(null);
   const promisesRef = useRef<HTMLUListElement>(null);
   const noteRef = useRef<HTMLParagraphElement>(null);
+  const rideRef = useRef<HTMLDivElement>(null);
+  const [claimed, setClaimed] = useState<number | null>(null);
+  const [worldFill, setWorldFill] = useState(false);
 
-  // Scrubbed: the rings gather as the Line docks (seat, first 30%).
+  // Scrubbed, every pixel (the "breath"):
+  // - dawn: "Walk in / ready." rides up just under the rising line, so the line reveals it bottom-up;
+  // - dawn into seat: the 25 rings gather (hollow outlines; the World flies a speck into each);
+  // - seat: the ticket lifts 10px and its stub tears along the perforation.
   useEffect(() => {
-    const rings = ringsRef.current;
-    if (!rings || story.reduced()) return;
+    const rings = ringsRef.current?.parentElement;
+    const ride = rideRef.current;
+    if (!rings || !ride || story.reduced()) return;
     let last = "";
     return story.subscribe((s) => {
       const i = idx(s.beat);
-      const g = i < idx("seat") ? 0 : s.beat === "seat" ? clamp01(s.beatProgress / 0.3) : 1;
-      const key = g.toFixed(3);
+      const p = s.beatProgress;
+      let gather = 0;
+      let rise = 0;
+      if (s.beat === "dawn") {
+        gather = 0.4 * clamp01((p - 0.55) / 0.45);
+        rise = clamp01((p - 0.15) / 0.85);
+      } else if (s.beat === "seat") {
+        gather = 0.4 + 0.6 * clamp01(p / 0.6);
+        rise = 1;
+      } else if (i > idx("seat")) {
+        gather = rise = 1;
+      }
+      const key = `${gather.toFixed(3)}|${rise.toFixed(4)}`;
       if (key === last) return;
       last = key;
-      rings.style.setProperty("--gather", key);
+      rings.style.setProperty("--gather", gather.toFixed(3));
+      ride.style.setProperty("--rise", rise.toFixed(4));
+    });
+  }, []);
+
+  // seat (breath API): the ticket lifts 10px over the whole beat, its stub tears from 20% on.
+  useEffect(() => {
+    const tilt = tiltRef.current;
+    if (!tilt) return;
+    const offs = [story.breath(tilt, "seat", { from: 0, name: "--lift", reduced: 0 }), story.breath(tilt, "seat", { from: 0.2, name: "--tear", reduced: 0 })];
+    return () => offs.forEach((off) => off());
+  }, []);
+
+  // A successful request claims the ring nearest the ticket. The World fills it gold from the speck
+  // inside it: `prepline:seat-claimed` { ring } (1-based). The DOM fill stays subtle so they don't double up.
+  useEffect(() => {
+    let was = seatState.get().status;
+    return seatState.subscribe(() => {
+      const now = seatState.get().status;
+      if (now === "done" && was !== "done") {
+        const ring = nearestRing(ringsRef.current, wrapRef.current);
+        // The WebGL World (window.__world) fills the ring gold; the CSS fallback does not.
+        setWorldFill(Boolean((window as unknown as { __world?: unknown }).__world) && new URLSearchParams(location.search).get("world") !== "css");
+        setClaimed(ring);
+        window.dispatchEvent(new CustomEvent("prepline:seat-claimed", { detail: { ring: ring + 1 } }));
+      }
+      was = now;
     });
   }, []);
 
@@ -213,10 +286,10 @@ export function ActSeat() {
 
   return (
     <Stage act="seat" labelledBy="join-title">
-      <div className="seat-dawn" aria-hidden="true" />
       <Panel beats={["seat", "footer"]} focusable className="seat-panel">
         <div className="seat-grid">
           <div className="seat-left">
+            <div ref={rideRef} className="seat-ride">
             <h2 id="join-title" className="seat-h">
               <span className="seat-h-line">{storyCopy.seat.h2}</span>{" "}
               <span className="seat-h-line">
@@ -234,6 +307,7 @@ export function ActSeat() {
               </span>
             </h2>
             <p className="type-body seat-body">{storyCopy.seat.body}</p>
+            </div>
             <ul ref={promisesRef} className="seat-promises">
               {storyCopy.seat.promises.map((p, i) => (
                 <li key={p.title} className="seat-promise">
@@ -253,7 +327,7 @@ export function ActSeat() {
               </FaceSlot>
             </div>
             <div className="seat-rings">
-              <Rings hostRef={ringsRef} />
+              <Rings hostRef={ringsRef} claimed={claimed} world={worldFill} />
               <span className="type-mono seat-rings-caption">{storyCopy.seat.rings}</span>
             </div>
           </div>

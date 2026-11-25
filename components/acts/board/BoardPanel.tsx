@@ -26,10 +26,11 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { FaceSlot } from "@/components/story/FaceSlot";
 import { Panel } from "@/components/story/Stage";
-import { rankedRoles, storyCopy } from "@/lib/content";
+import { rankedRoles, storyActs12, storyCopy } from "@/lib/content";
 import { useAnchor, type AnchorId } from "@/lib/anchors";
 import { ACTOR_TRACK, BEATS, story, travelEase, type BeatId, type StoryState } from "@/lib/story";
-import { offsetIn, span, tileShow, useActorExtra, usePerformanceAt, useScrub } from "../read/runtime";
+import { offsetIn, setMask, softBelow, span, tileShow, useActorExtra, usePerformanceAt, useScrub } from "../read/runtime";
+import { boardHours, clockLabel, DAYS, Odo, setOdo, sunAt } from "./timelapse";
 
 const copy = storyCopy;
 const L = copy.ledger;
@@ -58,15 +59,11 @@ const COLS = [
 
 /** Board numbers. Each performance owns its own keys, so jumps never fight. */
 const show = {
-  ranked: 0,
-  saved: 0,
-  applied: 0,
   savedIn: 0,
   savedOut: 0,
   appliedIn: 0,
   appliedOut: 0,
   interviewIn: 0,
-  label: 0,
   settle: 0,
 };
 const END = { ranked: L.interview.ranked, saved: L.interview.saved, applied: L.interview.applied };
@@ -77,9 +74,6 @@ function Ghost({ role, k }: { role: (typeof ghosts)[number]; k: number }) {
     <li className="bd-ghost-li" data-ghost={k}>
       <div className="bd-ghost-shift">
       <div className="bd-ghost">
-        <span className="bd-ghost-ini" aria-hidden="true">
-          {role.initials}
-        </span>
         <span className="bd-ghost-main">
           <span className="bd-ghost-title">{role.title}</span>
           <span className="bd-ghost-co">{role.company}</span>
@@ -109,6 +103,28 @@ function Col({ col, children, count }: { col: (typeof COLS)[number]; children: R
       {col.key === "offer" ? <span className="bd-col-rule" aria-hidden="true" /> : <span ref={rule} className="bd-col-rule" aria-hidden="true" />}
       <ul className="bd-tiles">{children}</ul>
     </li>
+  );
+}
+
+function WeekStrip() {
+  const axis = useAnchor("board-days");
+  return (
+    <div className="bd-days" role="img" aria-label={storyActs12.board.daysLabel}>
+      <div className="bd-days-now" aria-hidden="true">
+        <span className="bd-days-clock" data-clock>
+          {clockLabel(boardHours(null))}
+        </span>
+      </div>
+      {/* `board-days`: five equal day cells; day i spans [i/5, (i+1)/5]. Its bottom edge is the time axis the Line rides. */}
+      <ol ref={axis} className="bd-days-list" aria-hidden="true">
+        {DAYS.map((d, i) => (
+          <li key={d} className="bd-day" data-day={i}>
+            {d}
+          </li>
+        ))}
+        <li className="bd-days-dot" />
+      </ol>
+    </div>
   );
 }
 
@@ -142,6 +158,15 @@ export function BoardPanel() {
       // On small screens the ghosts are bars beside the lane's tile: they stay put.
       const up = tileA && g1 && !small ? { x: 0, y: tileA.y - g1.y } : { x: 0, y: 0 };
       deltas.current = { g, g4: d4, up };
+      // The Interview glow sits on the Interview column (from its `col-interview` rule down),
+      // outside the board's fade so it survives the hinge and hands over to the Act III lamp.
+      const obj = root.querySelector<HTMLElement>(".bd-obj");
+      const col = root.querySelector<HTMLElement>('[data-col="interview"]');
+      const glow = root.querySelector<HTMLElement>(".bd-glow");
+      if (obj && col && glow) {
+        const r = offsetIn(col, obj);
+        Object.assign(glow.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
+      }
       const next = JSON.stringify(deltas.current);
       if (next !== key) {
         key = next;
@@ -161,9 +186,6 @@ export function BoardPanel() {
     if (!root || story.reduced()) return;
     const el = (sel: string) => root.querySelector<HTMLElement>(sel);
     const targets = {
-      ranked: el("[data-l='ranked']"),
-      saved: el("[data-l='saved']"),
-      applied: el("[data-l='applied']"),
       cSaved: el("[data-count='saved']"),
       cApplied: el("[data-count='applied']"),
       cInterview: el("[data-count='interview']"),
@@ -177,17 +199,9 @@ export function BoardPanel() {
       if (node) node.textContent = t;
     };
     return story.frame("actor", () => {
-      put("ranked", show.ranked);
-      put("saved", show.saved);
-      put("applied", show.applied);
       put("cSaved", show.savedIn - show.savedOut);
       put("cApplied", show.appliedIn - show.appliedOut);
       put("cInterview", show.interviewIn);
-      const lbl = show.label >= 0.5 ? "1" : "0";
-      if (last.label !== lbl) {
-        last.label = lbl;
-        root.setAttribute("data-applied-by-you", lbl);
-      }
     });
   }, []);
 
@@ -201,9 +215,133 @@ export function BoardPanel() {
       const col = root.querySelector<HTMLElement>(`[data-col="${c.key}"]`);
       if (col && col.style.getPropertyValue("--draw") !== v) col.style.setProperty("--draw", v);
     });
-    const rc = span(through(s, "hinge"), 0, 0.3).toFixed(4);
-    if (root.style.getPropertyValue("--rc") !== rc) root.style.setProperty("--rc", rc);
+    const set = (el: HTMLElement | null, prop: string, v: string) => {
+      if (el && el.style.getPropertyValue(prop) !== v) el.style.setProperty(prop, v);
+    };
+    // Hinge, sequenced (review P1-A5): the board copy is gone by 12% (power2.in, faster than
+    // any entry), the board itself steps back by 25%, then the sentence starts reading.
+    const hp = through(s, "hinge");
+    const out = span(hp, 0, 0.12);
+    set(root, "--copy-out", (out * out).toFixed(4));
+    set(root, "--rc", span(hp, 0, 0.14).toFixed(4));
+    set(root, "--rc2", hp.toFixed(4));
+
+    // While a wipe sweeps (day rises at daybreak, night falls at nightfall), the board inks in or
+    // out through a 24px soft edge below the Line rather than being cut at it.
+    setMask(root, s.line.sweep && (s.beat === "daybreak" || s.beat === "nightfall") ? softBelow(s.line.y) : "none");
+
+    // The week, as a time-lapse: a clock and a "now" dot run along the strip, and the light
+    // crosses the board with the time of day. Every pixel of scroll moves it.
+    const hours = boardHours(s);
+    const sun = sunAt(hours);
+    set(root, "--now", (hours / (24 * DAYS.length)).toFixed(5));
+    set(root, "--sun-x", `${sun.x.toFixed(2)}%`);
+    set(root, "--sun-y", `${sun.y.toFixed(2)}%`);
+    set(root, "--sun-a", sun.a.toFixed(4));
+    set(root, "--night", sun.night.toFixed(4));
+    const clock = root.querySelector<HTMLElement>("[data-clock]");
+    const label = clockLabel(hours);
+    if (clock && clock.textContent !== label) clock.textContent = label;
+    const today = String(Math.min(DAYS.length - 1, Math.floor(hours / 24)));
+    if (root.dataset.today !== today) root.dataset.today = today;
+
+    // Ledger odometer: the digits roll with the scroll.
+    const sp = through(s, "saved");
+    const ap = through(s, "applied");
+    setOdo(root, "ranked", END.ranked * span(sp, 0.08, 0.7));
+    setOdo(root, "saved", END.saved * span(sp, 0.2, 0.78));
+    const applied = END.applied * span(ap, 0.25, 0.85);
+    setOdo(root, "applied", applied);
+    const byYou = applied >= 0.5 ? "1" : "0";
+    if (root.dataset.appliedByYou !== byYou) root.setAttribute("data-applied-by-you", byYou);
+
+    // The Interview floor glows amber from `interview` on and keeps glowing into the hinge
+    // (the World turns this glow into the Act III lamp at nightfall).
+    const ip = through(s, "interview");
+    set(root, "--glow", Math.min(1, span(ip, 0.25, 1) * 0.85 + hp * 0.15).toFixed(4));
   });
+
+  /* ── breaths (Foundation helper): the arrival column keeps warming after the tile lands ── */
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const offs = [
+      story.breath(root, "saved", { from: 0.7, name: "--breath-saved" }),
+      story.breath(root, "applied", { from: 0.45, name: "--breath-applied" }),
+      story.breath(root, "interview", { from: 0.45, name: "--breath-interview" }),
+    ];
+    return () => offs.forEach((off) => off());
+  }, []);
+
+  /* ── frame: column floors warm as the tile passes over them; ghosts spring aside ── */
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || story.reduced()) return;
+    const cols = Array.from(root.querySelectorAll<HTMLElement>(".bd-col"));
+    const ghosts = Array.from(root.querySelectorAll<HTMLElement>(".bd-ghost-shift"));
+    const warm = cols.map(() => 0);
+    const spring = ghosts.map(() => ({ x: 0, y: 0, vx: 0, vy: 0 }));
+    const last: string[] = [];
+    const lastG: string[] = [];
+    const visitedAt = { saved: idx("saved"), applied: idx("applied"), interview: idx("interview") } as const;
+    return story.frame("actor", (_t, dt, s) => {
+      const b = idx(s.beat);
+      const a = s.actor;
+      const onBoard = a.present && a.face === "tile" && b >= visitedAt.saved && b <= visitedAt.interview;
+      const ax = a.x + a.w / 2;
+      const ay = a.y + a.h / 2;
+      const moving = onBoard && a.travel > 0 && a.travel < 1;
+      // Reading layout here is limited to the travel windows (a few ghost rects, 0.8s at a time).
+      const rects = moving || onBoard ? cols.map((c) => c.getBoundingClientRect()) : null;
+      cols.forEach((c, n) => {
+        const key = c.dataset.col as keyof typeof visitedAt | "offer";
+        const visited = key !== "offer" && b > visitedAt[key] ? 0.3 : 0;
+        let prox = 0;
+        if (rects && onBoard) {
+          const r = rects[n];
+          const dx = Math.abs(ax - (r.left + r.width / 2)) / (r.width * 0.9);
+          prox = ay > r.top - 40 && ay < r.bottom ? Math.max(0, 1 - dx) : 0;
+        }
+        const target = Math.max(visited, prox);
+        warm[n] += (target - warm[n]) * Math.min(1, dt * 6);
+        const v = warm[n].toFixed(3);
+        if (last[n] !== v) {
+          last[n] = v;
+          c.style.setProperty("--warm", v);
+        }
+      });
+      ghosts.forEach((g, n) => {
+        const sp = spring[n];
+        let tx = 0;
+        let ty = 0;
+        if (moving) {
+          const r = g.getBoundingClientRect();
+          const dx = r.left + r.width / 2 - sp.x - ax;
+          const dy = r.top + r.height / 2 - sp.y - ay;
+          const d = Math.hypot(dx, dy) || 1;
+          const reach = 150;
+          if (d < reach) {
+            const k = (1 - d / reach) * 6;
+            tx = (dx / d) * k;
+            ty = (dy / d) * k;
+          }
+        }
+        const steps = Math.max(1, Math.ceil(dt / (1 / 240)));
+        const h = dt / steps;
+        for (let i = 0; i < steps; i++) {
+          sp.vx += (-220 * (sp.x - tx) - 20 * sp.vx) * h;
+          sp.vy += (-220 * (sp.y - ty) - 20 * sp.vy) * h;
+          sp.x += sp.vx * h;
+          sp.y += sp.vy * h;
+        }
+        const v = Math.abs(sp.x) < 0.02 && Math.abs(sp.y) < 0.02 ? "" : `${sp.x.toFixed(2)}px ${sp.y.toFixed(2)}px`;
+        if (lastG[n] !== v) {
+          lastG[n] = v;
+          g.style.translate = v;
+        }
+      });
+    });
+  }, []);
 
   /* ── saved: the tile settles, the ghosts arrive, the ledger ticks ── */
   usePerformanceAt("saved", SAVED_AT, (tl) => {
@@ -213,7 +351,7 @@ export function BoardPanel() {
     const g = [1, 2, 3, 4].map((k) => root.querySelector<HTMLElement>(`[data-ghost="${k}"] .bd-ghost`)).filter(Boolean);
     tl.fromTo(show, { settle: 0 }, { settle: 1, duration: 0.6, ease: "none" }, 0)
       .fromTo(g, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.6, ease: "expo.out", stagger: 0.06 }, 0.08)
-      .fromTo(show, { ranked: 0, saved: 0, savedIn: 0 }, { ranked: END.ranked, saved: END.saved, savedIn: 5, duration: 0.6, ease: "power2.out" }, 0.05);
+      .fromTo(show, { savedIn: 0 }, { savedIn: 5, duration: 0.6, ease: "power2.out" }, 0.05);
   }, [layout]);
 
   /* ── applied: the tile carries, three ghosts follow, the chip flips ── */
@@ -259,8 +397,7 @@ export function BoardPanel() {
     const g4 = root.querySelector<HTMLElement>(`[data-ghost="4"]`);
     if (g4) tl.fromTo(g4, { x: 0, y: 0 }, { x: d.g4.x, y: d.g4.y, duration: 0.6, ease: "expo.out" }, 0.4);
     tl.fromTo(tileShow, { applied: 0 }, { applied: 1, duration: 0.36, ease: "power2.inOut" }, 0.42)
-      .fromTo(show, { applied: 0, savedOut: 0, appliedIn: 0 }, { applied: END.applied, savedOut: 4, appliedIn: 4, duration: 0.5, ease: "power2.out" }, 0.3)
-      .fromTo(show, { label: 0 }, { label: 1, duration: 0.01 }, 0.4);
+      .fromTo(show, { savedOut: 0, appliedIn: 0 }, { savedOut: 4, appliedIn: 4, duration: 0.5, ease: "power2.out" }, 0.3);
     if (steps) tl.fromTo(steps, { "--sa": 0 }, { "--sa": 1, duration: 0.5, ease: "power2.inOut" }, 0.1);
     if (zero) tl.fromTo(zero, { "--pulse": 0 }, { "--pulse": 1, duration: 0.18, ease: "power2.out" }, 0.72).to(zero, { "--pulse": 0, duration: 0.5, ease: "power2.in" }, ">");
   }, [layout]);
@@ -284,6 +421,11 @@ export function BoardPanel() {
   /* ── the Actor: anticipation lift, landing settle, pointer tilt ── */
   useActorExtra((s) => {
     const b = s.beat;
+    if (b === "hinge") {
+      // Breath: once lifted off the board, the tile turns slowly toward the sentence and rises.
+      const d = span(s.beatProgress, 0.3, 1);
+      return { ry: -8 * d, rx: 3 * d, ty: -14 * d, lift: 0.6 + 0.4 * d };
+    }
     if (b !== "saved" && b !== "applied" && b !== "interview") return null;
     let ty = 0;
     let lift = 0;
@@ -384,19 +526,19 @@ export function BoardPanel() {
           <div className="bd-obj">
             <p className="bd-ledger">
               <span className="bd-ledger-i">
-                <span data-l="ranked">{ledgerEnd.ranked}</span> {L.labels.ranked}
+                <Odo id="ranked" end={ledgerEnd.ranked} digits={2} /> {L.labels.ranked}
               </span>
               <span className="bd-dot" aria-hidden="true">
                 ·
               </span>
               <span className="bd-ledger-i">
-                <span data-l="saved">{ledgerEnd.saved}</span> {L.labels.saved}
+                <Odo id="saved" end={ledgerEnd.saved} digits={1} /> {L.labels.saved}
               </span>
               <span className="bd-dot" aria-hidden="true">
                 ·
               </span>
               <span className="bd-ledger-i bd-ledger-applied">
-                <span data-l="applied">{ledgerEnd.applied}</span>{" "}
+                <Odo id="applied" end={ledgerEnd.applied} digits={1} />{" "}
                 <span className="bd-lbl">
                   {L.saved.appliedLabel}
                   <span className="bd-lbl-b">{L.applied.appliedLabel.slice(L.saved.appliedLabel.length)}</span>
@@ -411,7 +553,11 @@ export function BoardPanel() {
               </span>
             </p>
 
+            <WeekStrip />
+            <div className="bd-glow" aria-hidden="true" />
+
             <div className="bd-board">
+              <div className="bd-sun" aria-hidden="true" />
               <p className="bd-board-title">{copy.board.title}</p>
               <ul className="bd-cols" aria-label={copy.board.title}>
                 <Col col={COLS[0]} count={1}>
