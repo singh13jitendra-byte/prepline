@@ -5,6 +5,7 @@ import { ActSeat } from "@/components/acts/ActSeat";
 import { BeatRail } from "@/components/BeatRail";
 import { Footer } from "@/components/Footer";
 import { Nav } from "@/components/Nav";
+import { LineScope } from "@/components/story/LineScope";
 import { StoryRoot } from "@/components/story/StoryRoot";
 import { World } from "@/components/world";
 import { story as copy } from "@/lib/content";
@@ -19,16 +20,13 @@ export default function Home() {
       >
         {copy.common.skipLink}
       </a>
+      {/* The nav <header> is a landmark of its own: before <main>, so Tab reaches it first.
+          It splits at the line during wipes, so it sits in a line scope. */}
+      <LineScope>
+        <Nav />
+      </LineScope>
       <main>
-        <StoryRoot
-          world={<World />}
-          chrome={
-            <>
-              <Nav />
-              <BeatRail />
-            </>
-          }
-        >
+        <StoryRoot world={<World />} chrome={<BeatRail />}>
           <ActRead />
           <ActBoard />
           <ActPrep />

@@ -111,7 +111,8 @@ html.hp [data-hero-hide] {
 :root {
   /* One story unit. Beat lengths in BEATS are multiplied by this. */
   --u: 1svh;
-  /* Written every frame by lib/story.ts. Defaults describe the first frame: night, line under "ready.". */
+  /* Static defaults (first frame: night, line under "ready."). The live values are written by
+     lib/story.ts on line scopes (.story-vars), never here: see LineScope.tsx. */
   --line-y: 58vh;
   --day-top: 100vh;
   --day-side: none;
@@ -189,6 +190,27 @@ html.hp [data-hero-hide] {
   font-weight: 400;
 }
 
+/* Line scope wrapper: no box, no stacking context, only inheritance. */
+.story-vars {
+  display: contents;
+}
+
+/* The constant "Illustrative data" caption: one position in every stage. */
+.story-caption {
+  position: absolute;
+  left: clamp(16px, 3.4vw, 48px);
+  bottom: clamp(16px, 2.6vh, 28px);
+  z-index: 2;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  text-transform: uppercase;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 /* ── mode helpers ── */
 html:not(.motion) .only-motion {
   display: none !important;
@@ -229,13 +251,8 @@ html.motion .story-stage {
 html.motion .story-stage[data-active] {
   visibility: visible;
 }
-/* During a wipe both stages are pinned. Day is always below the line. */
-html.motion[data-wipe] .story-stage[data-chapter="night"] {
-  clip-path: inset(0 0 calc(100% - var(--day-top)) 0);
-}
-html.motion[data-wipe] .story-stage[data-chapter="day"] {
-  clip-path: inset(var(--day-top) 0 0 0);
-}
+/* During a wipe both stages are pinned and StoryRoot clips each to its side of the line with an
+   inline clip-path (day is always below the line). Not a CSS variable: that would restyle the act. */
 html.motion .story-panel {
   position: absolute;
   inset: 0;
@@ -349,6 +366,11 @@ html.motion .actor-layer {
   perspective: 1400px;
   will-change: transform;
   contain: layout style;
+}
+/* While the Actor is in flight, nothing inside it samples the backdrop (a full re-sample per frame). */
+.actor[data-moving] * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 .actor-flip {
   position: absolute;
