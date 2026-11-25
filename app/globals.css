@@ -22,7 +22,7 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 24px;
+  scroll-padding-top: 88px;
 }
 
 body {
@@ -30,15 +30,14 @@ body {
   color: var(--color-ink);
 }
 
-/* Scroll reveal: elements start slightly low and transparent, then settle. */
-.reveal {
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 600ms ease-out, transform 600ms ease-out;
+/* Endless marquee: the list is doubled, so moving it by half loops seamlessly. */
+.marquee {
+  animation: marquee 38s linear infinite;
 }
-.reveal.is-visible {
-  opacity: 1;
-  transform: none;
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 /* Typing caret for streamed prep questions. */
@@ -62,10 +61,8 @@ body {
   html {
     scroll-behavior: auto;
   }
-  .reveal {
-    opacity: 1;
-    transform: none;
-    transition: none;
+  .marquee {
+    animation: none;
   }
   .caret::after {
     animation: none;

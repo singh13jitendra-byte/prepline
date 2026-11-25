@@ -23,19 +23,82 @@ export type Match = {
   city: string;
   mode: string;
   score: number;
+  reason: string;
 };
 
 export const matches: Match[] = [
-  { initials: "KH", title: "Senior Product Designer", company: "Kestrel Health", city: "Bengaluru", mode: "Hybrid", score: 9 },
-  { initials: "PL", title: "Product Designer, Design Systems", company: "Paisa Labs", city: "Gurugram", mode: "On-site", score: 8 },
-  { initials: "NC", title: "UX Designer, Patient App", company: "Northwell Care", city: "Remote", mode: "Remote", score: 8 },
+  {
+    initials: "KH",
+    title: "Senior Product Designer",
+    company: "Kestrel Health",
+    city: "Bengaluru",
+    mode: "Hybrid",
+    score: 9,
+    reason: "Design-system team, HealthTech, matches your case studies",
+  },
+  {
+    initials: "PL",
+    title: "Product Designer, Design Systems",
+    company: "Paisa Labs",
+    city: "Gurugram",
+    mode: "On-site",
+    score: 8,
+    reason: "Owns the component library; your Pulse work fits",
+  },
+  {
+    initials: "NC",
+    title: "UX Designer, Patient App",
+    company: "Northwell Care",
+    city: "Remote",
+    mode: "Remote",
+    score: 8,
+    reason: "Patient-facing booking flows, like your redesign",
+  },
 ];
 
-export const weeks = [
-  { label: "Week 1", title: "12 roles ranked for her", body: "She saves five, each with a one-line reason it fits." },
-  { label: "Week 2", title: "Four applications, one board", body: "Saved, applied, interview, closed. No spreadsheet." },
-  { label: "Week 3", title: "Interview booked, sheet ready", body: "Questions from the JD, her portfolio and what this company asked before.", highlight: true },
-  { label: "Week 4", title: "7 of 12 were asked", body: "One tap after the interview, and an offer the week after." },
+/** Little notifications that cycle beside the hero card. */
+export const heroToasts = [
+  { title: "Interview booked", body: "Prep sheet ready for Kestrel Health" },
+  { title: "3 new roles ranked", body: "Best fit: 9/10, design systems" },
+  { title: "7 of 12 were asked", body: "Your last sheet was on point" },
+];
+
+export const marqueeTags = [
+  "Product designers",
+  "UX designers",
+  "Design systems",
+  "HealthTech",
+  "Fintech",
+  "Patient apps",
+  "Interaction design",
+  "UX research",
+  "Content design",
+  "Senior IC roles",
+];
+
+export const boardColumns = ["Saved", "Applied", "Interview", "Offer"] as const;
+
+export const storySteps = [
+  {
+    label: "Week 1",
+    title: "Roles arrive ranked",
+    body: "Twelve roles scored for her portfolio. She saves the five that fit, each with a reason she can read.",
+  },
+  {
+    label: "Week 2",
+    title: "One board, no spreadsheet",
+    body: "Four applications go out. Every role sits on one board, from saved to closed.",
+  },
+  {
+    label: "Week 3",
+    title: "Interview booked, sheet ready",
+    body: "She moves the card. The prep sheet appears, built from the JD, her case studies and what this company asked before.",
+  },
+  {
+    label: "Week 4",
+    title: "7 of 12 were asked",
+    body: "One tap after the interview tells Prepline what came up. The offer lands the week after.",
+  },
 ];
 
 export const prepTabs = ["Likely questions", "Design rounds", "Ask them"] as const;
@@ -57,13 +120,6 @@ export const prepQuestions: Record<(typeof prepTabs)[number], { q: string; why: 
     { q: "Which product metric does the design team own?", why: "From the JD: “measure impact”" },
   ],
 };
-
-export const features = [
-  { title: "Reads your portfolio", body: "Questions cite your case studies, not a generic list.", icon: "doc" },
-  { title: "Design rounds included", body: "Portfolio walkthrough, app critique, whiteboard and take-home prompts.", icon: "layers" },
-  { title: "Fit you can read", body: "Every score out of 10 comes with a one-line reason.", icon: "bars" },
-  { title: "Learns from real interviews", body: "Anonymous votes show what each company actually asks.", icon: "check" },
-] as const;
 
 export const trust = [
   { title: "Your portfolio isn’t stored", body: "Read once to write your sheet, then discarded." },

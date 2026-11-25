@@ -12,6 +12,7 @@
     "@fontsource/instrument-serif": "^5.2.8",
     "@vercel/analytics": "2.0.1",
     "geist": "^1.5.1",
+    "motion": "14.11.1",
     "next": "15.5.29",
     "react": "19.1.10",
     "react-dom": "19.1.10"

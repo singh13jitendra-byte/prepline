@@ -12,15 +12,18 @@ npm run build && npm start   # production check
 
 ## What's in it
 
-| Section | File | Notes |
+Animations use [Motion](https://motion.dev) (`motion/react`) and all respect the visitor's reduced-motion setting.
+
+| Section | File | What moves |
 | --- | --- | --- |
-| Hero | `components/Hero.tsx` | Looping MotionSites video ("Yellow Flower Skylight") behind a frosted-glass "Your matches" card. Fit scores count up when the card scrolls into view. A sky gradient shows if the video fails to load. The video pauses for people with reduced motion turned on. |
-| Intro | `components/Intro.tsx` | Two-line headline with the Instrument Serif "ready." accent, beta seat count and pitch. |
-| How it works | `components/Story.tsx` | Ananya's four weeks, cards reveal on scroll. |
-| Prep sheet | `components/PrepSheet.tsx` | Working tabs, questions that type in as if written live, and working Asked / Not asked votes with a live tally. |
-| Features | `components/Features.tsx` | Four designer-specific features. |
-| Waitlist | `components/Waitlist.tsx` + `app/api/waitlist/route.ts` | Validated email form with loading, error and success states. The API route currently logs the email: swap in the Supabase insert noted in the file. |
-| Footer | `components/Footer.tsx` | Large faded wordmark. |
+| Nav | `components/Nav.tsx` | Clear over the hero, frosted once you scroll, with a reading-progress line; animated mobile menu. |
+| Hero | `components/Hero.tsx` | Headline words rise in, a hand-drawn underline draws under "ready.", glass "Your matches" card tilts toward the pointer, fit scores count up, notifications cycle beside the card, video zooms gently as you scroll. Email sign-up sits right in the hero. |
+| Marquee | `components/Marquee.tsx` | Endless strip of who it's for; pauses on hover. |
+| How it works | `components/BoardStory.tsx` | Pinned, scroll-driven story: the Kestrel card travels Saved → Applied → Interview → Offer, the prep sheet pops out at the interview, and a small burst celebrates the offer. |
+| Prep sheet | `components/PrepSheet.tsx` | Sliding tab indicator, questions type in live, "Asked" votes burst and update a tally. |
+| For designers | `components/Bento.tsx` | Portfolio scan that turns case-study lines into questions, design-round cards that fan out on hover, fit bars, and an "asked here" chart. |
+| Waitlist | `components/Waitlist.tsx` + `components/WaitlistForm.tsx` + `app/api/waitlist/route.ts` | Letter-by-letter "Your turn", shake on a bad email, drawn checkmark on success. The API route currently logs the email: swap in the Supabase insert noted in the file. |
+| Footer | `components/Footer.tsx` | Wordmark letters rise in; each letter warms to amber on hover. |
 
 All copy and sample data live in `lib/content.ts`. Colours and fonts are tokens in `app/globals.css` (`@theme`), ready to map to Pulse.
 
