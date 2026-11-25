@@ -1,0 +1,727 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   ACT I — READ (night). Package 2.
+   Static (reduced motion / no JS) is the default; html.motion adds the story.
+   Every scrubbed value arrives as a custom property written by the store
+   subscriber (--drop, --hero-clip, --reveal-*, --k*, --j, --in, ...).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.rd-stage {
+  color: #fff;
+  --rd-muted: rgba(255, 255, 255, 0.72);
+  --rd-quiet: rgba(255, 255, 255, 0.58);
+}
+
+/* ── the 12-column grid (1240 max, storyboard 2.4) ── */
+.rd-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: 24px;
+  width: 100%;
+  max-width: calc(1240px + 2 * var(--rd-pad));
+  margin-inline: auto;
+  padding-inline: var(--rd-pad);
+  --rd-pad: clamp(24px, 3.4vw, 48px);
+}
+
+/* ── type ── */
+.rd-h1 {
+  font-size: clamp(54px, 7.2vw, 118px);
+  line-height: 0.9;
+  letter-spacing: -0.055em;
+  /* Light on dark reads heavier: a touch under 500 restores the intended colour. */
+  font-weight: 480;
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
+}
+.rd-h2 {
+  font-size: clamp(34px, 4vw, 60px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  font-weight: 480;
+  text-wrap: balance;
+  hanging-punctuation: first allow-end;
+}
+.rd-body {
+  margin-top: 22px;
+  max-width: 30em;
+  font-size: clamp(15px, 1.2vw, 17px);
+  line-height: 1.55;
+  color: var(--rd-muted);
+  text-wrap: pretty;
+}
+
+/* ══ hero ══════════════════════════════════════════════════════════════ */
+
+.rd-hero-root {
+  position: relative;
+}
+.rd-hero-copy {
+  grid-column: 1 / span 8;
+}
+.rd-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 32px;
+  padding: 0 14px 0 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.004em;
+  color: rgba(255, 255, 255, 0.86);
+}
+.rd-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.14);
+}
+.rd-h1 {
+  margin-top: 30px;
+}
+.rd-h1-vis {
+  display: block;
+}
+.rd-mask {
+  display: block;
+  overflow: clip;
+  /* Room for ascenders, descenders and the italic overhang inside the mask. */
+  padding: 0.1em 0.14em 0.16em 0.04em;
+  margin: -0.1em -0.14em -0.16em -0.04em;
+}
+.rd-line {
+  display: block;
+  white-space: nowrap;
+}
+.rd-line3 {
+  display: block;
+  white-space: nowrap;
+}
+.rd-mask-inline {
+  display: inline-block;
+  vertical-align: bottom;
+}
+.rd-mask-inline .rd-line {
+  display: inline-block;
+}
+.rd-ready {
+  position: relative;
+  display: inline-block;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.06em;
+  line-height: 0.85;
+  letter-spacing: -0.012em;
+  padding-right: 0.04em;
+  color: var(--color-gold);
+}
+/* The Line's first position. In motion the Line itself draws here; static shows a rule. */
+.rd-underline {
+  position: absolute;
+  left: 0.05em;
+  right: 0.02em;
+  bottom: -0.2em;
+  height: 3px;
+  border-radius: 3px;
+  transform-origin: 0 50%;
+  background: var(--color-gold);
+}
+html.motion .rd-underline {
+  background: transparent;
+}
+.rd-sub {
+  margin-top: 34px;
+  max-width: 480px;
+  font-size: 20px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.8);
+  text-wrap: pretty;
+}
+.rd-form {
+  margin-top: 30px;
+}
+.rd-privacy {
+  margin-top: 2px;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--rd-quiet);
+}
+.rd-readout,
+.rd-cue {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-feature-settings: "case";
+  color: var(--rd-quiet);
+}
+.rd-readout-in {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.rd-readout-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.rd-readout-n {
+  min-width: 5ch;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.rd-cue-in {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.rd-cue-tick {
+  width: 1px;
+  height: 28px;
+  background: linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+}
+
+html.motion .rd-hero-root {
+  position: absolute;
+  inset: 0;
+  --drop: 0;
+  --cue: 1;
+}
+html.motion .rd-hero-layer {
+  position: absolute;
+  inset: 0;
+  clip-path: var(--hero-clip, none);
+}
+html.motion .rd-hero-grid {
+  height: 100%;
+  align-content: center;
+  /* Puts the underline near 58% of the viewport (storyboard 2.4). */
+  padding-top: clamp(40px, 7svh, 84px);
+}
+html.motion .rd-drop {
+  transform: translate3d(0, calc(var(--drop) * 24px), 0);
+  opacity: calc(1 - var(--drop));
+}
+html.motion .rd-readout {
+  position: absolute;
+  top: clamp(76px, 10svh, 96px);
+  right: max(clamp(24px, 3.4vw, 48px), calc((100% - 1240px) / 2));
+  opacity: calc(1 - var(--drop));
+}
+html.motion .rd-cue {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  opacity: var(--cue);
+}
+
+/* Load: initial states before the script takes over (and a failsafe if it never does). */
+html.motion .rd-hero-root:not([data-loaded]) [data-line] {
+  transform: translateY(108%);
+}
+html.motion .rd-hero-root:not([data-loaded]) [data-ready],
+html.motion .rd-hero-root:not([data-loaded]) [data-rise],
+html.motion .rd-hero-root:not([data-loaded]) [data-fade-in] {
+  opacity: 0;
+}
+html.motion .rd-hero-root:not([data-loaded]) [data-underline] {
+  transform: scaleX(0);
+}
+html.motion .rd-hero-root:not([data-loaded]) :is([data-line], [data-ready], [data-rise], [data-fade-in], [data-underline]) {
+  animation: rd-failsafe 0.6s 2.4s ease-out forwards;
+}
+@keyframes rd-failsafe {
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* ══ the counter ═══════════════════════════════════════════════════════ */
+
+.rd-pass-col {
+  grid-column: 1 / span 7;
+}
+.rd-pass-marks {
+  display: flex;
+  gap: 28px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-feature-settings: "case";
+}
+.rd-mark {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 9px;
+  color: var(--rd-quiet);
+  transition: color 0.4s var(--ease-out-expo);
+}
+.rd-pass[data-pass="1"] .rd-mark[data-mark="1"],
+.rd-pass[data-pass="2"] .rd-mark[data-mark="2"] {
+  color: #fff;
+}
+.rd-mark-track {
+  position: relative;
+  display: block;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.rd-mark-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--color-gold);
+  transform-origin: 0 50%;
+  transform: scaleX(var(--p1, 0));
+}
+.rd-mark[data-mark="2"] .rd-mark-fill {
+  transform: scaleX(var(--p2, 0));
+}
+.rd-counter {
+  /* The comma descends ~0.16em: the statement clears it. */
+  margin: 30px 0 calc(18px + 0.12em);
+  font-size: clamp(96px, 15vw, 240px);
+  line-height: 0.85;
+  letter-spacing: -0.06em;
+  font-weight: 460;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  /* Optical left edge: the 2 and 1 carry a wide side bearing at this size. */
+  margin-left: -0.055em;
+}
+.rd-digits {
+  display: inline-block;
+  transform-origin: 0 0;
+  transition: color 0.5s var(--ease-out-expo);
+}
+.rd-digits[data-gold] {
+  color: var(--color-gold);
+}
+.rd-stmt {
+  font-size: 20px;
+  line-height: 1.3;
+  letter-spacing: -0.012em;
+  font-weight: 460;
+}
+.rd-stmt-fly {
+  display: inline-grid;
+  transform-origin: 0 0;
+}
+.rd-stmt-fly > *,
+.rd-detail > * {
+  grid-area: 1 / 1;
+}
+.rd-swap,
+.rd-swap-inner {
+  display: block;
+  white-space: nowrap;
+}
+.rd-detail {
+  display: grid;
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--rd-muted);
+}
+html.motion [data-swap-in] {
+  opacity: 0;
+}
+
+html.motion .rd-pass {
+  position: absolute;
+  inset: 0;
+  clip-path: var(--reveal-clip, none);
+  opacity: var(--reveal-a, 1);
+}
+html.motion .rd-pass-grid {
+  height: 100%;
+  align-content: center;
+}
+html.motion .rd-digits {
+  transform: translate3d(var(--dn-x, 0), var(--dn-y, 0), 0) scale(var(--dn-s, 1));
+  opacity: var(--k-fly, 1);
+}
+html.motion .rd-stmt-fly {
+  transform: translate3d(var(--st-x, 0), var(--st-y, 0), 0) scale(var(--st-s, 1));
+  opacity: var(--k-fly, 1);
+}
+html.motion .rd-pass-marks,
+html.motion .rd-detail {
+  opacity: calc(1 - min(1, var(--k, 0) * 2.2));
+}
+
+/* static figures: 2,340 / 186 / 12 side by side */
+.rd-figures-list {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  padding-top: 28px;
+}
+.rd-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rd-figure-n {
+  font-size: clamp(56px, 8vw, 120px);
+  line-height: 0.88;
+  letter-spacing: -0.06em;
+  font-weight: 460;
+  font-variant-numeric: tabular-nums;
+  margin-left: -0.05em;
+}
+.rd-figure[data-gold] .rd-figure-n {
+  color: var(--color-gold);
+}
+.rd-figure-l {
+  font-size: 18px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.rd-figure-d {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--rd-muted);
+}
+
+/* ══ ranked and reason ═════════════════════════════════════════════════ */
+
+.rd-split {
+  align-items: center;
+}
+.rd-copy {
+  grid-column: 1 / span 5;
+}
+.rd-obj {
+  grid-column: 7 / span 6;
+  display: flex;
+  justify-content: center;
+}
+.rd-wmask {
+  display: inline-block;
+  overflow: clip;
+  padding: 0.08em 0.02em 0.14em;
+  margin: -0.08em -0.02em -0.14em;
+  vertical-align: top;
+}
+.rd-w {
+  display: inline-block;
+}
+.rd-list-wrap {
+  width: min(100%, 440px);
+  transform-origin: 50% 40%;
+}
+.rd-list-head {
+  font-size: 15px;
+  line-height: 1.2;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--rd-muted);
+}
+.rd-list-n {
+  color: var(--color-gold);
+  font-variant-numeric: tabular-nums;
+  font-weight: 560;
+}
+.rd-rule {
+  height: 1px;
+  margin: 12px 0 14px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.rd-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  --row-s: 1;
+}
+.rd-row {
+  position: relative;
+}
+.rd-more {
+  display: none;
+}
+
+/* DOM rows 2..12: the same box the row face gets from the engine. */
+.rv-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 440 / 44;
+  transition: translate 0.45s var(--ease-out-expo);
+}
+.rv-chrome {
+  position: absolute;
+  inset: 0;
+  border-radius: calc(12px * var(--row-s));
+  background: var(--face-bg);
+  border: 1px solid var(--face-border);
+  transition: background-color 0.45s var(--ease-out-expo);
+}
+.rv-scale {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 440px;
+  height: 44px;
+  transform-origin: 0 0;
+  transform: scale(var(--row-s));
+}
+@media (hover: hover) {
+  .rd-row:hover .rv-box {
+    translate: 0 -2px;
+    transition-duration: 0.2s;
+  }
+  .rd-row:hover .rv-chrome {
+    background: rgba(255, 255, 255, 0.12);
+    transition-duration: 0.2s;
+  }
+}
+
+.rd-privacy-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 28px;
+  max-width: 26em;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.84);
+}
+.rd-privacy-line svg {
+  flex: none;
+  margin-top: 2px;
+  fill: none;
+  stroke: var(--color-gold);
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rd-card-at {
+  width: min(100%, 520px);
+}
+
+/* motion: the layers stack in place */
+html.motion .rd-read-root {
+  position: absolute;
+  inset: 0;
+}
+html.motion .rd-ranked,
+html.motion .rd-reason {
+  position: absolute;
+  inset: 0;
+}
+html.motion .rd-ranked > .rd-grid,
+html.motion .rd-reason > .rd-grid {
+  height: 100%;
+}
+html.motion .rd-copy-ranked {
+  opacity: calc(1 - var(--out, 0));
+  transform: translate3d(0, calc(var(--out, 0) * -12px), 0);
+}
+html.motion .rd-copy-ranked .rd-w {
+  transform: translate3d(0, calc(clamp(0, 1 - (var(--h2a, 0) * (1 + var(--wn) * 0.12) - var(--wi) * 0.12), 1) * 110%), 0);
+}
+html.motion .rd-copy-ranked .rd-body {
+  opacity: var(--b2a, 0);
+  transform: translate3d(0, calc((1 - var(--b2a, 0)) * 12px), 0);
+}
+html.motion .rd-copy-reason .rd-w {
+  transform: translate3d(0, calc(clamp(0, 1 - (var(--in, 0) * (1 + var(--wn) * 0.12) - var(--wi) * 0.12), 1) * 110%), 0);
+}
+html.motion .rd-copy-reason .rd-body {
+  opacity: var(--in2, 0);
+  transform: translate3d(0, calc((1 - var(--in2, 0)) * 12px), 0);
+}
+html.motion .rd-privacy-line {
+  opacity: 0;
+}
+html.motion .rd-list-head {
+  opacity: var(--k-head, 0);
+}
+html.motion .rd-rule {
+  opacity: var(--k-head, 0);
+}
+html.motion .rd-list-wrap {
+  transform: scale(calc(1 - 0.04 * var(--j, 0)));
+  opacity: calc(1 - 0.7 * var(--j, 0));
+}
+html.motion [data-row-in] {
+  opacity: 0;
+}
+/* Row 1 before the Actor is born: the real row lands with the others, then hands over. */
+html.motion .rd-row1[data-prebirth] .face-slot {
+  opacity: 1;
+}
+html.motion .rd-row1[data-prebirth] .face-chrome {
+  opacity: calc(1 - var(--birth, 0));
+}
+@media (hover: hover) and (pointer: fine) {
+  html.motion .rd-row1 .face-slot {
+    pointer-events: none;
+  }
+}
+html.motion .rd-reason .rd-obj {
+  align-self: center;
+}
+
+/* ══ the caption ═══════════════════════════════════════════════════════ */
+
+.acts-illus {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-feature-settings: "case";
+  color: var(--rd-quiet, var(--color-muted));
+  padding: 0 clamp(24px, 3.4vw, 48px) 28px;
+}
+html.motion .acts-illus {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 1;
+  padding-left: max(clamp(24px, 3.4vw, 48px), calc((100% - 1240px) / 2));
+  pointer-events: none;
+}
+
+/* ══ static page (reduced motion, no JS) ═══════════════════════════════ */
+
+html:not(.motion) .rd-hero-root {
+  padding: clamp(96px, 14vh, 140px) 0 clamp(64px, 9vh, 96px);
+}
+html:not(.motion) .rd-read-root {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(72px, 10vh, 120px);
+  padding: 24px 0 clamp(64px, 9vh, 96px);
+}
+html:not(.motion) .rd-card-obj {
+  justify-content: center;
+}
+
+/* ══ small screens (under 768px, storyboard 5.7) ═══════════════════════ */
+
+@media (max-width: 767px) {
+  .rd-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: 16px;
+    --rd-pad: 20px;
+  }
+  .rd-hero-copy,
+  .rd-pass-col,
+  .rd-copy,
+  .rd-obj {
+    grid-column: 1 / -1;
+  }
+  .rd-h1 {
+    font-size: min(13.4vw, 64px);
+    margin-top: 22px;
+  }
+  .rd-sub {
+    margin-top: 22px;
+    font-size: 17px;
+    line-height: 1.45;
+  }
+  .rd-form {
+    margin-top: 22px;
+  }
+  .rd-privacy {
+    padding-left: 18px;
+  }
+  .rd-counter {
+    font-size: 26vw;
+    margin: 22px 0 14px;
+  }
+  .rd-stmt {
+    font-size: 18px;
+  }
+  .rd-pass-marks {
+    gap: 16px;
+    font-size: 10px;
+  }
+  .rd-h2 {
+    font-size: clamp(30px, 8.6vw, 38px);
+  }
+  .rd-body {
+    margin-top: 14px;
+    font-size: 15px;
+  }
+  .rd-list .rd-row:nth-child(n + 7) {
+    display: none;
+  }
+  .rd-more {
+    display: block;
+    padding: 6px 0 0 14px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--rd-quiet);
+  }
+  .rd-figures-list {
+    grid-template-columns: 1fr;
+  }
+  .rd-privacy-line {
+    margin-top: 16px;
+    padding-top: 12px;
+    font-size: 13px;
+  }
+  .rd-readout {
+    display: none;
+  }
+
+  /* Copy in the top 40%, the object in the bottom 60%. */
+  html.motion .rd-split {
+    grid-template-rows: 40% 60%;
+    align-items: start;
+  }
+  html.motion .rd-copy {
+    align-self: end;
+    padding-bottom: 20px;
+  }
+  html.motion .rd-obj {
+    align-self: start;
+    padding-top: 8px;
+  }
+  html.motion .rd-reason .rd-obj {
+    align-self: start;
+    padding-top: 28px;
+  }
+  html.motion .rd-hero-grid {
+    padding-top: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rv-meta,
+  .rv-reason,
+  .rv-box,
+  .rv-chrome,
+  .cf-chip,
+  .rd-digits,
+  .rd-mark {
+    transition: none;
+  }
+}

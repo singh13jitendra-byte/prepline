@@ -458,3 +458,15 @@ export const story = {
 
 /** Alias for files that also import the `story` store. */
 export { story as storyCopy };
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * PACKAGE 2 ADDITIONS (Acts I and II). Strings the storyboard implies but
+ * section 2 does not spell out. Added by the Acts I–II builder; review at
+ * integration.
+ * ────────────────────────────────────────────────────────────────────────── */
+export const storyActs12 = {
+  reason: {
+    /** Mono label above the three reason chips on the card. */
+    chipsLabel: "Why it fits",
+  },
+} as const;

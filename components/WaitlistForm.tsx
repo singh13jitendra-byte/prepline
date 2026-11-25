@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useId, useState, type FormEvent } from "react";
+import { storyCopy } from "@/lib/content";
 import { ArrowRight } from "./Icons";
 import { Magnetic } from "./Magnetic";
 
@@ -119,11 +120,11 @@ export function WaitlistForm({ tone = "light" }: { tone?: "light" | "glass" }) {
                     animate={{ rotate: 360 }}
                     transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
                   />
-                  Joining
+                  {storyCopy.common.ctaSending}
                 </>
               ) : (
                 <>
-                  Join the beta
+                  {storyCopy.common.cta}
                   <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                 </>
               )}
