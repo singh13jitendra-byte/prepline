@@ -19,31 +19,31 @@ const pad = (n: number) => String(n).padStart(2, "0");
 export function RowView({ role, hover }: { role: RankedRole; hover?: boolean }) {
   const reason = role.reason ?? storyCopy.ranked.rowHoverFallback;
   return (
-    <div className="rv" data-hover={hover ? "" : undefined}>
-      <span className="rv-dot" aria-hidden="true" />
-      <span className="rv-rank" aria-hidden="true">
+    <div className="pl-row" data-hover={hover ? "" : undefined}>
+      <span className="pl-row-dot" aria-hidden="true" />
+      <span className="pl-row-rank" aria-hidden="true">
         {pad(role.rank)}
       </span>
-      <span className="rv-ini" aria-hidden="true">
+      <span className="pl-row-ini" aria-hidden="true">
         {role.initials}
       </span>
-      <span className="rv-main">
-        <span className="rv-title">{role.title}</span>
-        <span className="rv-sub">
-          <span className="rv-meta">
+      <span className="pl-row-main">
+        <span className="pl-row-title">{role.title}</span>
+        <span className="pl-row-sub">
+          <span className="pl-row-meta">
             <span className="sr-only">, </span>
             {role.company} · {role.city}
           </span>
-          <span className="rv-reason" aria-hidden={role.reason ? undefined : true}>
+          <span className="pl-row-reason" aria-hidden={role.reason ? undefined : true}>
             <span className="sr-only">. </span>
             {reason}
           </span>
         </span>
       </span>
-      <span className="rv-score">
+      <span className="pl-row-score">
         <span className="sr-only">, scored </span>
         <b>{role.score}</b>
-        <span className="rv-of">{storyCopy.ranked.scoreSuffix}</span>
+        <span className="pl-row-of">{storyCopy.ranked.scoreSuffix}</span>
       </span>
     </div>
   );

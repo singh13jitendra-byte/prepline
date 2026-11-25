@@ -74,23 +74,23 @@ export function CardFace({ host }: FaceProps) {
   }, []);
 
   return (
-    <div className="cf">
-      <div className="cf-spec" aria-hidden="true" />
-      <div className="cf-top">
-        <span className="cf-ini" aria-hidden="true">
+    <div className="pl-card">
+      <div className="pl-card-spec" aria-hidden="true" />
+      <div className="pl-card-top">
+        <span className="pl-card-ini" aria-hidden="true">
           {rankedRoles[0].initials}
         </span>
-        <div className="cf-id">
-          <p className="cf-title">{storyCopy.reason.card.title}</p>
-          <p className="cf-meta">{storyCopy.reason.card.meta}</p>
+        <div className="pl-card-id">
+          <p className="pl-card-title">{storyCopy.reason.card.title}</p>
+          <p className="pl-card-meta">{storyCopy.reason.card.meta}</p>
         </div>
-        <div className="cf-ring" aria-hidden="true">
+        <div className="pl-card-ring" aria-hidden="true">
           <svg viewBox="0 0 64 64" width="64" height="64">
-            <circle className="cf-ring-track" cx="32" cy="32" r={R} />
+            <circle className="pl-card-ring-track" cx="32" cy="32" r={R} />
             {ticksAt.map((i) => (
               <line
                 key={i}
-                className="cf-ring-tick"
+                className="pl-card-ring-tick"
                 x1="32"
                 y1={32 - R - 5}
                 x2="32"
@@ -100,7 +100,7 @@ export function CardFace({ host }: FaceProps) {
             ))}
             <circle
               ref={ringRef}
-              className="cf-ring-prog"
+              className="pl-card-ring-prog"
               cx="32"
               cy="32"
               r={R}
@@ -109,19 +109,19 @@ export function CardFace({ host }: FaceProps) {
               transform="rotate(-90 32 32)"
             />
           </svg>
-          <span ref={numRef} className="cf-num">
+          <span ref={numRef} className="pl-card-num">
             {CARD_FULL.score}
           </span>
         </div>
       </div>
 
-      <div className="cf-why">
-        <p className="cf-label">{storyActs12.reason.chipsLabel}</p>
-        <ul className="cf-chips">
+      <div className="pl-card-why">
+        <p className="pl-card-label">{storyActs12.reason.chipsLabel}</p>
+        <ul className="pl-card-chips">
           {chips.map((c, i) => (
             <li
               key={c}
-              className="cf-chip"
+              className="pl-card-chip"
               data-on=""
               ref={(el) => {
                 chipRefs.current[i] = el;
@@ -136,29 +136,29 @@ export function CardFace({ host }: FaceProps) {
               >
                 {c}
               </span>
-              <i className="cf-caret" aria-hidden="true" />
+              <i className="pl-card-caret" aria-hidden="true" />
             </li>
           ))}
         </ul>
       </div>
 
-      <div className="cf-meter">
-        <p className="cf-score">
+      <div className="pl-card-meter">
+        <p className="pl-card-score">
           <span className="sr-only">{storyCopy.reason.card.scoreLabel}</span>
           <span aria-hidden="true">
-            <span ref={scoreRef} className="cf-score-n">
+            <span ref={scoreRef} className="pl-card-score-n">
               {CARD_FULL.score}
             </span>
             {scoreSuffix}
           </span>
         </p>
-        <div className="cf-track" aria-hidden="true">
+        <div className="pl-card-track" aria-hidden="true">
           <div
             ref={(el) => {
               fillRef.current = el;
               if (host === "dock") return anchor(el);
             }}
-            className="cf-fill"
+            className="pl-card-fill"
             style={{ transform: `scaleX(${CARD_FULL.meter})` }}
           />
         </div>
