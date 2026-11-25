@@ -194,7 +194,8 @@ export function ReadPanel() {
       d.toggleAttribute("data-gold", n === fig.fit);
     }
     set(pass, "--p1", p1.toFixed(4));
-    if (pass.dataset.pass !== (p1 >= 1 ? "2" : "1")) pass.dataset.pass = p1 >= 1 ? "2" : "1";
+    const which = i <= I.hero ? "0" : p1 >= 1 ? "2" : "1";
+    if (pass.dataset.pass !== which) pass.dataset.pass = which;
     set(pass, "--p2", p2.toFixed(4));
 
     // Ranked: the counter flies into the list header; the H2 rises.
