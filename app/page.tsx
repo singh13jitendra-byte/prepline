@@ -1,3 +1,5 @@
+import { ActBoard } from "@/components/acts/ActBoard";
+import { ActRead } from "@/components/acts/ActRead";
 import { StoryRoot } from "@/components/story/StoryRoot";
 import { StubActs, StubFooter, StubPerformances } from "@/components/story/stubs";
 import { World } from "@/components/world";
@@ -20,6 +22,8 @@ export default function Home() {
       </a>
       <main>
         <StoryRoot world={<World />} chrome={<StubPerformances />}>
+          <ActRead />
+          <ActBoard />
           <StubActs />
         </StoryRoot>
       </main>

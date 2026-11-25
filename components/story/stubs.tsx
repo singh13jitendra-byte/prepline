@@ -11,7 +11,7 @@
 
 import { useEffect, useRef } from "react";
 import { useAnchor, type AnchorId } from "@/lib/anchors";
-import { rankedRoles, story as copy } from "@/lib/content";
+import { story as copy } from "@/lib/content";
 import { definePerformance } from "@/lib/perform";
 import { BEATS, story } from "@/lib/story";
 import { WaitlistForm } from "../WaitlistForm";
@@ -60,94 +60,6 @@ export function StubActs() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: STUB_CSS }} />
-
-      {/* ── Act I: Read ── */}
-      <Stage act="read" labelledBy="read-title" stageClassName={stage}>
-        <Readout act="read" />
-        <Panel beats="hero" className={panel}>
-          <div className="md:col-span-7">
-            <p className="type-mono mb-6 opacity-70">{copy.hero.pill}</p>
-            <h1 id="read-title" className="type-display-l">
-              {copy.hero.h1.join(" ")}{" "}
-              <span className="relative inline-block font-serif italic text-gold">
-                {copy.hero.h1Accent}
-                <Mark id="hero-underline" inline className="absolute -bottom-1 left-0 h-[3px] w-full max-w-[220px] bg-gold/0" />
-              </span>
-            </h1>
-            <p className="type-lead mt-6 max-w-[480px] opacity-80">{copy.hero.sub}</p>
-          </div>
-        </Panel>
-        <Panel beats={["pass1", "pass2"]} className={panel}>
-          <div className={left}>
-            <p className="type-mono opacity-70">stub · the two reading passes</p>
-            <p className="type-lead mt-4">{copy.pass1.statementStart}</p>
-            <p className="sr-only">{copy.common.figuresForScreenReaders}</p>
-          </div>
-        </Panel>
-        <Panel beats={["ranked", "reason"]} className={panel}>
-          <div className={left}>
-            <h2 className="type-h2">{copy.ranked.h2}</h2>
-            <p className="type-body mt-4 opacity-80">{copy.reason.h2}</p>
-          </div>
-          <div className={right}>
-            <Mark id="ranked-rule" className="mb-2 h-px w-full max-w-[440px] bg-white/20" />
-            <ol className="flex w-full max-w-[440px] flex-col gap-1.5">
-              {rankedRoles.map((r) =>
-                r.rank === 1 ? (
-                  <li key={r.rank}>
-                    <FaceSlot anchor="row-1" face="row" skin="night" />
-                  </li>
-                ) : (
-                  <li key={r.rank}>
-                    <Mark id={`row-${r.rank}` as AnchorId} className="flex h-11 items-center rounded-xl border border-white/15 px-3 text-[13px] opacity-60">
-                      {r.rank}. {r.title} · {r.company} · {r.score}/10
-                    </Mark>
-                  </li>
-                ),
-              )}
-            </ol>
-            <div className="only-motion absolute left-1/2 top-1/2 w-full max-w-[520px] -translate-x-1/2 -translate-y-1/2">
-              <FaceSlot anchor="card" face="card" skin="night" />
-              <Mark id="card-meter" className="absolute bottom-8 left-8 h-[3px] w-[60%]" />
-            </div>
-          </div>
-        </Panel>
-      </Stage>
-
-      {/* ── Act II: Board ── */}
-      <Stage act="board" labelledBy="board-title" stageClassName={stage}>
-        <Readout act="board" />
-        <Panel beats={["saved", "applied", "interview", "hinge"]} className={panel}>
-          <div className={left}>
-            <h2 id="board-title" className="type-h2">
-              {copy.board.h2}
-            </h2>
-            <p className="type-sentence mt-10">
-              <Mark id="hinge-text" inline>
-                {copy.hinge.sentence}
-              </Mark>
-            </p>
-          </div>
-          <div className={right}>
-            <ul className="grid w-full grid-cols-4 gap-3 rounded-[28px] bg-white p-4">
-              {(["saved", "applied", "interview"] as const).map((c) => (
-                <li key={c} className="min-h-[300px]">
-                  <p className="type-mono mb-2 text-muted">{c}</p>
-                  <Mark id={`col-${c}` as AnchorId} className="mb-3 h-0.5 w-full bg-line" />
-                  <FaceSlot anchor={`tile-${c}` as AnchorId} face="tile" skin="day" showWhenStatic={c === "interview"} />
-                </li>
-              ))}
-              <li className="min-h-[300px]">
-                <p className="type-mono mb-2 text-muted">offer</p>
-                <div className="mb-3 h-0.5 w-full bg-line" />
-              </li>
-            </ul>
-            <div className="mt-6 w-[200px] self-end">
-              <FaceSlot anchor="hinge-float" face="tile" skin="day" showWhenStatic={false} />
-            </div>
-          </div>
-        </Panel>
-      </Stage>
 
       {/* ── Act III: Prep ── */}
       <Stage act="prep" labelledBy="prep-title" stageClassName={stage}>

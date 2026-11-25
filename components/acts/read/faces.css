@@ -1,0 +1,427 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   FACES — row (440x44), card (520x320), tile (154x92). Package 2.
+   Drawn at natural size and scaled by the engine / slot. Colours only from
+   the --face-* variables, so the night and day skins lay out identically.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── shared ── */
+.rv,
+.cf,
+.tf {
+  position: absolute;
+  inset: 0;
+  color: var(--face-fg);
+  font-family: var(--font-sans);
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+[data-skin="night"] {
+  --face-chip: rgba(255, 255, 255, 0.07);
+  --face-chip-line: rgba(255, 255, 255, 0.16);
+  --face-tile: rgba(255, 255, 255, 0.1);
+  --face-spec: rgba(255, 255, 255, 0.16);
+}
+[data-skin="day"] {
+  --face-chip: #f4efe6;
+  --face-chip-line: #e8e1d4;
+  --face-tile: #f1ece3;
+  --face-spec: rgba(255, 255, 255, 0.6);
+}
+
+/* ── row ── */
+.rv {
+  display: flex;
+  align-items: center;
+  padding: 0 16px 0 12px;
+  white-space: nowrap;
+}
+.rv-dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--face-accent);
+  margin-right: 9px;
+}
+.rv-rank {
+  flex: none;
+  width: 20px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--face-muted);
+}
+.rv-ini {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-left: 4px;
+  border-radius: 7px;
+  background: var(--face-tile);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-feature-settings: "case";
+}
+.rv-main {
+  flex: 1;
+  min-width: 0;
+  margin-left: 11px;
+  display: flex;
+  flex-direction: column;
+}
+.rv-title {
+  font-size: 13.5px;
+  line-height: 16px;
+  font-weight: 560;
+  letter-spacing: -0.012em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rv-sub {
+  position: relative;
+  display: block;
+  height: 14px;
+  overflow: hidden;
+}
+.rv-meta,
+.rv-reason {
+  position: absolute;
+  inset: 0 auto auto 0;
+  max-width: 100%;
+  font-size: 11.5px;
+  line-height: 14px;
+  letter-spacing: -0.003em;
+  color: var(--face-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    transform 0.4s var(--ease-out-expo),
+    opacity 0.4s var(--ease-out-expo);
+}
+.rv-reason {
+  transform: translateY(100%);
+  opacity: 0;
+  color: var(--face-fg);
+}
+.rv[data-hover] .rv-meta,
+.rd-row:hover .rv-meta {
+  transform: translateY(-100%);
+  opacity: 0;
+  transition-duration: 0.22s;
+}
+.rv[data-hover] .rv-reason,
+.rd-row:hover .rv-reason {
+  transform: none;
+  opacity: 1;
+  transition-duration: 0.22s;
+}
+.rv-score {
+  flex: none;
+  margin-left: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.rv-score b {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.rv-of {
+  font-size: 11px;
+  color: var(--face-muted);
+  margin-left: 1px;
+}
+
+/* ── card ── */
+.cf {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 26px 28px 28px;
+}
+.cf-spec {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(260px circle at var(--spec-x, 50%) var(--spec-y, 0%), var(--face-spec), transparent 70%);
+  opacity: var(--spec-a, 0);
+}
+.cf-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.cf-ini {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--face-tile);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-feature-settings: "case";
+}
+.cf-id {
+  flex: 1;
+  min-width: 0;
+  padding-top: 1px;
+}
+.cf-title {
+  font-size: 22px;
+  line-height: 1.12;
+  font-weight: 560;
+  letter-spacing: -0.024em;
+}
+.cf-meta {
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  color: var(--face-muted);
+}
+.cf-ring {
+  position: relative;
+  flex: none;
+  width: 64px;
+  height: 64px;
+  margin: -4px -4px 0 0;
+}
+.cf-ring svg {
+  display: block;
+  overflow: visible;
+}
+.cf-ring-track,
+.cf-ring-prog {
+  fill: none;
+  stroke-width: 3;
+}
+.cf-ring-track {
+  stroke: var(--face-border);
+}
+.cf-ring-prog {
+  stroke: var(--face-accent);
+  stroke-linecap: round;
+}
+.cf-ring-tick {
+  stroke: var(--face-muted);
+  stroke-width: 1;
+  opacity: 0.45;
+}
+.cf-num {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  font-weight: 560;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  padding-bottom: 1px;
+}
+.cf-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-feature-settings: "case";
+  color: var(--face-muted);
+}
+.cf-chips {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  height: 32px;
+}
+.cf-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: var(--face-chip);
+  border: 1px solid var(--face-chip-line);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(3px);
+  transition:
+    opacity 0.18s ease-out,
+    transform 0.4s var(--ease-out-expo);
+}
+.cf-chip[data-on] {
+  opacity: 1;
+  transform: none;
+}
+.cf-caret {
+  display: none;
+  width: 1.5px;
+  height: 14px;
+  margin-left: 2px;
+  background: var(--face-accent);
+}
+.cf-chip[data-typing] .cf-caret {
+  display: inline-block;
+}
+.cf-score {
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.cf-track {
+  position: relative;
+  height: 3px;
+  margin-top: 12px;
+  border-radius: 3px;
+  background: var(--face-border);
+}
+.cf-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  background: var(--face-accent);
+  transform-origin: 0 50%;
+}
+
+/* ── tile ── */
+.tf {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 10px 9px 11px;
+}
+.tf-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tf-ini {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--face-tile);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.tf-score {
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.tf-score b {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.tf-of {
+  font-size: 9px;
+  color: var(--face-muted);
+}
+.tf-title {
+  margin-top: 7px;
+  font-size: 11px;
+  line-height: 13px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tf-meta {
+  font-size: 10px;
+  line-height: 12px;
+  color: var(--face-muted);
+}
+.tf-foot {
+  position: relative;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  perspective: 240px;
+}
+.tf-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px 0 6px;
+  border-radius: 999px;
+  background: var(--face-chip);
+  border: 1px solid var(--face-chip-line);
+  font-size: 9.5px;
+  font-weight: 520;
+  letter-spacing: -0.004em;
+  white-space: nowrap;
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+}
+.tf-chip-b {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.tf-chip[data-state="2"] {
+  color: var(--face-fg);
+  border-color: color-mix(in srgb, var(--face-accent) 35%, transparent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.tf-spark {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--face-accent);
+}
+.tf-cal {
+  color: var(--face-accent);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+.tf-tick {
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  margin-top: -8px;
+  fill: none;
+  stroke: var(--face-accent);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Glass: the night card blurs what is behind it (the list, the field). */
+.face[data-face="card"][data-skin="night"] .face-chrome,
+[data-skin="night"] .face[data-face="card"] .face-chrome {
+  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+  backdrop-filter: blur(22px) saturate(1.15);
+}
+/*
+ * The Actor's flip layer is preserve-3d (for the dawn flip), which disables
+ * backdrop-filter inside it. In Package 2 beats there is no flip: keep it flat
+ * so the glass blurs. Pointer tilt still renders in 3D through the Actor's perspective.
+ */
+html.motion:is([data-beat="ranked"], [data-beat="reason"], [data-beat="daybreak"], [data-beat="saved"], [data-beat="applied"], [data-beat="interview"], [data-beat="hinge"]) .actor-flip {
+  transform-style: flat;
+}
+/* While the line splits the card, its clip stops the blur: use the blurred glass's own colour. */
+html[data-wipe="daybreak"] .face[data-face="card"][data-skin="night"] {
+  --face-bg: rgba(33, 54, 86, 0.97);
+}
