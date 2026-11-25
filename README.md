@@ -46,3 +46,16 @@ Without the env vars the form still works but only logs the email, so local dev 
 ## Fonts
 
 Geist comes from the official `geist` package and Instrument Serif from `@fontsource/instrument-serif`, so builds don't depend on Google Fonts being reachable.
+
+## Motion and WebGL
+
+| Piece | Where | Tech |
+| --- | --- | --- |
+| Light rays + drifting pollen over the hero video, reacting to the cursor | `components/gl/HeroLight.tsx` | Three.js shaders |
+| "Matching" story: 2,340 roles filtered to 12 gold matches as you scroll | `components/RoleFunnel.tsx`, `components/gl/funnelScene.ts` | Three.js points + GSAP ScrollTrigger |
+| Living amber light behind "Your turn" | `components/gl/AmberField.tsx` | Three.js fragment shader |
+| Inertial smooth scrolling | `components/SmoothScroll.tsx` | Lenis on GSAP's ticker |
+| Headings that brighten word by word | `components/ScrollWords.tsx` | GSAP SplitText |
+| Magnetic "Join the beta" buttons | `components/Magnetic.tsx` | GSAP quickTo |
+
+`lib/gl.ts` loads Three.js on demand (it is not in the first page load), pauses scenes that are off screen or in a hidden tab, caps pixel ratio, and cleans up on unmount. Visitors with reduced motion get no smooth scrolling or decorative layers; the matching story still follows the scroll without autonomous motion. Without WebGL the CSS gradients stay in place.

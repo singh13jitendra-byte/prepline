@@ -4,6 +4,7 @@ import { motion, useInView } from "motion/react";
 import { useRef, useState, type ReactNode } from "react";
 import { matches } from "@/lib/content";
 import { ease, Rise } from "./fx";
+import { ScrollWords } from "./ScrollWords";
 
 export function Bento() {
   return (
@@ -11,9 +12,10 @@ export function Bento() {
       <div className="mx-auto max-w-[1240px] px-5 md:px-8">
         <Rise className="mx-auto mb-14 max-w-[720px] text-center">
           <span className="text-[13px] font-semibold text-accent">For designers</span>
-          <h2 className="mt-2 text-[34px] font-medium leading-[1.05] tracking-[-0.04em] text-balance md:text-[48px]">
-            Built for how designers actually get hired.
-          </h2>
+          <ScrollWords
+            text="Built for how designers actually get hired."
+            className="mt-2 text-[34px] font-medium leading-[1.05] tracking-[-0.04em] text-balance md:text-[48px]"
+          />
         </Rise>
         <div className="grid gap-4 lg:grid-cols-6">
           <Card className="lg:col-span-4" title="Reads your portfolio" body="Questions cite your case studies, not a generic list." delay={0}>

@@ -76,6 +76,13 @@ export const marqueeTags = [
   "Senior IC roles",
 ];
 
+/** Scroll story for the matching section. Illustrative numbers for one week of public careers pages. */
+export const funnelStages = [
+  { value: 2340, label: "design roles read this week", detail: "from public careers pages at companies hiring designers" },
+  { value: 186, label: "match your level and city", detail: "seniority, location, remote or hybrid, and pay band" },
+  { value: 12, label: "fit your portfolio", detail: "scored out of 10, each with a reason you can read" },
+] as const;
+
 export const boardColumns = ["Saved", "Applied", "Interview", "Offer"] as const;
 
 export const storySteps = [

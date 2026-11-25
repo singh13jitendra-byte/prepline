@@ -12,6 +12,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { BETA_SEATS, HERO_VIDEO_SRC, heroToasts, matches } from "@/lib/content";
 import { CountUp, ease, Words } from "./fx";
+import { HeroLight } from "./gl/HeroLight";
 import { Sparkle } from "./Icons";
 import { WaitlistForm } from "./WaitlistForm";
 
@@ -52,6 +53,7 @@ export function Hero() {
         aria-hidden
         className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_30%_45%,rgba(10,30,60,0.55),rgba(10,30,60,0.15)_60%),linear-gradient(180deg,rgba(10,30,60,0.35),rgba(10,30,60,0)_35%,rgba(10,30,60,0)_60%,rgba(10,30,60,0.55))]"
       />
+      <HeroLight />
 
       <motion.div
         style={{ y: contentY, opacity: contentOpacity }}

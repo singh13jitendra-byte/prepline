@@ -25,6 +25,11 @@ html {
   scroll-padding-top: 88px;
 }
 
+/* Lenis does the smoothing; native smooth scroll on top of it would lag. */
+html.lenis {
+  scroll-behavior: auto;
+}
+
 body {
   background: var(--color-canvas);
   color: var(--color-ink);

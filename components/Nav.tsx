@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useMotionValueEvent, useScroll, useSpring } fr
 import { useState } from "react";
 import { navLinks } from "@/lib/content";
 import { Logo } from "./Icons";
+import { Magnetic } from "./Magnetic";
 
 /** Floating nav: clear over the hero, frosted once you scroll, with a reading-progress line. */
 export function Nav() {
@@ -56,6 +57,7 @@ export function Nav() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <Magnetic strength={0.3}>
           <a
             href="#join"
             className={`inline-flex h-10 items-center rounded-full px-5 text-sm font-medium transition-colors duration-500 ${
@@ -64,6 +66,7 @@ export function Nav() {
           >
             Join the beta
           </a>
+          </Magnetic>
           <button
             type="button"
             aria-label={open ? "Close menu" : "Open menu"}

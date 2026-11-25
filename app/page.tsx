@@ -5,6 +5,7 @@ import { Hero } from "@/components/Hero";
 import { Marquee } from "@/components/Marquee";
 import { Nav } from "@/components/Nav";
 import { PrepSheetSection } from "@/components/PrepSheet";
+import { RoleFunnel } from "@/components/RoleFunnel";
 import { Waitlist } from "@/components/Waitlist";
 
 export default function Home() {
@@ -14,6 +15,7 @@ export default function Home() {
       <main className="px-3 pt-3">
         <Hero />
         <Marquee />
+        <RoleFunnel />
         <BoardStory />
         <PrepSheetSection />
         <Bento />

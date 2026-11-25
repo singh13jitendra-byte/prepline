@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { Analytics } from "@vercel/analytics/next";
 import "@fontsource/instrument-serif/latin-400-italic.css";
+import "lenis/dist/lenis.css";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 

@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import { BETA_SEATS, trust } from "@/lib/content";
 import { ease, Rise } from "./fx";
+import { AmberField } from "./gl/AmberField";
 import { Check } from "./Icons";
 import { WaitlistForm } from "./WaitlistForm";
 
@@ -11,10 +12,7 @@ const letters = "Your turn".split("");
 export function Waitlist() {
   return (
     <section id="join" className="relative mx-auto flex max-w-[1240px] flex-col items-center px-5 pb-24 pt-28 text-center md:px-8 md:pt-36">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-24 -z-10 h-[360px] w-[min(900px,90vw)] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(255,215,122,0.45),rgba(246,244,239,0))] blur-2xl"
-      />
+      <AmberField />
       <motion.h2
         className="text-[72px] font-medium leading-none tracking-[-0.055em] sm:text-[112px] lg:text-[150px]"
         aria-label="Your turn"

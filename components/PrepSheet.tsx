@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/rea
 import { useEffect, useRef, useState } from "react";
 import { prepQuestions, prepTabs } from "@/lib/content";
 import { ease, Rise } from "./fx";
+import { ScrollWords } from "./ScrollWords";
 
 type Tab = (typeof prepTabs)[number];
 type Vote = "asked" | "not" | undefined;
@@ -16,9 +17,10 @@ export function PrepSheetSection() {
     >
       <Rise className="flex flex-col gap-4">
         <span className="text-[13px] font-semibold text-accent">Prep sheets</span>
-        <h2 className="text-[34px] font-medium leading-[1.05] tracking-[-0.04em] text-balance md:text-[48px]">
-          Your interview, already prepped.
-        </h2>
+        <ScrollWords
+          text="Your interview, already prepped."
+          className="text-[34px] font-medium leading-[1.05] tracking-[-0.04em] text-balance md:text-[48px]"
+        />
         <p className="max-w-[460px] text-[17px] leading-relaxed text-muted">
           Every question says where it came from: the job description, your own case studies, or what this company asked
           designers before. Try it: switch tabs, then tell us what came up.

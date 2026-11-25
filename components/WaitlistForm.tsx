@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useId, useState, type FormEvent } from "react";
 import { ArrowRight } from "./Icons";
+import { Magnetic } from "./Magnetic";
 
 type Status = "idle" | "sending" | "done" | "error";
 
@@ -100,6 +101,7 @@ export function WaitlistForm({ tone = "light" }: { tone?: "light" | "glass" }) {
                 glass ? "text-white placeholder:text-white/70" : "text-ink placeholder:text-muted/70"
               }`}
             />
+            <Magnetic strength={0.25}>
             <motion.button
               type="submit"
               disabled={status === "sending"}
@@ -126,6 +128,7 @@ export function WaitlistForm({ tone = "light" }: { tone?: "light" | "glass" }) {
                 </>
               )}
             </motion.button>
+            </Magnetic>
           </motion.form>
         )}
       </AnimatePresence>
