@@ -72,6 +72,19 @@
     linear-gradient(180deg, rgba(255, 255, 255, 0) 55%, rgba(92, 64, 30, 0.05) 100%),
     var(--sh-paper);
 }
+/* The lamp on the paper: a warm pool that follows the question being read (dock: --lamp-y,
+   --lamp-k written per frame on the article; the flying copy uses its end state in the dawn). */
+.sh-lampwash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--lamp-k, 0);
+  background: radial-gradient(85% 34% at 46% var(--lamp-y, 50%), rgba(255, 246, 226, 0) 0%, rgba(255, 246, 226, 0) 35%, rgba(74, 50, 20, 0.085) 100%);
+}
+.sh-root[data-host="actor"][data-lamp="end"] {
+  --lamp-k: 1;
+  --lamp-y: 92%;
+}
 /* Paper fibre: a tiny inline turbulence, very faint. */
 .sh-paper::before {
   content: "";
@@ -253,8 +266,16 @@
 .sh-c {
   transition: none;
 }
-.sh-text[data-typed="false"] .sh-c {
-  opacity: 0;
+/* Typing uses the glyph run; written questions (and every flying copy) use one plain run. */
+.sh-text [data-plain] {
+  display: none;
+}
+.sh-text[data-done] [data-typed-run] {
+  display: none;
+}
+.sh-text[data-done] [data-plain],
+.sh-text[data-typed="true"] [data-plain] {
+  display: inline;
 }
 /* Blank ruled rows: the sheet before it is written. */
 .sh-blank {
@@ -336,11 +357,24 @@
   align-self: flex-start;
 }
 .sh-votes {
-  transition: opacity 0.5s ease;
+  transition:
+    opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.45s cubic-bezier(0.2, 1.5, 0.4, 1);
 }
-/* Before its question is written, a row's buttons wait quietly (they still work). */
+/* Before its question is written a row has no buttons on show. They arrive with the chip pop,
+   and stay reachable by keyboard: focus reveals them at once. */
 .sh-q[data-unwritten] .sh-votes {
-  opacity: 0.5;
+  opacity: 0;
+  transform: translateY(4px) scale(0.94);
+  pointer-events: none;
+  transition-duration: 0.15s;
+}
+.sh-root:focus-within .sh-votes,
+.sh-root:focus-within .sh-text {
+  opacity: 1 !important;
+  transform: none !important;
+  pointer-events: auto;
+  transition: none;
 }
 @media (hover: hover) {
   .sh-q:hover .sh-chip {
@@ -451,6 +485,34 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+.sh-ring {
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 0.18em;
+  align-self: center;
+  transform: rotate(-90deg);
+}
+.sh-ring circle {
+  fill: none;
+  stroke-width: 3.2;
+}
+.sh-ring-track {
+  stroke: #ece6da;
+}
+.sh-ring-fill {
+  stroke: #34b36b;
+  stroke-linecap: round;
+  stroke-dasharray: 100 100;
+  stroke-dashoffset: calc(100 - 100 * var(--vote-fill, 0) * var(--n-frac, 0));
+  opacity: clamp(0, calc(var(--vote-fill, 0) * var(--n-frac, 0) * 40), 1);
+}
+.sh-root[data-host="actor"][data-lamp="end"] {
+  --vote-fill: 1;
+}
+html:not(.motion) .sh-ring-fill {
+  stroke-dashoffset: calc(100 - 100 * var(--n-frac, 0));
+  opacity: clamp(0, calc(var(--n-frac, 0) * 40), 1);
+}
 .sh-count-n {
   display: inline-block;
   overflow: hidden;
@@ -546,6 +608,13 @@
   height: 240px;
   transform-origin: 50% 0;
   transform-style: preserve-3d;
+  /* composited: folding rotates layers, it never repaints the paper */
+  will-change: transform;
+}
+.sh-root[data-host="actor"] .sh-glow {
+  height: 720px;
+  transform-origin: 50% 0;
+  will-change: transform;
 }
 .sh-face-front,
 .sh-face-back {

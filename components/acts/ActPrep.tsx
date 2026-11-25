@@ -3,7 +3,7 @@
 /**
  * ACT III — PREP (night, lamp-lit). Storyboard 2.6.
  *
- *   unfold  the folded sheet arrives in the dark; the lamp comes up with scroll and the
+ *   unfold  the folded sheet arrives in the dark; the World's lamp comes up and the
  *           sheet unfolds (the Actor's timed fold, drawn by SheetFace), then docks here
  *   q1..q3  one question typed per beat, the Line under the caret; the source on the left swaps
  *   votes   the day after: the buttons are real; a short demo presses them unless you already did
@@ -15,7 +15,7 @@
 
 import { useEffect, useRef } from "react";
 import { storyCopy } from "@/lib/content";
-import { BEATS, clamp01, story, type BeatId } from "@/lib/story";
+import { BEATS, story, type BeatId } from "@/lib/story";
 import { FaceSlot } from "@/components/story/FaceSlot";
 import { Panel, Stage } from "@/components/story/Stage";
 import "@/components/faces/SheetFace";
@@ -40,7 +40,8 @@ function Arrow() {
 
 export function ActPrep() {
   const beat = story.useBeat();
-  const stageRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const copyRef = useRef<HTMLDivElement>(null);
 
   // Which group and which source line is showing. Before the act, the first group waits below.
   const b = idx(beat);
@@ -48,38 +49,41 @@ export function ActPrep() {
   const qi = Q_BEATS.indexOf(beat);
   const source = qi >= 0 ? qi : b > idx("q3") ? 3 : -1;
 
-  // The lamp: rises with scroll through the unfold; its centre follows the pointer at 10%.
+  // Breath (scrubbed, every pixel of unfold's back half to votes): the sheet slides up under the lamp
+  // as the Line reads down it: 4px as the unfold settles, 8px per question, 8px through the votes. The wrapper holds both sheet anchors, so the Line and
+  // the dawn's take-off follow it. One breath per beat (they restart per beat), summed in CSS.
   useEffect(() => {
-    const host = stageRef.current;
-    if (!host || story.reduced()) return;
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const offs = [
+      story.breath(wrap, "unfold", { from: 0.4, name: "--slide-unfold" }),
+      ...Q_BEATS.map((b) => story.breath(wrap, b, { from: 0, name: `--slide-${b}` })),
+      story.breath(wrap, "votes", { from: 0, name: "--slide-votes" }),
+    ];
+    return () => offs.forEach((off) => off());
+  }, []);
+
+  // Dawn (scrubbed): the left copy steps back before the rising line reaches it, so the outgoing
+  // copy never meets the incoming "Walk in ready." at the line.
+  useEffect(() => {
+    const copy = copyRef.current;
+    if (!copy || story.reduced()) return;
     let last = "";
     return story.subscribe((s) => {
-      const i = idx(s.beat);
-      const lamp = i < idx("unfold") ? 0 : s.beat === "unfold" ? clamp01(s.beatProgress / 0.85) : 1;
-      let lx = 0;
-      let ly = 0;
-      if (s.pointer.fine && s.pointer.inside && i >= idx("unfold") && i <= idx("votes")) {
-        lx = (s.pointer.x - s.viewport.w * 0.72) * 0.1;
-        ly = (s.pointer.y - s.viewport.h * 0.25) * 0.1;
-      }
-      const key = `${lamp.toFixed(3)}|${lx.toFixed(1)}|${ly.toFixed(1)}`;
+      const o = s.beat === "dawn" ? 1 - Math.min(1, Math.max(0, (s.beatProgress - 0.18) / 0.3)) : idx(s.beat) > idx("dawn") ? 0 : 1;
+      const key = o.toFixed(3);
       if (key === last) return;
       last = key;
-      host.style.setProperty("--lamp", lamp.toFixed(3));
-      host.style.setProperty("--lx", `${lx.toFixed(1)}px`);
-      host.style.setProperty("--ly", `${ly.toFixed(1)}px`);
+      copy.style.opacity = key;
     });
   }, []);
 
   return (
     <Stage act="prep" labelledBy="prep-title">
-      <div ref={stageRef} className="prep-lamp-host" style={{ position: "absolute", inset: 0 }}>
-        <div className="prep-lamp" aria-hidden="true" />
-      </div>
       {/* The focus target of this panel is the votes beat: tabbing to a vote button lands there. */}
       <Panel beats={["votes", "unfold", "q1", "q2", "q3"]} focusable at={0.45} className="prep-panel">
         <div className="prep-grid">
-          <div className="prep-copy">
+          <div ref={copyRef} className="prep-copy">
             <div className="prep-group" data-state={stateOf(0, group)}>
               <p className="type-mono prep-label">{storyCopy.unfold.label}</p>
               <h2 id="prep-title" className="type-h2 prep-h">
@@ -104,7 +108,7 @@ export function ActPrep() {
 
             <div className="prep-group" data-state={stateOf(1, group)}>
               <p className="type-mono prep-label">{storyCopy.votes.label}</p>
-              <h3 className="type-h2 prep-h">{storyCopy.votes.h2}</h3>
+              <h2 className="type-h2 prep-h">{storyCopy.votes.h2}</h2>
               <p className="type-body prep-body">{storyCopy.votes.body}</p>
               <p className="prep-hint">
                 {storyCopy.votes.hint}
@@ -114,7 +118,7 @@ export function ActPrep() {
           </div>
 
           <div className="prep-sheet-col">
-            <div className="prep-sheet-wrap">
+            <div ref={wrapRef} className="prep-sheet-wrap">
               <FaceSlot anchor="sheet" face="sheet" skin="night" className="prep-sheet-slot" />
               {/* Where the folded sheet arrives: the top third of the open sheet, same left and width. */}
               <div className="prep-folded only-motion">
@@ -125,8 +129,8 @@ export function ActPrep() {
             </div>
           </div>
         </div>
-        <p className="type-mono prep-illustrative">{storyCopy.common.illustrative}</p>
       </Panel>
+      <p className="story-caption">{storyCopy.common.illustrative}</p>
     </Stage>
   );
 }

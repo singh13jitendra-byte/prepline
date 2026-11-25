@@ -56,8 +56,9 @@
 }
 .prep-label::before {
   content: "";
-  width: 18px;
-  height: 1px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
   background: var(--color-gold, #ffd77a);
 }
 .prep-h {
@@ -98,18 +99,21 @@
   transition: color 0.45s ease;
 }
 .prep-step::before {
+  /* a dot, not a rule: the Line is the only line on the page */
   content: "";
-  width: 8px;
-  height: 1.5px;
-  border-radius: 1px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
   background: currentColor;
-  transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.45s ease;
+  opacity: 0.6;
+  transition: transform 0.5s cubic-bezier(0.2, 1.5, 0.4, 1), background-color 0.45s ease, opacity 0.45s ease;
 }
 .prep-step[data-state="on"] {
   color: #fff;
 }
 .prep-step[data-state="on"]::before {
-  width: 22px;
+  opacity: 1;
+  transform: scale(1.5);
   background: var(--color-gold, #ffd77a);
 }
 .prep-step[data-state="before"] {
@@ -131,31 +135,6 @@
 .prep-hint svg {
   width: 34px;
   height: 12px;
-}
-.prep-illustrative {
-  position: absolute;
-  left: 32px;
-  bottom: 22px;
-  color: rgba(255, 255, 255, 0.55);
-}
-
-/* The lamp: a warm pool of light behind and above the sheet. --lamp rises in the unfold. */
-.prep-lamp {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-.prep-lamp::before {
-  content: "";
-  position: absolute;
-  left: calc(50% + 300px + var(--lx, 0px) - 520px);
-  top: calc(16% + var(--ly, 0px) - 420px);
-  width: 1040px;
-  height: 980px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 196, 120, 0.3), rgba(255, 170, 90, 0.12) 45%, rgba(255, 170, 90, 0) 100%);
-  opacity: var(--lamp, 1);
 }
 
 /* ── motion: swaps (scroll selects; the swap itself is a short timed transition) ── */
@@ -208,10 +187,6 @@ html:not(.motion) .prep-steps {
 html:not(.motion) .prep-sheet-wrap {
   width: min(100%, 560px);
 }
-html:not(.motion) .prep-illustrative {
-  position: static;
-  margin: 32px 32px 0;
-}
 
 /* ── mobile: copy in the top 40%, the sheet in the bottom 60% ── */
 @media (max-width: 767px) {
@@ -219,7 +194,8 @@ html:not(.motion) .prep-illustrative {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    padding: 76px 20px 18px;
+    /* bottom room for the caption (.story-caption) under the sheet */
+    padding: 76px 20px 44px;
   }
   .prep-copy {
     flex: none;
@@ -254,10 +230,7 @@ html:not(.motion) .prep-illustrative {
     margin-top: auto;
   }
   .prep-sheet-wrap {
-    width: min(calc(100vw - 24px), calc(56svh * 560 / 720));
-  }
-  .prep-illustrative {
-    display: none;
+    width: min(calc(100vw - 24px), calc(54svh * 560 / 720));
   }
   html.motion .prep-sheet-col {
     margin-left: -8px;
@@ -281,4 +254,10 @@ html:not(.motion) .prep-illustrative {
   .prep-step::before {
     transition: none;
   }
+}
+
+/* Breath: 4px (unfold), 8px per question, 8px (votes), scrubbed. Reduced motion leaves the breaths at 1: no offset there. */
+html.motion .prep-sheet-wrap {
+  transform: translate3d(0, calc(-4px * var(--slide-unfold, 0) - 8px * (var(--slide-q1, 0) + var(--slide-q2, 0) + var(--slide-q3, 0) + var(--slide-votes, 0))), 0);
+  will-change: transform;
 }

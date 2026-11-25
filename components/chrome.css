@@ -131,8 +131,22 @@ html.motion[data-wipe][data-chapter="day"] .nav-base,
 html.motion[data-wipe][data-chapter="night"] .nav-overlay {
   clip-path: inset(max(0px, calc(var(--day-top) - var(--nav-top))) 0 0 0);
 }
+/* During a wipe the skins are opaque and sample nothing: a backdrop blur would pull the other
+   chapter across the line and leave a soft grey seam. */
 html.motion[data-wipe] .nav-pill {
   transition: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html.motion[data-wipe][data-chapter="night"] .nav-base,
+html.motion[data-wipe][data-chapter="day"] .nav-overlay {
+  background: rgb(9, 22, 44);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+html.motion[data-wipe][data-chapter="day"] .nav-base,
+html.motion[data-wipe][data-chapter="night"] .nav-overlay {
+  background: rgb(244, 241, 235);
 }
 
 .nav-brand {
@@ -193,24 +207,23 @@ html.motion[data-wipe] .nav-pill {
   transition: background-color 0.4s ease, color 0.4s ease;
 }
 .nav-link::after {
-  /* the current act: a short Line under its link */
+  /* the current act: a 4px dot under its link (a mark, not a line: the Line is the only line) */
   content: "";
   position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 6px;
-  height: 1.5px;
-  border-radius: 1px;
+  left: calc(50% - 2px);
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
   background: var(--nav-accent);
-  transform: scaleX(0);
-  transform-origin: 0 50%;
-  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: scale(0);
+  transition: transform 0.45s cubic-bezier(0.2, 1.5, 0.4, 1);
 }
 .nav-link[aria-current="true"] {
   color: var(--nav-fg);
 }
 .nav-link[aria-current="true"]::after {
-  transform: scaleX(1);
+  transform: scale(1);
 }
 @media (hover: hover) {
   .nav-link:hover {
@@ -403,8 +416,9 @@ html.motion[data-wipe][data-chapter="night"] .rail-overlay {
   transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s ease;
 }
 .rail-link[aria-current="true"] .rail-tick {
+  /* longer and full ink/white, never amber: the Line is the only amber line */
   width: 16px;
-  background: var(--rail-accent);
+  background: var(--rail-fg);
 }
 .rail-label {
   font-family: var(--font-mono);
@@ -445,12 +459,13 @@ html.motion[data-wipe][data-chapter="night"] .rail-overlay {
 .ft {
   position: relative;
   z-index: var(--z-acts, 2);
+  /* The prep act's pinned tail currently runs ~40vh past <main> (Foundation layout); the footer covers
+     it so the page never ends on cream. Small type, the figures line pinned to the bottom. */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 56px;
-  min-height: 60svh;
-  padding: 72px 32px 28px;
+  min-height: 40svh;
+  padding: 56px 32px 28px;
   background: #1b1916;
   color: #f6f4ef;
 }
@@ -462,34 +477,16 @@ html.motion[data-wipe][data-chapter="night"] .rail-overlay {
   right: 0;
   top: 0;
   height: 1px;
-  background: linear-gradient(90deg, rgba(255, 215, 122, 0) 0%, rgba(255, 215, 122, 0.75) 18%, rgba(255, 215, 122, 0.75) 82%, rgba(255, 215, 122, 0) 100%);
-}
-.ft-time {
-  width: 100%;
-  max-width: 1240px;
-  margin: 0 auto;
-  font-size: clamp(34px, 4vw, 60px);
-  line-height: 1.02;
-  letter-spacing: -0.04em;
-  font-weight: 500;
-}
-.ft-time time {
-  font-variant-numeric: tabular-nums;
-}
-.ft-time span {
-  color: #a8a097;
-}
-.ft-bottom {
-  width: 100%;
-  max-width: 1240px;
-  margin: 0 auto;
+  background: linear-gradient(90deg, rgba(255, 215, 122, 0) 0%, rgba(255, 215, 122, 0.7) 18%, rgba(255, 215, 122, 0.7) 82%, rgba(255, 215, 122, 0) 100%);
 }
 .ft-inner {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: 1.2fr auto 1fr;
+  align-items: start;
   gap: 40px;
-  padding-bottom: 28px;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
 }
 .ft-brand {
   display: flex;
@@ -498,19 +495,19 @@ html.motion[data-wipe][data-chapter="night"] .rail-overlay {
   max-width: 30ch;
   margin: 0;
   font-size: 15px;
-  line-height: 1.45;
+  line-height: 1.5;
   color: #d9d3c9;
 }
 .ft-brand .nav-logo {
   --nav-fg: #f6f4ef;
   --nav-accent: #ffd77a;
   flex: none;
-  margin-top: 1px;
+  margin-top: 2px;
 }
 .ft-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 28px;
+  gap: 8px 26px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -519,30 +516,18 @@ html.motion[data-wipe][data-chapter="night"] .rail-overlay {
   position: relative;
   display: inline-block;
   font-size: 15px;
+  line-height: 1.5;
   color: #d9d3c9;
   border-radius: 4px;
   transition: color 0.4s ease;
 }
-.ft-links a::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -3px;
-  height: 1px;
-  background: #ffd77a;
-  transform: scaleX(0);
-  transform-origin: 0 50%;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
 @media (hover: hover) {
   .ft-links a:hover {
     color: #fff;
+    text-decoration: underline;
+    text-decoration-color: rgba(255, 215, 122, 0.8);
+    text-underline-offset: 4px;
     transition-duration: 0.18s;
-  }
-  .ft-links a:hover::after {
-    transform: scaleX(1);
-    transition-duration: 0.25s;
   }
 }
 .ft-links a:focus-visible {
@@ -550,7 +535,24 @@ html.motion[data-wipe][data-chapter="night"] .rail-overlay {
   outline-offset: 4px;
   color: #fff;
 }
+.ft-time {
+  justify-self: end;
+  margin: 0;
+  text-align: right;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #f6f4ef;
+}
+.ft-time time {
+  font-variant-numeric: tabular-nums;
+}
+.ft-time span {
+  color: #a8a097;
+}
 .ft-last {
+  width: 100%;
+  max-width: 1240px;
+  margin: 44px auto 0;
   padding-top: 18px;
   border-top: 1px solid rgba(246, 244, 239, 0.1);
   color: rgba(255, 255, 255, 0.5);
@@ -558,13 +560,18 @@ html.motion[data-wipe][data-chapter="night"] .rail-overlay {
 }
 @media (max-width: 767px) {
   .ft {
-    padding: 56px 20px 24px;
-    gap: 40px;
+    padding: 44px 20px 24px;
   }
   .ft-inner {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 24px;
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+  .ft-time {
+    justify-self: start;
+    text-align: left;
+  }
+  .ft-last {
+    margin-top: 32px;
   }
 }
 /* The rail steps aside over the footer. */
@@ -581,8 +588,7 @@ html.motion[data-beat="footer"] .rail {
   .nav-pill,
   .rail-tick,
   .rail-label,
-  .nav-link::after,
-  .ft-links a::after {
+  .nav-link::after {
     transition-duration: 0.01ms !important;
   }
   .nav-menu {
