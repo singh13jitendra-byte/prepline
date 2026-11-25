@@ -1,0 +1,650 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   SHEET FACE — the lamp-lit prep sheet (storyboard 2.6, 5.3).
+   Natural size 560 x 720. Three 240px panels. Everything here is drawn at the
+   natural size; the engine (or the FaceSlot) scales the whole face uniformly.
+   On small screens the natural type is larger, so that after scaling the
+   questions still read at about 14px.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.sh-root {
+  --sh-pad-x: 40px;
+  --sh-pad-top: 34px;
+  --sh-pad-bottom: 26px;
+  --sh-label: 11px;
+  --sh-title: 30px;
+  --sh-meta: 15px;
+  --sh-q: 17px;
+  --sh-q-lh: 1.42;
+  --sh-num-w: 36px;
+  --sh-chip: 12.5px;
+  --sh-chip-h: 26px;
+  --sh-btn: 13px;
+  --sh-btn-h: 30px;
+  --sh-count: 20px;
+  --sh-gap-q: 18px;
+  --sh-ink: #1b1916;
+  --sh-muted: #5f5a53;
+  --sh-rule: #e7e1d6;
+  --sh-paper: #fffdf8;
+  --sh-accent: #b45309;
+  position: absolute;
+  inset: 0;
+  color: var(--sh-ink);
+  font-family: var(--font-sans);
+}
+@media (max-width: 767px) {
+  .sh-root {
+    --sh-pad-x: 34px;
+    --sh-pad-top: 30px;
+    --sh-pad-bottom: 22px;
+    --sh-label: 15px;
+    --sh-title: 34px;
+    --sh-meta: 19px;
+    --sh-q: 22px;
+    --sh-q-lh: 1.3;
+    --sh-num-w: 0px;
+    --sh-chip: 16.5px;
+    --sh-chip-h: 34px;
+    --sh-btn: 17px;
+    --sh-btn-h: 42px;
+    --sh-count: 25px;
+    --sh-gap-q: 12px;
+  }
+}
+@media (max-width: 380px) {
+  .sh-root {
+    --sh-q: 23px;
+  }
+}
+
+/* ── the paper: one continuous sheet (the flying copy shows it in three slices) ── */
+.sh-paper {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 560px;
+  height: 720px;
+  border-radius: 20px;
+  overflow: hidden;
+  background:
+    /* lamp above and behind: warm at the top, a touch of shade at the foot */
+    radial-gradient(120% 70% at 30% -10%, rgba(255, 214, 150, 0.22) 0%, rgba(255, 214, 150, 0) 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0) 55%, rgba(92, 64, 30, 0.05) 100%),
+    var(--sh-paper);
+}
+/* Paper fibre: a tiny inline turbulence, very faint. */
+.sh-paper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .36  0 0 0 0 .25  0 0 0 .07 0'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>");
+  pointer-events: none;
+}
+/* The paper remembers its folds: two soft creases at 240 and 480. */
+.sh-crease {
+  position: absolute;
+  left: 0;
+  width: 560px;
+  height: 14px;
+  margin-top: -7px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(80, 56, 24, 0) 0%,
+    rgba(80, 56, 24, 0.035) 42%,
+    rgba(80, 56, 24, 0.08) 49.5%,
+    rgba(255, 255, 255, 0.9) 50.5%,
+    rgba(255, 255, 255, 0) 64%
+  );
+}
+
+.sh-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--sh-pad-top) var(--sh-pad-x) var(--sh-pad-bottom);
+}
+
+.sh-label {
+  font-family: var(--font-mono);
+  font-size: var(--sh-label);
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--sh-muted);
+}
+
+/* ── header ── */
+.sh-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sh-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.sh-brand i {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--sh-accent);
+}
+.sh-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: calc(var(--sh-chip-h) + 2px);
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #fbefd9;
+  color: #8a3d06;
+  font-size: var(--sh-chip);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  font-variant-numeric: tabular-nums;
+}
+.sh-title {
+  margin-top: 22px;
+  font-size: var(--sh-title);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+}
+.sh-meta {
+  margin-top: 8px;
+  font-size: var(--sh-meta);
+  line-height: 1.35;
+  color: var(--sh-muted);
+}
+.sh-qhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--sh-rule);
+}
+.sh-header {
+  display: flex;
+  flex-direction: column;
+  height: 206px;
+}
+@media (max-width: 767px) {
+  .sh-header {
+    height: 178px;
+  }
+  .sh-title {
+    margin-top: 14px;
+  }
+  .sh-num {
+    display: none;
+  }
+  .sh-text {
+    min-height: 0;
+  }
+}
+
+/* The header writes itself in while the flying sheet unfolds (--progress is travel 0..1). */
+.sh-root[data-writing] .sh-w {
+  --k: clamp(0, calc((var(--progress, 1) - 0.42 - var(--i, 0) * 0.1) * 5), 1);
+  opacity: var(--k);
+  transform: translateY(calc(8px - 8px * var(--k)));
+  filter: blur(calc(3px - 3px * var(--k)));
+}
+
+/* ── questions ── */
+.sh-list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sh-q {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--sh-num-w) 1fr;
+  padding: var(--sh-gap-q) 0 calc(var(--sh-gap-q) + 1px);
+}
+.sh-q::after {
+  /* the faint rule the Line leaves behind */
+  content: "";
+  position: absolute;
+  left: var(--sh-num-w);
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--sh-rule);
+}
+.sh-num {
+  padding-top: calc((var(--sh-q) * var(--sh-q-lh) - var(--sh-label) * 1.2) / 2);
+  font-family: var(--font-mono);
+  font-size: var(--sh-label);
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  color: var(--sh-muted);
+  font-variant-numeric: tabular-nums;
+}
+.sh-body {
+  grid-column: 2;
+  min-width: 0;
+}
+.sh-text {
+  position: relative;
+  margin: 0;
+  min-height: calc(var(--sh-q) * var(--sh-q-lh) * 2);
+  font-size: var(--sh-q);
+  line-height: var(--sh-q-lh);
+  letter-spacing: -0.012em;
+  font-weight: 500;
+  color: var(--sh-ink);
+  opacity: var(--q-dim, 1);
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.sh-w {
+  white-space: nowrap;
+}
+.sh-c {
+  transition: none;
+}
+.sh-text[data-typed="false"] .sh-c {
+  opacity: 0;
+}
+/* Blank ruled rows: the sheet before it is written. */
+.sh-blank {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0,
+    transparent calc(var(--sh-q) * var(--sh-q-lh) - 7px),
+    rgba(27, 25, 22, 0.075) calc(var(--sh-q) * var(--sh-q-lh) - 7px),
+    rgba(27, 25, 22, 0.075) calc(var(--sh-q) * var(--sh-q-lh) - 6px),
+    transparent calc(var(--sh-q) * var(--sh-q-lh) - 6px),
+    transparent calc(var(--sh-q) * var(--sh-q-lh))
+  );
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 62%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0, #000 62%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.sh-text[data-typed="false"] .sh-blank,
+.sh-text[data-blank] .sh-blank {
+  opacity: 1;
+}
+/* The anchor the Line docks on. During typing JS sets its box (the caret's line); at rest it is the rule. */
+.sh-anchor {
+  position: absolute;
+  left: var(--sh-num-w);
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  pointer-events: none;
+}
+.sh-caret {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1.5px;
+  height: 1.15em;
+  background: var(--sh-ink);
+  opacity: 0;
+  pointer-events: none;
+}
+.sh-caret[data-on] {
+  opacity: 0.75;
+}
+
+.sh-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+.sh-chip {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+  min-height: var(--sh-chip-h);
+  padding: calc((var(--sh-chip-h) - var(--sh-chip) * 1.25) / 2) 12px calc((var(--sh-chip-h) - var(--sh-chip) * 1.25) / 2) 9px;
+  border-radius: calc(var(--sh-chip-h) / 2);
+  line-height: 1.25;
+  background: #f4eee3;
+  color: #5e4320;
+  font-size: var(--sh-chip);
+  font-weight: 500;
+  letter-spacing: -0.003em;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+.sh-chip svg {
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+  margin-top: 0.08em;
+  color: var(--sh-accent);
+}
+.sh-row .sh-votes {
+  align-self: flex-start;
+}
+.sh-votes {
+  transition: opacity 0.5s ease;
+}
+/* Before its question is written, a row's buttons wait quietly (they still work). */
+.sh-q[data-unwritten] .sh-votes {
+  opacity: 0.5;
+}
+@media (hover: hover) {
+  .sh-q:hover .sh-chip {
+    background: #fbe7c3;
+    color: #4a3214;
+    box-shadow: inset 0 0 0 1px rgba(180, 83, 9, 0.18);
+    transition-duration: 0.15s;
+  }
+}
+
+/* ── vote buttons ── */
+.sh-votes {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+}
+.sh-vote {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: var(--sh-btn-h);
+  padding: 0 calc(var(--sh-btn-h) * 0.4);
+  border-radius: 999px;
+  border: 1px solid #e0d9cc;
+  background: rgba(255, 255, 255, 0.6);
+  color: rgba(27, 25, 22, 0.86);
+  font: inherit;
+  font-size: var(--sh-btn);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition:
+    background-color 0.4s ease,
+    border-color 0.4s ease,
+    color 0.4s ease,
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+.sh-vote svg {
+  width: 0;
+  height: 1em;
+  opacity: 0;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+@media (hover: hover) {
+  .sh-vote:hover {
+    border-color: rgba(27, 25, 22, 0.34);
+    background: #fff;
+    color: var(--sh-ink);
+    transition-duration: 0.18s;
+  }
+}
+.sh-vote:active {
+  transform: scale(0.94);
+}
+.sh-vote:focus-visible {
+  outline: 2px solid var(--sh-accent);
+  outline-offset: 2px;
+}
+.sh-vote[aria-pressed="true"] svg {
+  width: 1em;
+  opacity: 1;
+}
+.sh-vote[data-kind="asked"][aria-pressed="true"] {
+  background: #dcf5e6;
+  border-color: #7ee2a8;
+  color: #0f4a2a;
+}
+.sh-vote[data-kind="not-asked"][aria-pressed="true"] {
+  background: #efeae1;
+  border-color: #cfc6b7;
+  color: var(--sh-ink);
+}
+.sh-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 999px;
+  background: #34b36b;
+  pointer-events: none;
+}
+
+/* ── footer ── */
+.sh-foot .sh-label {
+  display: block;
+}
+.sh-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: auto;
+  padding-top: 14px;
+}
+.sh-count {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.28em;
+  margin-top: 8px;
+  font-size: var(--sh-count);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.sh-count-n {
+  display: inline-block;
+  overflow: hidden;
+  height: 1.1em;
+}
+.sh-count-n > span {
+  display: inline-block;
+  animation: sh-roll 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes sh-roll {
+  from {
+    transform: translateY(70%);
+    opacity: 0;
+  }
+}
+.sh-foot-anchor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -7px;
+  height: 1px;
+  pointer-events: none;
+}
+.sh-thanks {
+  max-width: 250px;
+  margin: 0;
+  text-align: right;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--sh-muted);
+  animation: sh-in 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (max-width: 767px) {
+  .sh-thanks {
+    max-width: 260px;
+    font-size: 16px;
+  }
+}
+@keyframes sh-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ── skins: paper stays paper; only the light around it changes ── */
+.sh-glow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 560px;
+  border-radius: 20px;
+  pointer-events: none;
+}
+.sh-root[data-skin="night"] .sh-glow {
+  box-shadow:
+    0 0 0 1px rgba(255, 238, 206, 0.22),
+    0 30px 120px -30px rgba(255, 186, 102, 0.38),
+    0 0 60px -10px rgba(255, 210, 150, 0.12);
+}
+.sh-root[data-skin="day"] .sh-glow {
+  box-shadow:
+    0 0 0 1px rgba(27, 25, 22, 0.06),
+    0 calc(40px + 16px * var(--lift, 0)) 80px -50px rgba(27, 25, 22, calc(0.45 + 0.2 * var(--lift, 0)));
+}
+
+/* ── flying copy: three hinged panels ── */
+.sh-3d {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 560px;
+  height: 720px;
+  perspective: 1500px;
+  perspective-origin: 50% 20%;
+}
+.sh-panel {
+  position: absolute;
+  left: 0;
+  width: 560px;
+  height: 240px;
+  overflow: hidden;
+}
+.sh-p1 {
+  top: 0;
+  border-radius: 20px 20px 0 0;
+}
+.sh-hinge {
+  position: absolute;
+  left: 0;
+  top: 240px;
+  width: 560px;
+  height: 240px;
+  transform-origin: 50% 0;
+  transform-style: preserve-3d;
+}
+.sh-face-front,
+.sh-face-back {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.sh-face-back {
+  transform: rotateX(180deg);
+  /* clip-path, not border-radius: Chrome drops radii on 3D back faces */
+  clip-path: inset(0 round 20px 20px 0 0);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 40%),
+    #f8f3e8;
+}
+.sh-h3 .sh-face-front {
+  clip-path: inset(0 round 0 0 20px 20px);
+}
+.sh-slice {
+  position: absolute;
+  left: 0;
+  width: 560px;
+  height: 720px;
+}
+.sh-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.sh-shade-dark {
+  background: linear-gradient(180deg, rgba(40, 26, 10, 0.55), rgba(40, 26, 10, 0.32));
+}
+.sh-shade-hinge-bottom {
+  background: linear-gradient(0deg, rgba(40, 26, 10, 0.5) 0%, rgba(40, 26, 10, 0) 70%);
+}
+.sh-shade-hinge-top {
+  background: linear-gradient(180deg, rgba(40, 26, 10, 0.5) 0%, rgba(40, 26, 10, 0) 55%);
+}
+.sh-shade-light {
+  background: linear-gradient(180deg, rgba(255, 246, 228, 0.9), rgba(255, 246, 228, 0.4));
+}
+
+/* the outside of the folded letter */
+.sh-env {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 30px var(--sh-pad-x) 26px;
+}
+.sh-env-title {
+  margin-top: auto;
+  font-size: calc(var(--sh-title) * 0.8);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+}
+.sh-env-meta {
+  margin-top: 6px;
+  font-size: var(--sh-meta);
+  color: var(--sh-muted);
+}
+.sh-env-rule {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--sh-rule);
+}
+.sh-env::after {
+  /* the folded edge: a soft lip along the bottom crease */
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 10px;
+  background: linear-gradient(0deg, rgba(80, 56, 24, 0.1), rgba(80, 56, 24, 0));
+}
+
+/* ── static page (reduced motion / no JS): the open sheet, all questions written ── */
+html:not(.motion) .sh-text .sh-c {
+  opacity: 1 !important;
+}
+html:not(.motion) .sh-blank,
+html:not(.motion) .sh-caret {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sh-count-n > span,
+  .sh-thanks {
+    animation: none;
+  }
+  .sh-vote,
+  .sh-vote svg {
+    transition-duration: 0.01ms;
+  }
+}

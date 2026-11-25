@@ -14,7 +14,6 @@ import { useAnchor, type AnchorId } from "@/lib/anchors";
 import { rankedRoles, story as copy } from "@/lib/content";
 import { definePerformance } from "@/lib/perform";
 import { BEATS, story } from "@/lib/story";
-import { WaitlistForm } from "../WaitlistForm";
 import { FaceSlot } from "./FaceSlot";
 import { Panel, Stage } from "./Stage";
 
@@ -149,65 +148,6 @@ export function StubActs() {
         </Panel>
       </Stage>
 
-      {/* ── Act III: Prep ── */}
-      <Stage act="prep" labelledBy="prep-title" stageClassName={stage}>
-        <Readout act="prep" />
-        <Panel beats={["unfold", "q1", "q2", "q3", "votes"]} className={panel}>
-          <div className={left}>
-            <p className="type-mono opacity-70">{copy.unfold.label}</p>
-            <h2 id="prep-title" className="type-h2 mt-4">
-              {copy.unfold.h2}
-            </h2>
-          </div>
-          <div className={right}>
-            <div className="relative" style={{ width: "min(100%, 560px, calc((100svh - 140px) * 560 / 720))" }}>
-              <FaceSlot anchor="sheet" face="sheet" skin="night" className="!w-full">
-                <article className="absolute inset-0 rounded-[20px] bg-paper p-[6%] text-ink">
-                  <p className="type-mono text-muted">stub sheet</p>
-                  <ol className="mt-[38%] flex flex-col gap-[14%] text-[14px]">
-                    <li>{copy.q1.question}</li>
-                    <li>{copy.q2.question}</li>
-                    <li>{copy.q3.question}</li>
-                  </ol>
-                </article>
-              </FaceSlot>
-              <div className="only-motion absolute inset-x-0 top-0 h-1/3">
-                <FaceSlot anchor="sheet-folded" face="sheet" skin="night" fold={0} showWhenStatic={false} className="!aspect-auto !h-full !w-full" />
-              </div>
-              <Mark id="sheet-q1" className="absolute left-[6%] top-[48%] h-px w-[70%]" />
-              <Mark id="sheet-q2" className="absolute left-[6%] top-[64%] h-px w-[70%]" />
-              <Mark id="sheet-q3" className="absolute left-[6%] top-[80%] h-px w-[70%]" />
-              <Mark id="sheet-foot" className="absolute bottom-[5%] left-[6%] h-px w-[30%]" />
-            </div>
-          </div>
-        </Panel>
-      </Stage>
-
-      {/* ── Act IV: Seat ── */}
-      <Stage act="seat" labelledBy="join-title" stageClassName={stage}>
-        <Readout act="seat" />
-        <Panel beats={["seat", "footer"]} focusable className={panel}>
-          <div className="md:col-span-6">
-            <h2 id="join-title" className="type-display-xl">
-              {copy.seat.h2}{" "}
-              <span className="relative inline-block font-serif italic text-accent">
-                {copy.seat.h2Accent}
-                <Mark id="ready-underline" inline className="absolute -bottom-1 left-0 h-[3px] w-full max-w-[220px]" />
-              </span>
-            </h2>
-            <p className="type-body mt-6 max-w-[440px] text-muted">{copy.seat.body}</p>
-          </div>
-          <div className={right}>
-            <FaceSlot anchor="ticket" face="ticket" skin="day">
-              <div className="absolute inset-0 flex flex-col justify-between rounded-3xl border border-line bg-paper p-6">
-                <p className="type-mono text-muted">{copy.seat.ticketHeader}</p>
-                <WaitlistForm />
-                <p className="text-[13px] text-muted">{copy.seat.ticketFoot}</p>
-              </div>
-            </FaceSlot>
-          </div>
-        </Panel>
-      </Stage>
     </>
   );
 }
@@ -259,23 +199,5 @@ export function StubLine() {
     <div ref={ref} aria-hidden="true" data-stub-line className="only-motion pointer-events-none fixed left-0 top-0" style={{ zIndex: "var(--z-line)" }}>
       <span ref={labelRef} className="type-mono absolute bottom-1.5 right-3 whitespace-nowrap text-gold mix-blend-difference" />
     </div>
-  );
-}
-
-export function StubFooter() {
-  return (
-    <footer className="relative border-t border-gold/60 bg-ink px-6 py-16 text-canvas md:px-16" style={{ minHeight: "60vh", zIndex: "var(--z-acts)" }}>
-      <p className="type-body max-w-[420px]">{copy.footer.left}</p>
-      <ul className="mt-8 flex flex-wrap gap-6 text-[15px]">
-        {copy.footer.links.map((l) => (
-          <li key={l.label}>
-            <a href={l.href} className="underline-offset-4 hover:underline focus-visible:underline">
-              {l.label}
-            </a>
-          </li>
-        ))}
-      </ul>
-      <p className="type-mono mt-16 opacity-50">{copy.footer.last}</p>
-    </footer>
   );
 }

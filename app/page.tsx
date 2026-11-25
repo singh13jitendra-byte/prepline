@@ -1,12 +1,15 @@
+import { ActPrep } from "@/components/acts/ActPrep";
+import { ActSeat } from "@/components/acts/ActSeat";
+import { BeatRail } from "@/components/BeatRail";
+import { Footer } from "@/components/Footer";
+import { Nav } from "@/components/Nav";
 import { StoryRoot } from "@/components/story/StoryRoot";
-import { StubActs, StubFooter, StubLine, StubPerformances } from "@/components/story/stubs";
+import { StubActs, StubLine } from "@/components/story/stubs";
 import { story as copy } from "@/lib/content";
 
 /**
- * "One role, read." Foundation build: the four acts are stubs.
- * Integration swaps them for <ActRead />, <ActBoard />, <ActPrep />, <ActSeat />,
- * passes <World /> as `world` and <Nav /> + <BeatRail /> as `chrome`, and
- * replaces StubFooter with <Footer />.
+ * "One role, read." Acts I and II are still stubs on this branch.
+ * Integration swaps them for <ActRead />, <ActBoard />, and passes <World /> as `world`.
  */
 export default function Home() {
   return (
@@ -18,11 +21,21 @@ export default function Home() {
         {copy.common.skipLink}
       </a>
       <main>
-        <StoryRoot world={<StubLine />} chrome={<StubPerformances />}>
+        <StoryRoot
+          world={<StubLine />}
+          chrome={
+            <>
+              <Nav />
+              <BeatRail />
+            </>
+          }
+        >
           <StubActs />
+          <ActPrep />
+          <ActSeat />
         </StoryRoot>
       </main>
-      <StubFooter />
+      <Footer />
     </>
   );
 }
