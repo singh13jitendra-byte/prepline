@@ -389,23 +389,9 @@ html.motion .bd-ghost {
   white-space: nowrap;
   color: var(--color-ink);
 }
-.bd-days-axis {
-  position: relative;
-  height: 1px;
-  background: var(--color-line);
-}
-.bd-days-axis::before {
-  /* Hour ticks every 6h, day ticks taller. */
-  content: "";
-  position: absolute;
-  inset: -3px 0 0;
-  background:
-    repeating-linear-gradient(to right, var(--color-line) 0 1px, transparent 1px 20%) 0 0 / 100% 7px no-repeat,
-    repeating-linear-gradient(to right, rgba(27, 25, 22, 0.1) 0 1px, transparent 1px 5%) 0 3px / 100% 4px no-repeat;
-}
 .bd-days-dot {
   position: absolute;
-  top: -3px;
+  bottom: -3px;
   left: calc(var(--now) * 100% - 3.5px);
   width: 7px;
   height: 7px;
@@ -414,12 +400,17 @@ html.motion .bd-ghost {
   box-shadow: 0 0 0 3px var(--color-canvas);
 }
 .bd-days-list {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  margin-top: 7px;
+  /* The bottom edge is the time axis: hairline, a tick at every day, small ticks every 6h. */
+  border-bottom: 1px solid var(--color-line);
+  background:
+    repeating-linear-gradient(to right, var(--color-line) 0 1px, transparent 1px 20%) 0 100% / 100% 7px no-repeat,
+    repeating-linear-gradient(to right, rgba(27, 25, 22, 0.1) 0 1px, transparent 1px 5%) 0 100% / 100% 4px no-repeat;
 }
 .bd-day {
-  padding-left: 4px;
+  padding: 0 0 9px 5px;
   font-family: var(--font-mono);
   font-size: 10.5px;
   line-height: 1;
@@ -468,6 +459,26 @@ html.motion .bd-ghost {
 }
 .bd-col > * {
   position: relative;
+}
+.bd-col::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(255, 170, 84, 0.22), transparent 70%);
+  transform-origin: 50% 100%;
+  transform: scaleY(var(--b, 0));
+  opacity: var(--b, 0);
+}
+.bd-col[data-col="saved"] {
+  --b: calc(var(--breath-saved, 0) * (1 - var(--breath-applied, 0)));
+}
+.bd-col[data-col="applied"] {
+  --b: calc(var(--breath-applied, 0) * (1 - var(--breath-interview, 0)));
+}
+.bd-col[data-col="interview"] {
+  --b: var(--breath-interview, 0);
 }
 /* The Interview glow: amber from the `col-interview` rule down. Outside the board's fade. */
 .bd-glow {

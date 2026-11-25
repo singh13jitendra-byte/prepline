@@ -450,3 +450,8 @@ html.motion:is([data-beat="ranked"], [data-beat="reason"], [data-beat="daybreak"
 html[data-wipe="daybreak"] .face[data-face="card"][data-skin="night"] {
   --face-bg: linear-gradient(160deg, rgb(36, 59, 97), rgb(18, 38, 70));
 }
+
+/* In flight the engine turns backdrop-filter off: the glass card takes its blurred colour as a fill. */
+.actor[data-moving] .face[data-face="card"][data-skin="night"] {
+  --face-bg: linear-gradient(160deg, rgb(36, 59, 97), rgb(18, 38, 70));
+}

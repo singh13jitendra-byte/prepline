@@ -108,6 +108,9 @@ export function ReadPanel() {
   const moreRef = useRef<HTMLLIElement>(null);
   const row1Ref = useRef<HTMLLIElement>(null);
   const rule = useAnchor("ranked-rule");
+  // Breaths (Foundation helper): the list keeps drifting up through ranked and reason.
+  const breathRanked = story.useBreath("ranked", { from: 0.15, name: "--breath-ranked" });
+  const breathReason = story.useBreath("reason", { from: 0, name: "--breath-reason" });
   const morph = useRef({ dn: { x: 0, y: 0, s: 1 }, st: { x: 0, y: 0, s: 1 } });
 
   /* ── rows 2..12 anchors; on small screens rows 7..12 hide and their specks land on "and 6 more" ── */
@@ -216,7 +219,8 @@ export function ReadPanel() {
 
     // Ranked: the counter flies into the list header; the H2 rises.
     const r = through(s, "ranked");
-    const k = span(r, 0, 0.2);
+    // 60vh beat: the counter is in the header by 15%, before the line starts docking (0.40).
+    const k = span(r, 0, 0.15);
     const m = morph.current;
     set(root, "--k", k.toFixed(4));
     set(root, "--k-fly", (1 - span(k, 0.75, 1)).toFixed(4));
@@ -227,8 +231,8 @@ export function ReadPanel() {
     set(root, "--st-x", `${(m.st.x * k).toFixed(2)}px`);
     set(root, "--st-y", `${(m.st.y * k).toFixed(2)}px`);
     set(root, "--st-s", (1 + (m.st.s - 1) * k).toFixed(4));
-    set(root, "--h2a", span(r, 0.06, 0.24).toFixed(4));
-    set(root, "--b2a", span(r, 0.14, 0.3).toFixed(4));
+    set(root, "--h2a", span(r, 0.05, 0.2).toFixed(4));
+    set(root, "--b2a", span(r, 0.1, 0.26).toFixed(4));
 
     // Row 1 before the Actor is born: the real row shows, then hands over.
     const birth = i === I.ranked ? span(r, BIRTH[0], BIRTH[1]) : i > I.ranked ? 1 : 0;
@@ -245,8 +249,6 @@ export function ReadPanel() {
     const q = through(s, "reason");
     const j = span(q, 0, REASON_AT);
     set(root, "--j", j.toFixed(4));
-    // Breath: the list keeps drifting up through ranked and reason, so no scroll step is still.
-    set(root, "--drift", `${(10 - 22 * span(r, 0.15, 1) - 10 * q).toFixed(2)}px`);
     // Reason breath: after the card lands, its chips are read one by one.
     cardShow.focus = i === I.reason && q >= REASON_AT ? span(q, REASON_AT + 0.08, 0.98) * 3 : i > I.reason ? 3 : -1;
     set(root, "--out", span(q, 0, 0.12).toFixed(4));
@@ -309,7 +311,7 @@ export function ReadPanel() {
     if (s.beat === "ranked") return getRow1Hover() ? { ty: -2 } : null;
     if (s.beat !== "reason" || s.beatProgress < REASON_AT || !s.actor.present) return null;
     // Breath: a slow dolly (rotateY −3° → 3°) with a specular band sweeping across the glass.
-    const b = span(s.beatProgress, REASON_AT, 1);
+    const b = story.breathOf("reason", REASON_AT, 1);
     const dolly = { rx: 0, ry: -3 + 6 * b, spec: 0.75, specX: -15 + 130 * b, specY: 20 + 30 * b };
     const { x, y, w, h } = s.actor;
     if (!s.pointer.fine || !s.pointer.inside || w < 1) return dolly;
@@ -385,9 +387,9 @@ export function ReadPanel() {
           <div className="rd-grid">
             <ul className="rd-figures-list">
               {[
-                [fig.read, storyCopy.pass1.statementStart, storyCopy.pass1.detail],
-                [fig.level, storyCopy.pass1.statementEnd, storyCopy.pass2.detail],
-                [fig.fit, storyCopy.pass2.statementEnd, ""],
+                [fig.read, storyCopy.pass1.statementStart, ""],
+                [fig.level, storyCopy.pass1.statementEnd, storyCopy.pass1.detail],
+                [fig.fit, storyCopy.pass2.statementEnd, storyCopy.pass2.detail],
               ].map(([n, label, detail], k) => (
                 <li key={k} className="rd-figure" data-gold={k === 2 ? "" : undefined}>
                   <span className="rd-figure-n">{fmt(Number(n))}</span>
@@ -409,7 +411,17 @@ export function ReadPanel() {
               <p className="rd-body">{storyCopy.ranked.body}</p>
             </div>
             <div className="rd-obj">
-              <div className="rd-list-wrap">
+              <div
+                className="rd-list-wrap"
+                ref={(el) => {
+                  const a = breathRanked(el);
+                  const b = breathReason(el);
+                  return () => {
+                    if (typeof a === "function") a();
+                    if (typeof b === "function") b();
+                  };
+                }}
+              >
                 <p className="rd-list-head">
                   <span ref={headNRef} className="rd-list-n">
                     {HEADER_N}

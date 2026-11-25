@@ -115,16 +115,14 @@ function WeekStrip() {
           {clockLabel(boardHours(null))}
         </span>
       </div>
-      {/* `board-days`: the week axis, five equal days; day i spans [i/5, (i+1)/5] of its width. */}
-      <div ref={axis} className="bd-days-axis" aria-hidden="true">
-        <span className="bd-days-dot" />
-      </div>
-      <ol className="bd-days-list" aria-hidden="true">
+      {/* `board-days`: five equal day cells; day i spans [i/5, (i+1)/5]. Its bottom edge is the time axis the Line rides. */}
+      <ol ref={axis} className="bd-days-list" aria-hidden="true">
         {DAYS.map((d, i) => (
           <li key={d} className="bd-day" data-day={i}>
             {d}
           </li>
         ))}
+        <li className="bd-days-dot" />
       </ol>
     </div>
   );
@@ -262,6 +260,18 @@ export function BoardPanel() {
     const ip = through(s, "interview");
     set(root, "--glow", Math.min(1, span(ip, 0.25, 1) * 0.85 + hp * 0.15).toFixed(4));
   });
+
+  /* ── breaths (Foundation helper): the arrival column keeps warming after the tile lands ── */
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const offs = [
+      story.breath(root, "saved", { from: 0.7, name: "--breath-saved" }),
+      story.breath(root, "applied", { from: 0.45, name: "--breath-applied" }),
+      story.breath(root, "interview", { from: 0.45, name: "--breath-interview" }),
+    ];
+    return () => offs.forEach((off) => off());
+  }, []);
 
   /* ── frame: column floors warm as the tile passes over them; ghosts spring aside ── */
   useEffect(() => {

@@ -24,7 +24,7 @@ export const DEV_BACKDROP = "";
 
 export function Illustrative() {
   return (
-    <p className="acts-illus">
+    <p className="story-caption">
       {storyCopy.common.illustrative}
     </p>
   );
