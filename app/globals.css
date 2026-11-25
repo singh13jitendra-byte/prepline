@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/* Prepline tokens: map these to Pulse semantic tokens when you wire the design system in. */
+@theme {
+  --color-canvas: #f6f4ef;
+  --color-surface: #ffffff;
+  --color-sunk: #efece5;
+  --color-line: #e4dfd5;
+  --color-ink: #1b1916;
+  --color-muted: #5f5a53;
+  --color-accent: #b45309;
+  --color-accent-soft: #fdf0dc;
+  --color-accent-line: #f1cf9c;
+  --color-night: #0a1e3c;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+
+  --radius-card: 1.25rem;
+  --radius-panel: 1.75rem;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 24px;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+/* Scroll reveal: elements start slightly low and transparent, then settle. */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 600ms ease-out, transform 600ms ease-out;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Typing caret for streamed prep questions. */
+.caret::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  background: currentColor;
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .caret::after {
+    animation: none;
+  }
+}
