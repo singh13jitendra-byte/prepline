@@ -202,7 +202,13 @@ html.motion .rd-hero-root {
 html.motion .rd-hero-layer {
   position: absolute;
   inset: 0;
-  clip-path: var(--hero-clip, none);
+  -webkit-mask-image: var(--hero-mask, none);
+  mask-image: var(--hero-mask, none);
+}
+html.motion .rd-hero-copy {
+  transform-origin: 0 60%;
+  transform: scale(calc(1 - 0.04 * var(--recede, 0)));
+  opacity: calc(1 - 0.4 * var(--recede, 0));
 }
 html.motion .rd-hero-grid {
   height: 100%;
@@ -347,12 +353,12 @@ html.motion [data-swap-in] {
 html.motion .rd-pass {
   position: absolute;
   inset: 0;
-  clip-path: var(--reveal-clip, none);
   opacity: var(--reveal-a, 1);
 }
 html.motion .rd-pass-grid {
   height: 100%;
   align-content: center;
+  transform: translate3d(0, var(--reveal-y, 0px), 0);
 }
 html.motion .rd-digits {
   transform: translate3d(var(--dn-x, 0), var(--dn-y, 0), 0) scale(var(--dn-s, 1));
@@ -362,9 +368,12 @@ html.motion .rd-stmt-fly {
   transform: translate3d(var(--st-x, 0), var(--st-y, 0), 0) scale(var(--st-s, 1));
   opacity: var(--k-fly, 1);
 }
-html.motion .rd-pass-marks,
 html.motion .rd-detail {
   opacity: calc(1 - min(1, var(--k, 0) * 2.2));
+}
+/* The pass markers wait until the first pass has begun (they would sit on the headline otherwise). */
+html.motion .rd-pass-marks {
+  opacity: calc(var(--marks, 0) * (1 - min(1, var(--k, 0) * 2.2)));
 }
 
 /* static figures: 2,340 / 186 / 12 side by side */
@@ -524,6 +533,11 @@ html.motion .rd-detail {
 html.motion .rd-read-root {
   position: absolute;
   inset: 0;
+  /* The layers are full-stage: only the list takes the pointer (row hover), never the hero form's area. */
+  pointer-events: none;
+}
+html.motion .rd-list {
+  pointer-events: auto;
 }
 html.motion .rd-ranked,
 html.motion .rd-reason {
@@ -562,7 +576,7 @@ html.motion .rd-rule {
   opacity: var(--k-head, 0);
 }
 html.motion .rd-list-wrap {
-  transform: scale(calc(1 - 0.04 * var(--j, 0)));
+  transform: translate3d(0, var(--drift, 0px), 0) scale(calc(1 - 0.04 * var(--j, 0)));
   /* Behind the card the list falls well back, so only its rhythm shows through the glass. */
   opacity: calc(1 - 0.8 * var(--j, 0));
 }
@@ -603,8 +617,16 @@ html.motion .acts-illus {
   left: 0;
   bottom: 0;
   z-index: 1;
-  padding-left: max(clamp(24px, 3.4vw, 48px), calc((100% - 1240px) / 2));
+  /* One rule for Acts I–III (review P2-7): 48px from the left, 20px on small screens. */
+  padding-left: 48px;
   pointer-events: none;
+}
+@media (max-width: 767px) {
+  .acts-illus,
+  html.motion .acts-illus {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
 }
 
 /* ══ static page (reduced motion, no JS) ═══════════════════════════════ */

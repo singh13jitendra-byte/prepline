@@ -232,18 +232,19 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   justify-content: center;
 }
 .bd-ph {
-  height: 52px;
+  height: 58px;
   flex: none;
 }
 .bd-ghost-li {
   flex: none;
 }
 .bd-ghost {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 52px;
-  padding: 0 10px 0 9px;
+  height: 58px;
+  padding: 0 10px 0 11px;
   border-radius: 12px;
   background: var(--color-paper);
   border: 1px solid var(--color-line);
@@ -272,11 +273,20 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   display: flex;
   flex-direction: column;
 }
-.bd-ghost-title,
 .bd-ghost-co {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* Titles wrap to two lines at word boundaries; they never cut mid-word. */
+.bd-ghost-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 .bd-ghost-title {
   font-size: 11px;
@@ -290,15 +300,19 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   color: var(--color-muted);
 }
 .bd-ghost-score {
-  flex: none;
-  max-width: 0;
-  overflow: hidden;
+  position: absolute;
+  right: 9px;
+  bottom: 8px;
   opacity: 0;
+  transform: translateY(3px);
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--color-paper);
   font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   transition:
-    max-width 0.45s var(--ease-out-expo),
+    transform 0.45s var(--ease-out-expo),
     opacity 0.45s var(--ease-out-expo);
 }
 @media (hover: hover) {
@@ -308,7 +322,7 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
     transition-duration: 0.2s;
   }
   .bd-ghost:hover .bd-ghost-score {
-    max-width: 40px;
+    transform: none;
     opacity: 1;
     transition-duration: 0.2s;
   }
@@ -325,13 +339,17 @@ html.motion .bd-root > .bd-grid {
   padding-top: clamp(40px, 6svh, 64px);
 }
 html.motion .bd-copy {
-  opacity: calc(1 - var(--rc));
-  transform: translate3d(0, calc(var(--rc) * -10px), 0);
+  opacity: calc(1 - var(--copy-out, 0));
+  transform: translate3d(0, calc(var(--copy-out, 0) * -10px), 0);
 }
 html.motion .bd-obj {
-  transform: scale(calc(1 - 0.08 * var(--rc)));
-  opacity: calc(1 - 0.88 * var(--rc));
+  position: relative;
+  /* Steps back at the hinge, then keeps receding slowly while the sentence is read. */
+  transform: scale(calc(1 - 0.08 * var(--rc, 0) - 0.03 * var(--rc2, 0)));
   transform-origin: 50% 50%;
+}
+html.motion .bd-obj > :not(.bd-glow) {
+  opacity: calc(1 - 0.9 * var(--rc, 0));
 }
 html.motion .bd-col-h {
   opacity: var(--draw);
@@ -342,6 +360,144 @@ html.motion .bd-col-hair {
 }
 html.motion .bd-ghost {
   opacity: 0;
+}
+
+/* ══ the lit time-lapse ════════════════════════════════════════════════ */
+
+/* The week strip: a clock riding a "now" dot above a five-day axis (the `board-days` anchor). */
+.bd-days {
+  position: relative;
+  margin: 0 4px 12px;
+  --now: 0.07;
+}
+.bd-days-now {
+  position: relative;
+  height: 16px;
+}
+.bd-days-clock {
+  position: absolute;
+  bottom: 3px;
+  left: clamp(0px, calc(var(--now) * 100% - 4ch), calc(100% - 9ch));
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "case";
+  white-space: nowrap;
+  color: var(--color-ink);
+}
+.bd-days-axis {
+  position: relative;
+  height: 1px;
+  background: var(--color-line);
+}
+.bd-days-axis::before {
+  /* Hour ticks every 6h, day ticks taller. */
+  content: "";
+  position: absolute;
+  inset: -3px 0 0;
+  background:
+    repeating-linear-gradient(to right, var(--color-line) 0 1px, transparent 1px 20%) 0 0 / 100% 7px no-repeat,
+    repeating-linear-gradient(to right, rgba(27, 25, 22, 0.1) 0 1px, transparent 1px 5%) 0 3px / 100% 4px no-repeat;
+}
+.bd-days-dot {
+  position: absolute;
+  top: -3px;
+  left: calc(var(--now) * 100% - 3.5px);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-ink);
+  box-shadow: 0 0 0 3px var(--color-canvas);
+}
+.bd-days-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 7px;
+}
+.bd-day {
+  padding-left: 4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-feature-settings: "case";
+  color: var(--color-muted);
+  transition: color 0.4s var(--ease-out-expo);
+}
+.bd-root[data-today="0"] .bd-day[data-day="0"],
+.bd-root[data-today="1"] .bd-day[data-day="1"],
+.bd-root[data-today="2"] .bd-day[data-day="2"],
+.bd-root[data-today="3"] .bd-day[data-day="3"],
+.bd-root[data-today="4"] .bd-day[data-day="4"] {
+  color: var(--color-ink);
+}
+
+/* The light: a warm pool that crosses the board with the time of day, cooler at night. */
+.bd-sun {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 120% at var(--sun-x, 20%) var(--sun-y, 60%), rgba(255, 186, 102, calc(0.36 * var(--sun-a, 0.5))), rgba(255, 214, 160, calc(0.12 * var(--sun-a, 0.5))) 45%, transparent 75%),
+    linear-gradient(rgba(36, 52, 92, calc(0.07 * var(--night, 0))), rgba(36, 52, 92, calc(0.07 * var(--night, 0))));
+}
+.bd-board-title,
+.bd-cols {
+  position: relative;
+}
+/* Column floors are a tint over the lit board, and warm as the tile passes over them. */
+.bd-col {
+  background: rgba(27, 25, 22, 0.035);
+  --warm: 0;
+}
+.bd-col::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(255, 176, 92, 0.3), rgba(255, 196, 128, 0.08) 55%, transparent 85%);
+  opacity: var(--warm);
+}
+.bd-col > * {
+  position: relative;
+}
+/* The Interview glow: amber from the `col-interview` rule down. Outside the board's fade. */
+.bd-glow {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 18px;
+  background: radial-gradient(90% 70% at 50% 8%, rgba(255, 168, 64, 0.5), rgba(255, 186, 102, 0.18) 45%, transparent 75%);
+  opacity: var(--glow, 0);
+  mix-blend-mode: multiply;
+}
+
+/* Ledger odometer: digits roll on a strip. */
+.bd-odo {
+  display: inline-flex;
+}
+.bd-odo-d {
+  display: inline-block;
+  height: 1.2em;
+  overflow: clip;
+  opacity: calc(1 - 0.65 * var(--lead, 0));
+}
+.bd-odo-s {
+  display: flex;
+  flex-direction: column;
+  transform: translate3d(0, calc(var(--pos, 0) * -1.2em), 0);
+}
+.bd-odo-s > span {
+  display: block;
+  height: 1.2em;
+  line-height: 1.2em;
 }
 
 /* ══ hinge ═════════════════════════════════════════════════════════════ */
@@ -520,6 +676,7 @@ html:not(.motion) .bd-float {
   }
   .bd-ghost {
     height: 6px;
+    min-height: 0;
     width: 34px;
     padding: 0;
     border-radius: 3px;
@@ -541,7 +698,7 @@ html:not(.motion) .bd-float {
     height: auto;
   }
   html:not(.motion) .bd-ghost {
-    height: 44px;
+    height: 52px;
     padding: 0 10px;
     border: 1px solid var(--color-line);
     background: var(--color-paper);

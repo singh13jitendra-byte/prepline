@@ -41,7 +41,7 @@ export function CardFace({ host }: FaceProps) {
 
   useEffect(() => {
     if (story.reduced()) return;
-    const last = { score: -1, meter: -1, c: [-1, -1, -1], caret: -1 };
+    const last = { score: -1, meter: -1, c: [-1, -1, -1], caret: -1, f: ["", "", ""] };
     const write = () => {
       const score = Math.round(cardShow.score * 10) / 10;
       if (score !== last.score) {
@@ -54,6 +54,17 @@ export function CardFace({ host }: FaceProps) {
       if (cardShow.meter !== last.meter) {
         last.meter = cardShow.meter;
         if (fillRef.current) fillRef.current.style.transform = `scaleX(${cardShow.meter.toFixed(4)})`;
+      }
+      // Breath: each reason is read in turn (an underline runs under the chip being read).
+      for (let i = 0; i < 3; i++) {
+        const f = cardShow.focus < 0 ? "0" : Math.max(0, Math.min(1, cardShow.focus - i)).toFixed(3);
+        if (f === last.f[i]) continue;
+        last.f[i] = f;
+        const chip = chipRefs.current[i];
+        if (chip) {
+          chip.style.setProperty("--read", f);
+          chip.toggleAttribute("data-reading", cardShow.focus >= i && cardShow.focus < i + 1);
+        }
       }
       const typed = [cardShow.c0, cardShow.c1, cardShow.c2];
       for (let i = 0; i < 3; i++) {

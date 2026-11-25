@@ -32,12 +32,18 @@ import { registerAnchor, useAnchor, type AnchorId } from "@/lib/anchors";
 import { usePerformance } from "@/lib/perform";
 import { ACTOR_TRACK, BEATS, story, type BeatId, type StoryState } from "@/lib/story";
 import { getRow1Hover, RowView, setRow1Hover } from "./RowView";
-import { cardShow, offsetIn, span, useActorExtra, usePerformanceAt, useScrub } from "./runtime";
+import { cardShow, offsetIn, setMask, softAbove, span, useActorExtra, usePerformanceAt, useScrub } from "./runtime";
 
-/** Seconds after `ranked` entry at which row 1 lands. */
-export const RANK_LAND_START = 0.3;
+/**
+ * Flight contract with the World (review P1-W3): gold speck i leaves at 0.05·i s, flies 0.55 s
+ * and lands as a full-row bar at 0.55 + 0.05·i s. DOM row i fades in over it at
+ * RANK_LAND_START + i * RANK_STAGGER = 0.65 + 0.05·i s, over RANK_FADE.
+ */
+export const RANK_LAND_START = 0.65;
 /** Seconds between rows landing. */
-export const RANK_STAGGER = 0.04;
+export const RANK_STAGGER = 0.05;
+/** Seconds each DOM row takes to fade in over its landed bar. */
+export const RANK_FADE = 0.18;
 /** Beat progress at which the reason card finishes its travel (ACTOR_TRACK.reason.range[1]). */
 const REASON_AT = ACTOR_TRACK.reason?.range?.[1] ?? 0.35;
 const BIRTH = ACTOR_TRACK.ranked?.fadeIn ?? [0.22, 0.34];
@@ -175,17 +181,26 @@ export function ReadPanel() {
       if (el && el.style.getPropertyValue(prop) !== v) el.style.setProperty(prop, v);
     };
 
-    // Hero: the counter is revealed below the rising Line.
+    // Hero: the counter inks in below the rising Line (a 24px soft edge, not a guillotine),
+    // and rises 12vh to its rest while it does, so it never sits under the outgoing headline.
     const h = through(s, "hero");
     const i = idx(s.beat);
     const revealing = i === I.hero;
-    set(pass, "--reveal-clip", revealing ? (h > 0.22 ? `inset(${s.line.y.toFixed(1)}px 0 0 0)` : "inset(100% 0 0 0)") : "none");
-    set(pass, "--reveal-a", revealing ? span(h, 0.22, 0.36).toFixed(4) : "1");
+    const ly = s.line.y;
+    const mask = !revealing ? "none" : h > 0.22 ? `linear-gradient(to bottom, transparent ${ly.toFixed(1)}px, #000 ${(ly + 24).toFixed(1)}px)` : "linear-gradient(transparent, transparent)";
+    if (pass.dataset.mask !== mask) {
+      pass.dataset.mask = mask;
+      pass.style.setProperty("-webkit-mask-image", mask);
+      pass.style.setProperty("mask-image", mask);
+    }
+    set(pass, "--reveal-a", revealing ? span(h, 0.22, 0.4).toFixed(4) : "1");
+    set(pass, "--reveal-y", `${(revealing ? (1 - span(h, 0.3, 1)) * 0.12 * s.viewport.h : 0).toFixed(2)}px`);
 
     // The count, exact to the Line.
     const p1 = through(s, "pass1");
     const p2 = through(s, "pass2");
-    const value = p2 > 0 ? fig.level - (fig.level - fig.fit) * p2 : fig.read - (fig.read - fig.level) * p1;
+    // Clamped for the first 2% so a landing a hair inside the beat still reads 2,340 (review P2-3).
+    const value = p2 > 0 ? fig.level - (fig.level - fig.fit) * p2 : fig.read - (fig.read - fig.level) * span(p1, 0.02, 1);
     const n = Math.round(value);
     const d = digitsRef.current;
     if (d && d.dataset.n !== String(n)) {
@@ -195,6 +210,7 @@ export function ReadPanel() {
     }
     set(pass, "--p1", p1.toFixed(4));
     const which = i <= I.hero ? "0" : p1 >= 1 ? "2" : "1";
+    set(pass, "--marks", span(p1, 0.05, 0.14).toFixed(4));
     if (pass.dataset.pass !== which) pass.dataset.pass = which;
     set(pass, "--p2", p2.toFixed(4));
 
@@ -222,10 +238,17 @@ export function ReadPanel() {
       set(row1, "--birth", birth.toFixed(4));
     }
 
+    // Daybreak: the night copy inks out through a 24px soft edge above the rising Line.
+    setMask(root, s.line.sweep && s.beat === "daybreak" ? softAbove(s.line.y) : "none");
+
     // Reason: the list falls back, the copy swaps.
     const q = through(s, "reason");
     const j = span(q, 0, REASON_AT);
     set(root, "--j", j.toFixed(4));
+    // Breath: the list keeps drifting up through ranked and reason, so no scroll step is still.
+    set(root, "--drift", `${(10 - 22 * span(r, 0.15, 1) - 10 * q).toFixed(2)}px`);
+    // Reason breath: after the card lands, its chips are read one by one.
+    cardShow.focus = i === I.reason && q >= REASON_AT ? span(q, REASON_AT + 0.08, 0.98) * 3 : i > I.reason ? 3 : -1;
     set(root, "--out", span(q, 0, 0.12).toFixed(4));
     set(root, "--in", span(q, 0.08, 0.22).toFixed(4));
     set(root, "--in2", span(q, 0.13, 0.27).toFixed(4));
@@ -264,12 +287,7 @@ export function ReadPanel() {
     const rows = Array.from(list.querySelectorAll<HTMLElement>("[data-row-in]"));
     rows.forEach((el, n) => {
       const at = RANK_LAND_START + n * RANK_STAGGER;
-      tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.18, ease: "power1.out" }, at).fromTo(
-        el,
-        { clipPath: "inset(0% calc(100% - 26px) 0% 0% round 12px)" },
-        { clipPath: "inset(0% 0% 0% 0% round 12px)", duration: 0.42, ease: "expo.out" },
-        at,
-      );
+      tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: RANK_FADE, ease: "power1.out" }, at);
     });
   });
 
@@ -289,21 +307,25 @@ export function ReadPanel() {
   /* ── pointer: card tilt (reason), row-1 lift (ranked) ── */
   useActorExtra((s) => {
     if (s.beat === "ranked") return getRow1Hover() ? { ty: -2 } : null;
-    if (s.beat !== "reason" || s.beatProgress < REASON_AT || !s.pointer.fine || !s.actor.present) return null;
+    if (s.beat !== "reason" || s.beatProgress < REASON_AT || !s.actor.present) return null;
+    // Breath: a slow dolly (rotateY −3° → 3°) with a specular band sweeping across the glass.
+    const b = span(s.beatProgress, REASON_AT, 1);
+    const dolly = { rx: 0, ry: -3 + 6 * b, spec: 0.75, specX: -15 + 130 * b, specY: 20 + 30 * b };
     const { x, y, w, h } = s.actor;
-    if (!s.pointer.inside || w < 1) return { rx: 0, ry: 0 };
+    if (!s.pointer.fine || !s.pointer.inside || w < 1) return dolly;
     const nx = (s.pointer.x - (x + w / 2)) / (w / 2);
     const ny = (s.pointer.y - (y + h / 2)) / (h / 2);
     const reach = Math.max(Math.abs(nx), Math.abs(ny));
     const falloff = reach <= 1 ? 1 : Math.max(0, 1 - (reach - 1) / 0.6);
     const cx = Math.max(-1, Math.min(1, nx));
     const cy = Math.max(-1, Math.min(1, ny));
+    if (falloff <= 0) return dolly;
     return {
       rx: -cy * 7 * falloff,
-      ry: cx * 9 * falloff,
-      spec: reach <= 1 ? 1 : 0,
-      specX: 50 + cx * 50,
-      specY: 50 + cy * 50,
+      ry: dolly.ry * (1 - falloff) + cx * 9 * falloff,
+      spec: reach <= 1 ? 1 : dolly.spec,
+      specX: reach <= 1 ? 50 + cx * 50 : dolly.specX,
+      specY: reach <= 1 ? 50 + cy * 50 : dolly.specY,
     };
   });
 
@@ -347,10 +369,10 @@ export function ReadPanel() {
                 </span>
               </p>
               <p className="rd-detail" aria-hidden="true">
-                <span className="rd-swap" data-swap-out="1">
+                <span className="rd-swap" data-swap-out="2">
                   {storyCopy.pass1.detail}
                 </span>
-                <span className="rd-swap" data-swap-in="1">
+                <span className="rd-swap" data-swap-in="2">
                   {storyCopy.pass2.detail}
                 </span>
               </p>

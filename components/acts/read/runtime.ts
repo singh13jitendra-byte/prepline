@@ -119,6 +119,18 @@ export function offsetIn(el: HTMLElement, root: HTMLElement): { x: number; y: nu
   return { x, y, w: el.offsetWidth, h: el.offsetHeight };
 }
 
+/** Mask that keeps what is below viewport y, with a 24px soft edge (for copy the Line is wiping). */
+export const softBelow = (y: number) => `linear-gradient(to bottom, transparent ${y.toFixed(1)}px, #000 ${(y + 24).toFixed(1)}px)`;
+/** Mask that keeps what is above viewport y, with a 24px soft edge. */
+export const softAbove = (y: number) => `linear-gradient(to bottom, #000 ${(y - 24).toFixed(1)}px, transparent ${y.toFixed(1)}px)`;
+/** Write a mask-image (both spellings) only when it changes. */
+export function setMask(el: HTMLElement, mask: string) {
+  if (el.dataset.mask === mask) return;
+  el.dataset.mask = mask;
+  el.style.setProperty("-webkit-mask-image", mask);
+  el.style.setProperty("mask-image", mask);
+}
+
 export const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 /** Map v from [a, b] to [0, 1], clamped. */
 export const span = (v: number, a: number, b: number) => clamp01((v - a) / (b - a || 1));
@@ -241,7 +253,7 @@ export function useActorExtra(fn: Contributor, deps: DependencyList = []) {
  * Server and reduced-motion markup show the end state; in motion mode these
  * start at zero and the performance fills them.
  */
-export const cardShow = { score: 0, meter: 0, c0: 0, c1: 0, c2: 0, caret: 0 };
+export const cardShow = { score: 0, meter: 0, c0: 0, c1: 0, c2: 0, caret: 0, focus: -1 };
 /** The end state, for markup that renders before any frame runs. */
 export const CARD_FULL = { score: 9, meter: 0.9 };
 
