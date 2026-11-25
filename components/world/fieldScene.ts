@@ -12,7 +12,8 @@ import { LENS_RADIUS } from "./bus";
  *   pass 1      read = its own screen y against the line's y (uT1). Dropped specks flare,
  *               dim to 7% and sink. Kept ones come into focus and snap to the 48px grid.
  *   pass 2      the kept are read again from below (uT2): 12 turn gold, the rest dim
- *   ranked      the 12 fly an arc to the live row rects (uRows) and stretch into bars
+ *   ranked      the 12 fly an arc to the left end of the live row rects (uRows) and become the
+ *               pill each DOM row grows from
  *   day / prep  the lattice lets go and everything is dust: ink on day, lamp-lit at night
  *
  * The fragment shader draws a signed-distance rounded box (a disc is a box with
@@ -24,7 +25,15 @@ export const GRID = 48;
 const SPREAD = 1.1;
 /** The dolly the grid is fitted for (the field's push-in during the passes). */
 export const PASS_DOLLY = 0.13;
-export const FLIGHT = 0.46;
+/**
+ * Flight timing, matched to the Act I rows (components/acts/read/ReadPanel.tsx):
+ * row i lands at RANK_LAND_START (0.3s) + i * RANK_STAGGER (0.04s) after `ranked` entry,
+ * then fades in over 0.18s while it grows rightward from a 26px pill at its left end.
+ * So speck i leaves at i * STAGGER, flies FLIGHT seconds to that pill, and fades as the row arrives.
+ */
+export const FLIGHT = 0.3;
+/** Width of the pill each DOM row grows from. The speck lands as exactly this pill. */
+export const ROW_PILL = 26;
 export const STAGGER = 0.04;
 export const LAND_FADE = 0.18;
 export const BIG = 1e6;
@@ -291,7 +300,7 @@ const vert = /* glsl */ `
         rad = min(mix(radius, uRowR, shape), min(box.x, box.y));
         halo *= 1.0 - shape;
         border = shape;
-        alpha = mix(1.0, 0.16, shape);
+        alpha = mix(1.0, 0.5, shape);
         float landed = clamp((uGatherT - rank * ${STAGGER.toFixed(2)} - ${FLIGHT.toFixed(2)}) / ${LAND_FADE.toFixed(2)}, 0.0, 1.0);
         gone = rank < 0.5 ? uLand1 : mix(landed, clamp(uGatherT / 0.3, 0.0, 1.0), 1.0 - has);
       }
