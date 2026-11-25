@@ -11,12 +11,18 @@
  *     <ActSeat />
  *   </StoryRoot>
  *
+ * DOM order is world, chrome, acts, Actor: chrome comes before the acts so the
+ * nav and beat rail are reached by Tab before the story's controls. `world` and
+ * `chrome` are each wrapped in a <LineScope> (display: contents), which is where
+ * --line-y / --day-top are written. The nav <header> is a page landmark and
+ * lives outside <main> in app/page.tsx, in its own <LineScope>.
+ *
  * Layer order (storyboard 5.1), by the --z-* variables in globals.css:
  *   world    ChapterBackdrop (--z-backdrop) and WorldCanvas (--z-world), fixed, behind the acts
  *   children the four act sections in document flow (--z-acts)
  *   Actor    fixed, aria-hidden, inert (--z-actor); mounted here
  *   world    the Line (--z-line) is part of <World /> too: give it that z-index
- *   chrome   nav, beat rail, lens label (--z-nav)
+ *   chrome   beat rail, lens label (--z-nav)
  * Fixed layers must not create a wrapper with its own stacking context, or the
  * z-order above breaks: return a fragment of fixed elements.
  *
@@ -39,8 +45,9 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { webglAvailable } from "@/lib/gl";
 import { ScrollTrigger } from "@/lib/gsap";
-import { ACTS, panelIsCurrent, stageIsActive, story, type ActId, type BeatId } from "@/lib/story";
+import { ACTS, beatOf, panelIsCurrent, stageIsActive, story, type ActId, type BeatId } from "@/lib/story";
 import { Actor } from "./Actor";
+import { LineScope } from "./LineScope";
 
 type Props = {
   children: ReactNode;
@@ -98,6 +105,17 @@ export function StoryRoot({ children, world, chrome }: Props) {
     apply(story.get().beat);
     const offBeat = story.onBeatChange(apply);
 
+    /* ── wipes: clip each stage to its side of the line (inline, so no CSS variable restyles the acts) ── */
+    const stages = [...root.querySelectorAll<HTMLElement>(".story-stage")].map((el) => ({ el, night: el.dataset.chapter === "night", last: "" }));
+    const offClip = story.subscribe((s) => {
+      const wipe = beatOf(s.beat).kind === "wipe";
+      for (let i = 0; i < stages.length; i++) {
+        const st = stages[i];
+        const clip = !wipe ? "" : st.night ? `inset(0 0 ${Math.max(0, s.viewport.h - s.dayTop).toFixed(1)}px 0)` : `inset(${s.dayTop.toFixed(1)}px 0 0 0)`;
+        if (clip !== st.last) st.el.style.clipPath = st.last = clip;
+      }
+    });
+
     /* ── focus → scroll its beat into place ── */
     const onFocusIn = (e: FocusEvent) => {
       const panel = (e.target as HTMLElement | null)?.closest<HTMLElement>(".story-panel");
@@ -135,6 +153,8 @@ export function StoryRoot({ children, world, chrome }: Props) {
       document.removeEventListener("click", onClick);
       root.removeEventListener("focusin", onFocusIn);
       offBeat();
+      offClip();
+      stages.forEach((st) => (st.el.style.clipPath = ""));
       triggers.forEach((t) => t.kill());
       stop();
     };
@@ -142,10 +162,11 @@ export function StoryRoot({ children, world, chrome }: Props) {
 
   return (
     <div ref={rootRef} className="story-root">
-      {world}
+      <LineScope>{world}</LineScope>
+      {/* Before the acts in the DOM, so chrome comes first in the tab order. Painting order is by z-index. */}
+      <LineScope>{chrome}</LineScope>
       {children}
       <Actor />
-      {chrome}
       {DebugOverlay ? <DebugOverlay /> : null}
     </div>
   );

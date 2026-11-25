@@ -13,8 +13,8 @@
  * - Box = interpolation of the beat's from and to anchor rects (x, y, width,
  *   height, radius), plus a low arc perpendicular to travel and a lean into it.
  *   Travel is scrubbed (linear in beat progress) or timed (cubic-bezier(0.65,0,0.15,1)).
- * - Faces: the from-face crossfades to the to-face at travel midpoint with a
- *   4px blur dip, or flips on rotateY when the move has a `flip` channel.
+ * - Faces: the from-face crossfades to the to-face at travel midpoint (t 0.45..0.55)
+ *   with a 2px blur dip (only while the box is 300px wide or less), or flips on rotateY when the move has a `flip` channel.
  *   Each face is scaled uniformly from its natural size to the box width.
  * - Skins: outside wipes one skin is shown. While the line sweeps, both are
  *   stacked and each is clipped at the line (state.dayTop), so the Actor is cut
@@ -58,6 +58,8 @@ type Clock = { travel: number; fold: number; flip: number };
 const DEFAULT_ARC = 0.06;
 const DEFAULT_LEAN = 4;
 const FAR = 4000;
+/** Faces wider than this are never blurred. */
+const BLUR_MAX_W = 300;
 
 function facesFor(move: ActorMove | undefined): FaceId[] {
   if (!move) return [];
@@ -255,9 +257,16 @@ export function Actor() {
       put("lift", root, "--lift", bump.toFixed(3));
       put("flip", flipEl, "transform", move.flip ? `rotateY(${(flip * 180).toFixed(2)}deg)` : "none");
 
-      const mix = faceFrom ? clamp01((t - 0.4) / 0.2) : 1;
-      const blur = faceFrom && !move.flip ? 4 * Math.sin(Math.PI * clamp01((t - 0.25) / 0.5)) : 0;
+      // A short crossfade (t 0.45..0.55) with a 2px blur dip (t 0.42..0.58). Big faces are never blurred:
+      // re-rastering a 560x720 sheet every frame costs more than the dip is worth.
+      const mix = faceFrom ? clamp01((t - 0.45) / 0.1) : 1;
+      const blur = faceFrom && !move.flip && w <= BLUR_MAX_W ? 2 * Math.sin(Math.PI * clamp01((t - 0.42) / 0.16)) : 0;
       put("blur", root, "filter", blur > 0.05 ? `blur(${blur.toFixed(2)}px)` : "none");
+      const moving = t > 0 && t < 1 ? "1" : "";
+      if (last.get("moving") !== moving) {
+        last.set("moving", moving);
+        root.toggleAttribute("data-moving", moving === "1");
+      }
 
       const nightOn = s.dayTop > 0;
       const dayOn = s.dayTop < vh;
