@@ -65,7 +65,7 @@ export function buildField(small: boolean): FieldData {
     all.push({
       x: (c + 0.08 + rand() * 0.84) / cols - 0.5,
       y: (r + 0.08 + rand() * 0.84) / rows - 0.5,
-      z: rand(),
+      z: Math.pow(rand(), 1.45), // more far and faint than near and bright
       seed: rand(),
       kind: 0,
       rank: 0,
@@ -183,7 +183,7 @@ const vert = /* glsl */ `
   varying vec3 vFx; // halo, border, day alpha
 
   const float PI = 3.14159265;
-  const vec3 WARM = vec3(1.0, 0.955, 0.87);
+  const vec3 WARM = vec3(1.0, 0.94, 0.82);
   const vec3 COOL = vec3(0.80, 0.89, 1.0);
   const vec3 GOLD = vec3(1.0, 0.843, 0.478);
   const vec3 LAMP = vec3(1.0, 0.80, 0.56);
@@ -230,12 +230,12 @@ const vert = /* glsl */ `
     float far = clamp((0.3 - z) / 0.3, 0.0, 1.0);
     float blur = near * near * 8.5 + far * far * 1.4;
     float r0 = mix(0.75, 2.0, z) + h4 * 0.35;
-    float a0 = mix(0.30, 0.95, smoothstep(0.0, 0.75, z)) * (0.88 + 0.12 * sin(uTime * (0.6 + h2) + h1 * 40.0));
+    float a0 = mix(0.34, 1.0, smoothstep(0.0, 0.7, z)) * (0.88 + 0.12 * sin(uTime * (0.6 + h2) + h1 * 40.0));
 
     vec2 P = P0;
     float radius = r0;
     float alpha = a0;
-    vec3 col = mix(WARM, COOL, step(0.72, h3) * 0.8);
+    vec3 col = mix(WARM, COOL, step(0.8, h3) * 0.75);
     float halo = 0.0;
     float border = 0.0;
     vec2 box = vec2(0.0);

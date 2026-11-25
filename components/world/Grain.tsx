@@ -28,7 +28,7 @@ export function Grain() {
         const v = rand() < 0.5 ? 0 : 255;
         const a = rand();
         img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v;
-        img.data[i * 4 + 3] = Math.round(a * 14);
+        img.data[i * 4 + 3] = Math.round(a * 10);
       }
       ctx.putImageData(img, 0, 0);
       el.style.backgroundImage = `url(${c.toDataURL("image/png")})`;

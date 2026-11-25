@@ -13,7 +13,7 @@
  */
 
 import { ChapterBackdrop } from "./ChapterBackdrop";
-import { CssField, DENSE_A } from "./CssField";
+import { CssField, STATIC_DOTS } from "./CssField";
 import { Lens } from "./Lens";
 import { Line } from "./Line";
 import { WorldCanvas } from "./WorldCanvas";
@@ -49,7 +49,7 @@ html.world-on .cf{opacity:0;visibility:hidden}
 .world-lens{position:fixed;top:0;left:0;z-index:var(--z-nav);pointer-events:none;border-radius:50%;border:1px solid #fff;will-change:transform,opacity}
 .world-lens-label{position:fixed;top:0;left:0;z-index:var(--z-nav);pointer-events:none;white-space:nowrap;font-family:var(--font-mono);font-size:11px;line-height:1;color:rgba(255,255,255,.88);background:rgba(6,18,38,.74);border:1px solid rgba(255,255,255,.14);border-radius:7px;padding:6px 8px;will-change:transform,opacity}
 
-html:not(.motion) .story-stage[data-chapter="night"]{background-image:${DENSE_A},radial-gradient(120% 90% at 50% 0%,var(--color-night) 0%,var(--color-night-2) 100%)}
+html:not(.motion) .story-stage[data-chapter="night"]{background-image:${STATIC_DOTS},radial-gradient(120% 90% at 50% 0%,var(--color-night) 0%,var(--color-night-2) 100%)}
 html:not(.motion) [data-anchor="hero-underline"]{background:var(--color-gold);min-height:2px;border-radius:2px}
 html:not(.motion) [data-anchor="ready-underline"]{background:var(--color-accent);min-height:2px;border-radius:2px}
 `;

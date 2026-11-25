@@ -27,7 +27,7 @@ function rng(seed: number) {
 const esc = (svg: string) => `url("data:image/svg+xml,${svg.replace(/"/g, "'").replace(/#/g, "%23").replace(/</g, "%3C").replace(/>/g, "%3E")}")`;
 
 /** Zero-length round-capped strokes are the cheapest dots SVG has. */
-function denseTile(size: number, count: number, seed: number) {
+function denseTile(size: number, count: number, seed: number, opacity = 1) {
   const rand = rng(seed);
   const groups = ["", "", ""];
   const cols = Math.ceil(Math.sqrt(count));
@@ -38,7 +38,7 @@ function denseTile(size: number, count: number, seed: number) {
     groups[g < 0.5 ? 0 : g < 0.85 ? 1 : 2] += `M${x} ${y}h0`;
   }
   return esc(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" fill="none" stroke="#fff6e3" stroke-linecap="round">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" fill="none" stroke="#fff6e3" stroke-linecap="round" opacity="${opacity}">` +
       `<path d="${groups[0]}" stroke-width="1.6" opacity=".4"/><path d="${groups[1]}" stroke-width="2.6" opacity=".62"/><path d="${groups[2]}" stroke-width="3.8" opacity=".85"/></svg>`,
   );
 }
@@ -50,9 +50,11 @@ function gridTile(seed: number) {
   return esc(`<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480" fill="none" stroke="#fff6e3" stroke-linecap="round"><path d="${d}" stroke-width="3.8"/></svg>`);
 }
 
-export const DENSE_A = denseTile(293, 86, 11);
-export const DENSE_B = denseTile(367, 118, 29);
-export const GRID_TILE = gridTile(7);
+const DENSE_A = denseTile(293, 86, 11);
+const DENSE_B = denseTile(367, 118, 29);
+const GRID_TILE = gridTile(7);
+/** The still dot texture of the night panels on the static (reduced-motion) page. */
+export const STATIC_DOTS = `${denseTile(293, 44, 11, 0.4)}, ${denseTile(367, 64, 29, 0.4)}`;
 const dense = { backgroundImage: `${DENSE_A}, ${DENSE_B}` };
 const grid = { backgroundImage: GRID_TILE, backgroundPosition: "50% 50%" };
 
