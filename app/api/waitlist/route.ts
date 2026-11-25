@@ -1,12 +1,5 @@
 import { NextResponse } from "next/server";
-
-// Waitlist endpoint. For the beta, swap the console.log for a Supabase insert, e.g.:
-//
-//   import { createClient } from "@supabase/supabase-js";
-//   const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-//   await supabase.from("waitlist").insert({ email });
-//
-// Keep the service-role key server-side only (Vercel env vars), never in client code.
+import { getSupabase } from "@/lib/supabase";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -22,6 +15,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid email" }, { status: 400 });
   }
 
-  console.log("[waitlist] new signup:", email);
+  const supabase = getSupabase();
+  if (!supabase) {
+    // Not configured yet (e.g. local dev without .env.local): keep the form usable.
+    console.warn("[waitlist] Supabase env vars missing; signup not stored:", email);
+    return NextResponse.json({ ok: true, stored: false });
+  }
+
+  const { error } = await supabase.from("waitlist").insert({ email, source: "landing" });
+
+  // 23505 = unique violation: they're already on the list, which is fine.
+  if (error && error.code !== "23505") {
+    console.error("[waitlist] insert failed:", error.code, error.message);
+    return NextResponse.json({ error: "Could not save" }, { status: 500 });
+  }
+
   return NextResponse.json({ ok: true });
 }
