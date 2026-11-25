@@ -5,8 +5,8 @@
  * real acts and the world land. Delete this file at integration.
  *
  * Each real act replaces one stub and must keep: the same <Stage act>, the same
- * anchor ids, and real DOM faces in <FaceSlot>s. Until <World /> exists the
- * stub stages paint their own night/day background and StubLine draws the line.
+ * anchor ids, and real DOM faces in <FaceSlot>s. The night and day backgrounds
+ * and the line come from <World />.
  */
 
 import { useEffect, useRef } from "react";
@@ -46,8 +46,8 @@ function Readout({ act }: { act: string }) {
 }
 
 const STUB_CSS = `
-        html.motion .stub-stage[data-chapter="night"]{background:var(--color-night);color:#fff}
-        html.motion .stub-stage[data-chapter="day"]{background:var(--color-canvas);color:var(--color-ink)}
+        html.motion .stub-stage[data-chapter="night"]{color:#fff}
+        html.motion .stub-stage[data-chapter="day"]{color:var(--color-ink)}
         html:not(.motion) .stub-stage .story-panel{padding-top:48px;padding-bottom:48px}
       `;
 
@@ -233,31 +233,6 @@ export function StubPerformances() {
       {BEATS.map((b) => (
         <span key={b.id} data-perf-light={b.id} title={b.id} className="block size-2 rounded-full bg-gold" style={{ opacity: 0.15 }} />
       ))}
-    </div>
-  );
-}
-
-/** A plain gold bar that follows story.line, until the World's <Line /> replaces it. */
-export function StubLine() {
-  const ref = useRef<HTMLDivElement>(null);
-  const labelRef = useRef<HTMLSpanElement>(null);
-  useEffect(
-    () =>
-      story.frame("line", (_t, _dt, s) => {
-        const el = ref.current;
-        if (!el) return;
-        const { x0, x1, y, weight, label } = s.line;
-        el.style.transform = `translate3d(${x0.toFixed(1)}px,${(y - weight / 2).toFixed(1)}px,0)`;
-        el.style.width = `${Math.max(0, x1 - x0).toFixed(1)}px`;
-        el.style.height = `${Math.max(1, weight).toFixed(1)}px`;
-        el.style.background = s.chapter === "night" || s.line.sweep ? "var(--color-gold)" : "var(--color-accent)";
-        if (labelRef.current && labelRef.current.textContent !== label) labelRef.current.textContent = label;
-      }),
-    [],
-  );
-  return (
-    <div ref={ref} aria-hidden="true" data-stub-line className="only-motion pointer-events-none fixed left-0 top-0" style={{ zIndex: "var(--z-line)" }}>
-      <span ref={labelRef} className="type-mono absolute bottom-1.5 right-3 whitespace-nowrap text-gold mix-blend-difference" />
     </div>
   );
 }
