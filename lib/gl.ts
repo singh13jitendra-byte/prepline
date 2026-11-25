@@ -14,6 +14,16 @@ export type SceneSetup = {
 export type GLController = {
   /** Ask for one frame (used when the scene changes without the clock, e.g. on scroll). */
   invalidate: () => void;
+  /**
+   * Draw one frame now. `time` and `dt` are in seconds (`time` is informational:
+   * the scene clock advances by `dt`, clamped, so it never jumps after a pause).
+   * With `external: true` this is the only thing that draws: call it from the
+   * story frame loop. It does nothing while the host is off screen, the tab is
+   * hidden or the context is lost. Pass `dt = 0` to redraw without advancing.
+   */
+  render: (time: number, dt: number) => void;
+  /** Change the pixel-ratio cap at runtime (adaptive quality). Clamped to the device ratio. */
+  setMaxDpr: (maxDpr: number) => void;
   dispose: () => void;
 };
 
@@ -21,6 +31,16 @@ type Options = {
   /** Run a continuous clock while on screen. False = render only on invalidate/resize. */
   animate: boolean;
   maxDpr?: number;
+  /**
+   * Skip the built-in requestAnimationFrame loop. The caller drives drawing by
+   * calling `controller.render(time, dt)` from its own loop:
+   *
+   *   const gl = await mountGL(host, build, { animate: false, external: true });
+   *   const stop = story.frame("world", (time, dt) => gl?.render(time, dt));
+   *
+   * Visibility pause, DPR cap, context-loss handling and disposal are unchanged.
+   */
+  external?: boolean;
 };
 
 export function prefersReducedMotion() {
@@ -49,7 +69,7 @@ export function webglAvailable() {
 export async function mountGL(
   host: HTMLElement,
   build: (THREE: Three, size: { width: number; height: number }, renderer: THREE_NS.WebGLRenderer) => SceneSetup,
-  { animate, maxDpr = 1.75 }: Options,
+  { animate, maxDpr = 1.75, external = false }: Options,
 ): Promise<GLController | null> {
   if (!webglAvailable()) return null;
   const THREE = await import("three");
@@ -98,6 +118,7 @@ export async function mountGL(
   };
 
   const start = () => {
+    if (external) return;
     if (animate && !raf && visible && pageVisible) {
       last = performance.now();
       raf = requestAnimationFrame(loop);
@@ -106,6 +127,7 @@ export async function mountGL(
 
   let pending = 0;
   const invalidate = () => {
+    if (external) return; // the caller's loop draws
     if (animate && raf) return; // the loop will draw anyway
     if (pending) return;
     pending = requestAnimationFrame(() => {
@@ -144,13 +166,38 @@ export async function mountGL(
     e.preventDefault();
     lost = true;
   };
+  const onRestored = () => {
+    lost = false;
+    draw();
+  };
   canvas.addEventListener("webglcontextlost", onLost);
+  canvas.addEventListener("webglcontextrestored", onRestored);
+
+  const render = (_time: number, dt: number) => {
+    if (!visible || !pageVisible || lost) return;
+    const step = Math.min(0.05, Math.max(0, dt));
+    clock += step;
+    setup.update?.(clock, step);
+    renderer.render(setup.scene, setup.camera);
+  };
+
+  const setMaxDpr = (cap: number) => {
+    const next = Math.min(window.devicePixelRatio || 1, cap);
+    if (next === renderer.getPixelRatio()) return;
+    renderer.setPixelRatio(next);
+    const s = size();
+    renderer.setSize(s.width, s.height, false);
+    setup.resize?.(s.width, s.height);
+    draw();
+  };
 
   setup.resize?.(first.width, first.height);
   draw();
 
   return {
     invalidate,
+    render,
+    setMaxDpr,
     dispose() {
       cancelAnimationFrame(raf);
       cancelAnimationFrame(pending);
@@ -158,6 +205,7 @@ export async function mountGL(
       ro.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
       canvas.removeEventListener("webglcontextlost", onLost);
+      canvas.removeEventListener("webglcontextrestored", onRestored);
       setup.dispose?.();
       setup.scene.traverse((o) => {
         const m = o as THREE_NS.Mesh;

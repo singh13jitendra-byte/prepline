@@ -1,29 +1,25 @@
 "use client";
 
 /**
- * One-shot "the hero is revealed" signal. The intro curtain fires it as it lifts
- * (or straight away when the intro is skipped); the headline and the 3D cards
- * start their entrances on it. Late subscribers run immediately.
+ * The intro curtain is gone (storyboard 2.1): the page is scrollable and
+ * complete from the first frame. What is left here:
+ *
+ * - `bootScript`: runs inline in <head> before first paint and decides the
+ *   motion mode once. It puts `motion` on <html> when animation is allowed and
+ *   `reduced` when the visitor prefers reduced motion. Without JS neither class
+ *   is set and the CSS falls back to the same static, stacked page as `reduced`.
+ * - `onReveal` / `reveal`: kept only so the old hero components still compile
+ *   until integration deletes them. Nothing gates on them any more.
  */
 type Fn = () => void;
-let revealed = false;
-const subs = new Set<Fn>();
 
+/** @deprecated Runs `fn` straight away. Delete with Hero.tsx at integration. */
 export function onReveal(fn: Fn): () => void {
-  if (revealed) {
-    fn();
-    return () => {};
-  }
-  subs.add(fn);
-  return () => subs.delete(fn);
+  fn();
+  return () => {};
 }
 
-export function reveal() {
-  if (revealed) return;
-  revealed = true;
-  subs.forEach((f) => f());
-  subs.clear();
-}
+/** @deprecated No-op. Delete with HeroIntro.tsx at integration. */
+export function reveal() {}
 
-/** Runs before first paint (inline in <head>): decides whether to play the intro. */
-export const introBootScript = `(function(){var d=document.documentElement;d.classList.add('hp');try{var r=matchMedia('(prefers-reduced-motion: reduce)').matches;if(!r&&!sessionStorage.getItem('pl-intro'))d.classList.add('intro');}catch(e){}setTimeout(function(){d.classList.remove('hp','intro')},6000)})();`;
+export const bootScript = `(function(){var d=document.documentElement,r=false;try{r=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){r=true}d.classList.add(r?'reduced':'motion')})();`;

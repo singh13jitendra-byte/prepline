@@ -12,9 +12,19 @@
   --color-accent-soft: #fdf0dc;
   --color-accent-line: #f1cf9c;
   --color-night: #0a1e3c;
+  --color-night-2: #061226;
+  --color-paper: #fffdf8;
+  --color-gold: #ffd77a;
+  --color-green: #7ee2a8;
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Motion (storyboard 4). Travel: 0.8s. Entrances: expo.out 0.7 to 0.9s. Exits: power2.in 0.25s. */
+  --ease-travel: cubic-bezier(0.65, 0, 0.15, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-quad: cubic-bezier(0.5, 0, 0.75, 0);
 
   --radius-card: 1.25rem;
   --radius-panel: 1.75rem;
@@ -35,16 +45,6 @@ body {
   color: var(--color-ink);
 }
 
-/* Intro curtain: only shown when the boot script sets html.intro (first visit, JS on, motion allowed). */
-.intro-overlay {
-  display: none;
-}
-html.intro .intro-overlay {
-  display: flex;
-}
-html.intro {
-  overflow: hidden;
-}
 /* Hero pieces wait (invisible) until GSAP has set their starting positions. */
 html.hp [data-hero-hide] {
   visibility: hidden;
@@ -97,5 +97,276 @@ html.hp [data-hero-hide] {
   }
   .caret::after {
     animation: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   STORY FOUNDATION ("One role, read.")
+   Mode is decided once, before first paint, by the boot script in layout.tsx:
+     html.motion   sticky stages, wipes, Actor, smooth scroll
+     html.reduced  (or no class at all: JS off) a calm, static, stacked page
+   Everything animated is scoped to html.motion, so static is the default.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* One story unit. Beat lengths in BEATS are multiplied by this. */
+  --u: 1svh;
+  /* Written every frame by lib/story.ts. Defaults describe the first frame: night, line under "ready.". */
+  --line-y: 58vh;
+  --day-top: 100vh;
+  --day-side: none;
+  /* Layer stack (storyboard 5.1), bottom to top. */
+  --z-backdrop: 0;
+  --z-world: 1;
+  --z-acts: 2;
+  --z-actor: 3;
+  --z-line: 4;
+  --z-nav: 5;
+  --z-debug: 9;
+}
+@media (max-width: 767px) {
+  :root {
+    --u: 0.85svh;
+  }
+}
+
+/* ── type scale (storyboard 4) ── */
+@utility type-display-xl {
+  font-size: clamp(72px, 10.5vw, 168px);
+  line-height: 0.88;
+  letter-spacing: -0.055em;
+  font-weight: 500;
+}
+@utility type-display-l {
+  font-size: clamp(54px, 7.2vw, 118px);
+  line-height: 0.9;
+  letter-spacing: -0.055em;
+  font-weight: 500;
+}
+@utility type-counter {
+  font-size: clamp(96px, 15vw, 240px);
+  line-height: 0.85;
+  letter-spacing: -0.06em;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+@utility type-sentence {
+  font-size: clamp(40px, 5vw, 76px);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+  font-weight: 500;
+}
+@utility type-h2 {
+  font-size: clamp(34px, 4vw, 60px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  font-weight: 500;
+}
+@utility type-lead {
+  font-size: 20px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  font-weight: 400;
+}
+@utility type-body {
+  font-size: clamp(15px, 1.2vw, 17px);
+  line-height: 1.55;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+@utility type-mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+@utility type-card {
+  font-size: 15px;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+  font-weight: 400;
+}
+
+/* ── mode helpers ── */
+html:not(.motion) .only-motion {
+  display: none !important;
+}
+html.motion .only-static {
+  display: none !important;
+}
+
+/* ── acts, stages, panels (components/story/Stage.tsx) ── */
+.story-root {
+  position: relative;
+}
+.story-act {
+  position: relative;
+}
+.story-stage {
+  position: relative;
+}
+.story-panel {
+  position: relative;
+}
+
+html.motion .story-act {
+  height: calc(100svh + var(--act-len) * var(--u));
+  /* Pull up over the previous act: its last screen, its closing wipe and its hidden tail. */
+  margin-top: calc(var(--act-pull) * (-100svh - var(--act-overlap) * var(--u)));
+  z-index: var(--z-acts);
+  pointer-events: none;
+}
+html.motion .story-stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: clip;
+  visibility: hidden;
+  pointer-events: auto;
+}
+html.motion .story-stage[data-active] {
+  visibility: visible;
+}
+/* During a wipe both stages are pinned. Day is always below the line. */
+html.motion[data-wipe] .story-stage[data-chapter="night"] {
+  clip-path: inset(0 0 calc(100% - var(--day-top)) 0);
+}
+html.motion[data-wipe] .story-stage[data-chapter="day"] {
+  clip-path: inset(var(--day-top) 0 0 0);
+}
+html.motion .story-panel {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+}
+html.motion .story-panel[data-current] {
+  visibility: inherit;
+}
+/* Kept in the tab order while off stage: transparent, not hidden. */
+html.motion .story-panel[data-focusable]:not([data-current]) {
+  visibility: visible;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Static page: chapters are plain blocks, night ones as rounded panels on cream. */
+html:not(.motion) .story-stage[data-chapter="night"] {
+  margin: 12px;
+  border-radius: 28px;
+  background: radial-gradient(120% 90% at 50% 0%, var(--color-night) 0%, var(--color-night-2) 100%);
+  color: #fff;
+  overflow: clip;
+}
+
+/* ── faces and the Actor (components/story/Actor.tsx, FaceSlot.tsx) ── */
+[data-skin="night"] {
+  --face-bg: rgba(255, 255, 255, 0.08);
+  --face-fg: #ffffff;
+  --face-muted: rgba(255, 255, 255, 0.7);
+  --face-border: rgba(255, 255, 255, 0.2);
+  --face-accent: var(--color-gold);
+  --face-shadow: none;
+}
+[data-skin="day"] {
+  --face-bg: var(--color-paper);
+  --face-fg: var(--color-ink);
+  --face-muted: var(--color-muted);
+  --face-border: var(--color-line);
+  --face-accent: var(--color-accent);
+  /* Warm and long. It deepens while the Actor is in flight (--lift goes 0, 1, 0). */
+  --face-shadow: 0 calc(40px + 16px * var(--lift, 0)) 80px -50px rgba(27, 25, 22, calc(0.45 + 0.2 * var(--lift, 0)));
+}
+.face {
+  position: absolute;
+  inset: 0;
+  color: var(--face-fg);
+}
+.face-chrome {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--face-radius, 16px);
+  background: var(--face-bg);
+  border: 1px solid var(--face-border);
+  box-shadow: var(--face-shadow);
+}
+.face-clip {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--face-radius, 16px);
+}
+.face-clip[data-clip] {
+  overflow: clip;
+}
+.face-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  transform: scale(var(--face-scale, 1));
+}
+.face-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: repeating-linear-gradient(135deg, rgba(128, 128, 128, 0.28) 0 10px, rgba(128, 128, 128, 0.16) 10px 20px);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--face-fg);
+}
+
+.face-slot {
+  position: relative;
+  width: min(100%, var(--slot-w));
+}
+/* The real face is hidden (but still read and tabbable) until the Actor docks on it. */
+html.motion .face-slot:not([data-docked]) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.actor-layer {
+  display: none;
+}
+html.motion .actor-layer {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-actor);
+  pointer-events: none;
+}
+.actor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  transform-origin: 50% 50%;
+  perspective: 1400px;
+  will-change: transform;
+  contain: layout style;
+}
+.actor-flip {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+.actor-face {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+.actor-skin {
+  position: absolute;
+  inset: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
   }
 }

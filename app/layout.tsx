@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { Analytics } from "@vercel/analytics/next";
 import "@fontsource/instrument-serif/latin-400-italic.css";
 import "lenis/dist/lenis.css";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
-import { introBootScript } from "@/lib/intro";
+import { bootScript } from "@/lib/intro";
 
 export const metadata: Metadata = {
   title: "Prepline: find the right roles, walk in ready",
@@ -16,14 +17,15 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#f6f4ef",
+  themeColor: "#0a1e3c",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={GeistSans.variable} suppressHydrationWarning>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: introBootScript }} />
+        {/* Decides html.motion / html.reduced before first paint. */}
+        <script dangerouslySetInnerHTML={{ __html: bootScript }} />
       </head>
       <body className="font-sans text-[15px] leading-relaxed antialiased">
         <Providers>{children}</Providers>
