@@ -15,7 +15,8 @@ import { LENS_RADIUS } from "./bus";
  *
  * Output is premultiplied. Only the line's core is added; every other warm light is laid over
  * the backdrop with alpha, because warm light added to navy turns grey. A little noise is
- * added so no gradient bands. The dawn is two calls of a 3-octave fbm.
+ * added so no gradient bands. The dawn is one 3-octave fbm warped by one noise lookup
+ * (4 lookups a pixel, where it used to be 15).
  */
 
 const frag = /* glsl */ `
@@ -63,17 +64,17 @@ const frag = /* glsl */ `
       float pool = exp(-pow(ld, 1.6) * 2.6);
       float heart = exp(-ld * ld * 7.0);
       float breathe = 0.96 + 0.04 * vnoise(p * 0.004 + vec2(uTime * 0.07, -uTime * 0.05));
-      float aN = (pool * 0.34 + heart * 0.12) * breathe * uLamp.z;
+      float aN = (pool * 0.27 + heart * 0.13) * breathe * uLamp.z;
       vec3 cN = mix(vec3(0.80, 0.42, 0.16), vec3(1.0, 0.74, 0.44), heart);
-      float aD = pool * 0.30 * uLampDay;
-      over = lay(over, mix(vec3(1.0, 0.73, 0.38), cN, night), mix(aD, aN, night));
+      float aD = pool * 0.42 * uLampDay;
+      over = lay(over, mix(vec3(1.0, 0.68, 0.32), cN, night), mix(aD, aN, night));
     }
 
     if (uDawn > 0.001 && night < 0.5) {
       vec2 uv = p / uRes;
       vec2 q0 = vec2(uv.x * uRes.x / uRes.y, uv.y);
       float t = uTime * 0.05;
-      float w = fbm3(q0 * 1.3 + t);
+      float w = vnoise(q0 * 1.3 + t);
       float f = fbm3(q0 * 1.7 + vec2(w, 1.0 - w) * 1.9 + vec2(t * 0.6, -t * 0.4));
       vec3 col = mix(vec3(1.0, 0.90, 0.66), vec3(1.0, 0.77, 0.42), smoothstep(0.30, 0.52, f));
       col = mix(col, vec3(0.95, 0.60, 0.28), smoothstep(0.54, 0.76, f));

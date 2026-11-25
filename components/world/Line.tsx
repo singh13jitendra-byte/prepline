@@ -10,11 +10,11 @@
  * What is drawn is the store's line (story.get().line) plus two things only the
  * World knows, published as worldBus.line for the canvas:
  * - Hero demonstration. 1.6s after load, and every 8s while the page sits idle
- *   at scroll 0, the line runs out to full width, dips through a strip of the
- *   field (which it reads), and returns. Fine pointers with WebGL only; never
+ *   at scroll 0, the underline reaches out to the right edge, and that reach
+ *   steps down through a strip of the field (which it reads) and returns. Fine pointers with WebGL only; never
  *   under reduced motion; any scroll cancels it at once.
- * - Ranked hold. While the twelve are in the air the line waits where it is,
- *   and docks as the list rule only after the last one has landed.
+ * - Ranked hold. The line docks as the list rule only after the last of the
+ *   twelve has landed, however fast the wheel gets there.
  *
  * Also
  * - Hero and seat: at rest under "ready." it is a hand-drawn stroke. It
@@ -22,16 +22,17 @@
  * - It is a string: within 80px a fine pointer bends it up to 6px toward the
  *   cursor, crossing it plucks it, and it rings out on a spring (about 0.5s).
  * - Gold on the night side, accent amber on day and on paper.
- * - The label shows only while the line runs edge to edge. It is hidden once
- *   the line docks as a rule (under copy, inside the sheet). It is placed where
- *   nothing else is: it tries above and below the line at either end, rejects
- *   any place that touches the Actor, the nav band, or text and controls
- *   (a throttled hit-test), and hides if none is free.
+ * - The label is hidden once the line docks as a rule under copy (the store
+ *   blanks it) and whenever the line is on paper. Otherwise it is placed where
+ *   nothing else is: it tries four places around the line's end, rejects any
+ *   that touches the Actor, the nav band, or text and controls (a throttled
+ *   hit-test), and hides if none is free.
  *
  * Reduced motion: never mounts. The static rule under "ready." is CSS (index.tsx).
  */
 
 import { useEffect, useRef } from "react";
+import { anchorRect } from "@/lib/anchors";
 import { clamp01, story, type StoryState } from "@/lib/story";
 import { worldBus } from "./bus";
 
@@ -43,16 +44,40 @@ const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
 /** The hero demonstration, seconds: first run after load, pause between runs, and its five phases. */
 export const DEMO = { first: 1.6, every: 8, out: 0.5, down: 1.1, hold: 0.9, up: 0.9, back: 0.5 };
+/** Beat progress at which LINE_TRACK.ranked starts its last move, onto the rule (lib/story.ts). */
+const DOCK_FROM = 0.4;
+/** Width of the S the stroke makes when it steps down during the demonstration. */
+const STEP_W = 130;
 const DEMO_TOTAL = DEMO.out + DEMO.down + DEMO.hold + DEMO.up + DEMO.back;
 
-const CONTENT = "a,button,input,textarea,select,label,svg,img,h1,h2,h3,h4,p,li,span,strong,em,small,time,dt,dd,th,td";
-/** Is there text or a control at this point? (Fixed world layers and the Actor do not take hits.) */
+const CONTENT = "a,button,input,textarea,select,label,svg,img,h1,h2,h3,h4,p,span,strong,em,small,time,dt,dd,th,td";
+/** The beat rail keeps a wide, empty hover area beside its ticks: the label may stand there, clear of the ticks. */
+const RAIL = "nav[aria-label='Story']";
+const RAIL_INSET = 44;
+type Checkable = Element & { checkVisibility?: (o: { opacityProperty: boolean; visibilityProperty: boolean }) => boolean };
+const VISIBLE = { opacityProperty: true, visibilityProperty: true };
+/**
+ * Is there visible text or a control at this point? Looks through the whole stack, because
+ * faded-out panels still take hits. Fixed world layers and the Actor take none.
+ */
 function occupied(x: number, y: number): boolean {
-  const el = document.elementFromPoint(x, y);
-  if (!el) return false;
-  if (el.matches(CONTENT)) return true;
-  for (let n = el.firstChild; n; n = n.nextSibling) if (n.nodeType === 3 && n.nodeValue && n.nodeValue.trim()) return true;
+  const stack = document.elementsFromPoint(x, y);
+  for (let i = 0; i < stack.length && i < 14; i++) {
+    const el = stack[i] as Checkable;
+    let content = el.matches(CONTENT);
+    for (let n = el.firstChild; n && !content; n = n.nextSibling) content = n.nodeType === 3 && Boolean(n.nodeValue && n.nodeValue.trim());
+    if (content && !el.closest(RAIL) && (!el.checkVisibility || el.checkVisibility(VISIBLE))) return true;
+  }
   return false;
+}
+
+function slotX(c: number, wide: boolean, x0: number, x1: number, vw: number, w: number) {
+  if (wide) return c < 2 ? vw - RAIL_INSET - w : 16;
+  return c < 2 ? x1 - w : c === 2 ? x0 - 12 - w : x1 + 12;
+}
+function slotY(c: number, wide: boolean, y: number) {
+  if (wide || c < 2) return c % 2 === 0 ? y - 20 : y + 10;
+  return y - 5.5;
 }
 
 export function Line() {
@@ -125,6 +150,7 @@ export function Line() {
       }
       worldBus.demo.on = demo.t >= 0;
       worldBus.demo.y0 = s.line.y;
+      worldBus.demo.x0 = Math.max(s.line.x1 + 36, vw * 0.42) + STEP_W * 0.6;
 
       /* the line as drawn */
       const line = s.line;
@@ -132,23 +158,31 @@ export function Line() {
       let x1 = line.x1;
       let y = line.y;
       let weight = line.weight;
+      // The demonstration: the underline stays where it is, reaches out to the right edge, and
+      // that reach steps down through the empty half of the hero and back. One stroke throughout.
+      let stepX = 0; // where the stroke starts to step down (0 = no step)
+      let restY = y;
       if (out > 0) {
         const depth = Math.min(vh * 0.3, Math.max(vh * 0.1, worldBus.firstY + 70 - line.y));
-        x0 = mix(x0, 0, out);
+        stepX = Math.max(x1 + 36, vw * 0.42);
         x1 = mix(x1, vw, out);
         y += depth * dip;
-        weight = mix(weight, 2, out);
       }
-      const hold = s.beat === "ranked" ? worldBus.dockHold : 0;
-      if (hold > 0) {
-        x0 = mix(x0, 0, hold);
-        x1 = mix(x1, vw, hold);
-        y = mix(y, vh * 0.14, hold);
-        weight = mix(weight, 2, hold);
+      // Ranked: the store scrubs the dock. If the wheel gets there while the twelve are still in the
+      // air, the line waits as its stub just under the rule and docks after the last landing.
+      const hold = s.beat === "ranked" && s.beatProgress > DOCK_FROM ? worldBus.dockHold : 0;
+      const rule = hold > 0 ? anchorRect("ranked-rule") : null;
+      if (rule) {
+        x0 = mix(x0, rule.x + rule.w * 0.86, hold);
+        x1 = mix(x1, rule.x + rule.w, hold);
+        y = mix(y, rule.y + rule.h + 16, hold);
+        weight = mix(weight, 1.5, hold);
       }
       x1 = x0 + (x1 - x0) * draw;
+      const stepped = stepX > 0 && y - restY > 0.5 && x1 > stepX + STEP_W;
       const shown = worldBus.line;
-      shown.x0 = x0;
+      // The canvas lights and reads along the stepped-down reach only.
+      shown.x0 = stepped ? stepX + STEP_W : x0;
       shown.x1 = x1;
       shown.y = y;
       shown.weight = weight;
@@ -169,7 +203,7 @@ export function Line() {
       px1 = x1;
       py = y;
       let target = 0;
-      const playable = p.fine && p.inside && !s.flags.small && speed < 900 && len > 60 && draw >= 1;
+      const playable = p.fine && p.inside && !s.flags.small && speed < 900 && len > 60 && draw >= 1 && out === 0;
       if (playable && p.x > x0 - 20 && p.x < x1 + 20) {
         const dy = p.y - y;
         const ad = Math.abs(dy);
@@ -199,6 +233,10 @@ export function Line() {
       /* path */
       let d: string;
       if (len < 0.5) d = "";
+      else if (stepped) {
+        const h = STEP_W / 2;
+        d = `M${f(x0)} ${f(restY)}L${f(stepX)} ${f(restY)}C${f(stepX + h)} ${f(restY)} ${f(stepX + h)} ${f(y)} ${f(stepX + STEP_W)} ${f(y)}L${f(x1)} ${f(y)}`;
+      }
       else if (Math.abs(bend) > 0.02) {
         const cx = Math.min(x1 - 1, Math.max(x0 + 1, spring.cx));
         const hl = Math.min(140, (cx - x0) * 0.5);
@@ -249,15 +287,18 @@ export function Line() {
         place.checkedAt = 0;
       }
       let slot = -1;
-      if (line.label !== "" && draw >= 1 && wide) {
-        // Four places: above or below the line, at its right or left end.
+      // The store blanks the label once the line has docked under copy; on paper it never shows.
+      // Small screens: the acts already name the passes on the page, so the label only speaks during a chapter change.
+      if (line.label !== "" && draw >= 1 && !onPaper && len > 40 && hand < 0.5 && out === 0 && (!s.flags.small || line.sweep)) {
+        // Four places. Edge to edge: above or below the line, at the right or left end.
+        // Shorter: above or below its right end, then beside its left end, then beside its right.
         const order = s.beat === "hero" ? [1, 3, 0, 2] : [0, 1, 2, 3];
         const refresh = now - place.checkedAt > 160;
         for (let k = 0; k < 4 && slot < 0; k++) {
           const c = order[k];
-          const lx = c < 2 ? vw - 16 - labelW : 16;
-          const ly = c % 2 === 0 ? y - 20 : y + 10;
-          if (ly < 76 || ly + 11 > vh - 10) continue;
+          const lx = slotX(c, wide, x0, x1, vw, labelW);
+          const ly = slotY(c, wide, y);
+          if (lx < 12 || lx + labelW > vw - 12 || ly < 76 || ly + 11 > vh - 10) continue;
           if ((a.present || a.docked) && lx < a.x + a.w + 10 && lx + labelW > a.x - 10 && ly < a.y + a.h + 10 && ly + 11 > a.y - 10) continue;
           if (refresh) place.free[c] = !(occupied(lx + 4, ly + 5) || occupied(lx + labelW / 2, ly + 5) || occupied(lx + labelW - 4, ly + 5));
           if (place.free[c]) slot = c;
@@ -272,8 +313,8 @@ export function Line() {
       const lo = (labelO < 0.01 ? 0 : labelO).toFixed(2);
       if (lo !== last.lo) tag.style.opacity = last.lo = lo;
       if (labelO >= 0.01 && place.slot >= 0) {
-        const lx = place.slot < 2 ? vw - 16 - labelW : 16;
-        const ly = place.slot % 2 === 0 ? y - 20 : y + 10;
+        const lx = slotX(place.slot, wide, x0, x1, vw, labelW);
+        const ly = slotY(place.slot, wide, y);
         const lt = `translate3d(${f(lx)}px,${f(ly)}px,0)`;
         if (lt !== last.lt) tag.style.transform = last.lt = lt;
         // The label takes the colour of the ground it stands on.

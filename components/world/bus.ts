@@ -26,8 +26,8 @@ export const worldBus = {
   line: { x0: 0, x1: 0, y: 0, weight: 2, set: false },
   /** 1 while the ranked flight is in the air (the line waits), easing to 0 after the last landing. */
   dockHold: 0,
-  /** The hero's autonomous demonstration sweep. y0 is the line's rest y while it runs. */
-  demo: { on: false, shown: false, y0: 0 },
+  /** The hero's autonomous demonstration sweep. It reads the strip below y0 and right of x0. */
+  demo: { on: false, shown: false, y0: 0, x0: 0 },
   /** Last measured numbers, for the debug console (window.__world). */
   stats: { calls: 0, dpr: 0, frameMs: 0, cpuMs: 0, gpuMs: -1, rendered: 0, skipped: 0, instances: 0 },
 };

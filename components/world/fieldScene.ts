@@ -184,6 +184,7 @@ const vert = /* glsl */ `
   uniform float uTime;
   uniform float uT1;
   uniform float uT1Min;
+  uniform float uT1X;
   uniform float uT2;
   uniform vec4 uHist1;
   uniform vec4 uHist2;
@@ -294,7 +295,7 @@ const vert = /* glsl */ `
     float dayA = (0.035 + 0.055 * z) * (1.0 - near);
 
     // Pass 1: read the moment the line's y passes the speck's own y.
-    float inBand = clamp((P0.y - uT1Min) / 16.0, 0.0, 1.0);
+    float inBand = clamp((P0.y - uT1Min) / 16.0, 0.0, 1.0) * clamp((P0.x - uT1X) / 40.0, 0.0, 1.0);
     float r1 = clamp((uT1 - P0.y) / uBand, 0.0, 1.0) * inBand;
     float e1 = r1 * r1 * (3.0 - 2.0 * r1);
     float flare = sin(PI * clamp(r1 * 2.2, 0.0, 1.0));
@@ -498,6 +499,7 @@ export type FieldUniforms = {
   uDayTop: { value: number };
   uT1: { value: number };
   uT1Min: { value: number };
+  uT1X: { value: number };
   uHist1: { value: THREE_NS.Vector4 };
   uHist2: { value: THREE_NS.Vector4 };
   uT2: { value: number };
@@ -540,6 +542,7 @@ export function createField(THREE: Three, data: FieldData, width: number, height
     uDayTop: { value: BIG },
     uT1: { value: -BIG },
     uT1Min: { value: -BIG },
+    uT1X: { value: -BIG },
     uHist1: { value: new THREE.Vector4(-BIG, -BIG, -BIG, -BIG) },
     uHist2: { value: new THREE.Vector4(BIG, BIG, BIG, BIG) },
     uT2: { value: BIG },
@@ -631,7 +634,7 @@ export function nearestSpeck(data: FieldData, u: FieldUniforms, x: number, y: nu
     const amp = 5 + 20 * z;
     const px0 = hx + (Math.sin(t * (0.1 + 0.16 * h1) + h2 * 6.283) + 0.5 * Math.sin(t * (0.23 + 0.1 * h3) + h4 * 6.283)) * amp;
     const py0 = hy + (Math.cos(t * (0.09 + 0.15 * h3) + h1 * 6.283) + 0.5 * Math.cos(t * (0.19 + 0.12 * h2) + h4 * 6.283)) * amp;
-    const r1 = Math.min(1, Math.max(0, (u.uT1.value - py0) / band)) * Math.min(1, Math.max(0, (py0 - u.uT1Min.value) / 16));
+    const r1 = Math.min(1, Math.max(0, (u.uT1.value - py0) / band)) * Math.min(1, Math.max(0, (py0 - u.uT1Min.value) / 16)) * Math.min(1, Math.max(0, (px0 - u.uT1X.value) / 40));
     const e1 = r1 * r1 * (3 - 2 * r1);
     let px = px0;
     let py = py0;

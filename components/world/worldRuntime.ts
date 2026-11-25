@@ -260,7 +260,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
    */
   const judge = (now: number) => {
     if (now - q.winStart < 1000) return;
-    const enough = q.n >= 20;
+    const enough = q.n >= 6;
     const cpu = q.n ? q.cpu / q.n : 0;
     const gpu = q.gpuN ? q.gpu / q.gpuN : -1;
     const interval = q.intervalN ? q.interval / q.intervalN : q.refresh;
@@ -337,6 +337,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     else if (i > ORDER.pass2) t2 = -BIG;
     fu.uT1.value = t1;
     fu.uT1Min.value = t1Min;
+    fu.uT1X.value = demo ? worldBus.demo.x0 : -BIG;
     fu.uT2.value = t2;
     // Afterglow: where the thresholds were 0.1, 0.2, 0.3 and 0.4s ago.
     if (hist.n === 0) {
@@ -452,11 +453,11 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
       lampDay = 0.9 * ss(0.25, 0.7, bp);
       travel = 0;
     } else if (beat === "hinge") {
-      lampDay = mix(0.9, 0.7, bp);
+      lampDay = mix(1, 0.85, bp);
       travel = 0;
     } else if (beat === "nightfall") {
       travel = ss(0.1, 1, bp);
-      lampDay = 0.7 * (1 - travel * 0.4);
+      lampDay = 0.85 * (1 - travel * 0.4);
       lampK = 0.4 + 0.25 * travel;
     } else if (beat === "unfold") lampK = 0.65 + 0.35 * ss(0, 1, bp);
     else if (i > ORDER.unfold && i < ORDER.dawn) lampK = 1;
@@ -464,15 +465,18 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     if (lampK > 0 || lampDay > 0) {
       const sheet = anchorRect("sheet");
       const col = travel < 1 ? anchorRect("col-interview") : null;
-      let lx = sheet ? sheet.x + sheet.w * 0.16 : vw * (small ? 0.4 : 0.62);
-      let ly = sheet ? sheet.y - vh * 0.05 : vh * 0.1;
-      let rx = Math.max(vh * 0.92, sheet ? sheet.w * 1.35 : 0);
-      let ry = vh * 0.56;
+      // Small screens: the copy sits above the sheet, so the pool stays low and close behind its top edge.
+      let lx = sheet ? sheet.x + sheet.w * (small ? 0.4 : 0.16) : vw * (small ? 0.4 : 0.62);
+      let ly = sheet ? sheet.y - vh * (small ? 0.0 : 0.05) : vh * 0.1;
+      let rx = small ? vw * 0.8 : Math.max(vh * 0.92, sheet ? sheet.w * 1.35 : 0);
+      let ry = small ? vh * 0.2 : vh * 0.56;
+      if (small) lampK *= 0.8;
       if (col) {
         lx = mix(col.x + col.w / 2, lx, travel);
-        ly = mix(col.y + col.w * 0.75, ly, travel);
-        rx = mix(col.w * 1.45, rx, travel);
-        ry = mix(col.w * 1.7, ry, travel);
+        // The board is an opaque panel: the glow is wide enough to spill out around and under it.
+        ly = mix(col.y + col.w * 1.5, ly, travel);
+        rx = mix(col.w * 2.6, rx, travel);
+        ry = mix(col.w * 2.5, ry, travel);
       }
       if (travel >= 1 && s.pointer.fine && s.pointer.inside) {
         lx += (s.pointer.x - lx) * 0.1;
