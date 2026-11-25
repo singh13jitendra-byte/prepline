@@ -155,9 +155,14 @@ def check_wipes(page, shots):
                 return { act: el.dataset.stage, visible: c.visibility === 'visible', top: r.top, height: r.height, clip: c.clipPath, sticky: c.position };
               });
               const at = (y) => document.elementFromPoint(innerWidth / 2, y)?.closest('.story-stage')?.dataset.stage ?? null;
-              const split = parseFloat(getComputedStyle(d).getPropertyValue('--day-top'));
-              return { stages, wipe: d.dataset.wipe, split, lineY: parseFloat(getComputedStyle(d).getPropertyValue('--line-y')),
-                       side: getComputedStyle(d).getPropertyValue('--day-side').trim(), above: at(split - 4), below: at(split + 4) };
+              // The live line variables are written on line scopes (.story-vars), not on <html>.
+              const scopes = [...document.querySelectorAll('.story-vars')].map((el) => getComputedStyle(el));
+              const v = scopes[0];
+              const split = parseFloat(v.getPropertyValue('--day-top'));
+              const agree = scopes.every((c) => c.getPropertyValue('--day-top') === v.getPropertyValue('--day-top') && c.getPropertyValue('--line-y') === v.getPropertyValue('--line-y'));
+              return { stages, wipe: d.dataset.wipe, split, lineY: parseFloat(v.getPropertyValue('--line-y')), scopes: scopes.length, agree,
+                       htmlInline: d.style.getPropertyValue('--day-top') + d.style.getPropertyValue('--line-y'),
+                       side: v.getPropertyValue('--day-side').trim(), above: at(split - 4), below: at(split + 4) };
             }"""
         )
         vis = sorted(st["act"] for st in info["stages"] if st["visible"])
@@ -167,6 +172,8 @@ def check_wipes(page, shots):
                 check(abs(st["top"]) < 1 and st["sticky"] == "sticky", f"{wipe}: stage {st['act']} is pinned at the top (top {st['top']:.1f}, {st['sticky']})")
                 check(st["clip"].startswith("inset("), f"{wipe}: stage {st['act']} is clipped at the line, clip-path is {st['clip']}")
         check(info["wipe"] == wipe, f"{wipe}: html[data-wipe] should be {wipe}, got {info['wipe']}")
+        check(info["scopes"] >= 3 and info["agree"], f"{wipe}: every line scope carries the same line variables ({info['scopes']} scopes)")
+        check(info["htmlInline"] == "", f"{wipe}: no per-frame line variable is written on <html> ({info['htmlInline']!r})")
         check(info["side"] == "below", f"{wipe}: --day-side should be below, got {info['side']!r}")
         check(abs(info["split"] - s["dayTop"]) < 0.6 and abs(info["lineY"] - s["line"]["y"]) < 0.6, f"{wipe}: CSS variables match the store")
         check(info["above"] == above, f"{wipe}: just above the line is the {above} stage, got {info['above']}")
@@ -331,7 +338,7 @@ def check_reduced(browser, url, shots):
     check(all(s["opacity"] == "1" for s in info["slots"]) and any(s["anchor"] == "ticket" for s in info["slots"]), f"reduced: real faces are visible: {info['slots']}")
     check(info["input"], "reduced: the waitlist form is on the page")
     check(info["h1"] == 1, f"reduced: exactly one h1 ({info['h1']})")
-    check(info["scrollHeight"] < info["vh"] * 12, f"reduced: the page is its natural height, not the 14-viewport story ({info['scrollHeight']}px)")
+    check(info["scrollHeight"] < info["vh"] * 12, f"reduced: the page is its natural height, not the 12-viewport story ({info['scrollHeight']}px)")
     # No autonomous motion and no scroll-jacking: native scroll moves the page 1:1, nothing changes by itself.
     page.evaluate("() => window.scrollTo(0, 600)")
     page.wait_for_timeout(300)
@@ -367,7 +374,7 @@ def main():
         check(s["beat"] == "hero" and s["chapter"] == "night", f"desktop: starts on hero at night, got {s['beat']} {s['chapter']}")
         total = page.evaluate("() => document.documentElement.scrollHeight / innerHeight")
         print(f"document height: {total:.2f} viewports")
-        check(13.6 < total < 15.0, f"desktop: the document is about 14.3 viewports tall, got {total:.2f}")
+        check(11.9 < total < 12.7, f"desktop: the document is about 12.25 viewports tall, got {total:.2f}")
         if args.shots:
             page.screenshot(path=str(args.shots / "hero.png"))
         check_beats(page, "desktop")

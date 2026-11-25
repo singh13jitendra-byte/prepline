@@ -1,25 +1,69 @@
-"""Dead-scroll scan: steps the page 120px at a time and reports steps where the screen does not change.
-Usage: python3 scripts/check-dead-scroll.py [base_url]   (defaults to http://localhost:3100; CSS field forced for determinism)
+#!/usr/bin/env python3
 """
-import io, sys
+Dead-scroll scan (craft checklist #4: "in any 120px of scroll inside any pin, something visibly changes").
+
+Steps the page 120px at a time, waits for timed performances to settle, and
+compares screenshots. A step whose mean pixel difference is under the threshold
+is DEAD: the wheel did nothing. Only pinned beats count (the footer scrolls
+naturally). The CSS field is forced (?world=css) so the result is deterministic
+and field drift cannot hide a hold.
+
+    python3 scripts/check-dead-scroll.py [base_url] [--max-dead N] [--step 120] [--threshold 0.15]
+
+Exit code 1 when more than --max-dead steps are dead (default 0: the goal).
+Every timed beat needs a scrubbed breath (story.breath in lib/story.ts) for this to pass.
+"""
+import argparse
+import io
+import sys
+from collections import Counter
+
 from PIL import Image, ImageChops, ImageStat
 from playwright.sync_api import sync_playwright
-URL = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:3100").rstrip("/") + "/?world=css"
+
+ap = argparse.ArgumentParser()
+ap.add_argument("url", nargs="?", default="http://localhost:3100")
+ap.add_argument("--max-dead", type=int, default=0)
+ap.add_argument("--step", type=int, default=120)
+ap.add_argument("--threshold", type=float, default=0.15)
+ap.add_argument("--settle", type=int, default=1350, help="ms to wait after each step")
+ap.add_argument("--quiet", action="store_true", help="print dead steps and the summary only")
+args = ap.parse_args()
+URL = args.url.rstrip("/") + "/?world=css"
+
 with sync_playwright() as p:
     b = p.chromium.launch()
-    pg = b.new_page(viewport={"width":1440,"height":900})
-    pg.goto(URL, wait_until="networkidle"); pg.wait_for_timeout(2500)
+    pg = b.new_page(viewport={"width": 1440, "height": 900})
+    pg.goto(URL, wait_until="networkidle")
+    pg.wait_for_timeout(2500)
     H = pg.evaluate("document.documentElement.scrollHeight - innerHeight")
-    prev=None; y=0; dead=[]
+    prev = None
+    y = 0
+    dead = []
+    steps = 0
     while y <= H:
-        pg.evaluate(f"window.scrollTo(0,{y})"); pg.wait_for_timeout(450)
-        # wait more to let timed performances settle so we measure scroll-driven change only
-        pg.wait_for_timeout(900)
-        im = Image.open(io.BytesIO(pg.screenshot())).convert("L").resize((360,225))
-        st = pg.evaluate("(()=>{const s=window.__story.get();return s.beat+' '+s.beatProgress.toFixed(2)})()")
-        if prev is not None:
+        pg.evaluate(f"window.scrollTo({{ top: {y}, behavior: 'instant' }})")
+        pg.wait_for_timeout(args.settle)
+        im = Image.open(io.BytesIO(pg.screenshot())).convert("L").resize((360, 225))
+        beat, prog = pg.evaluate("(() => { const s = window.__story.get(); return [s.beat, s.beatProgress]; })()")
+        if prev is not None and beat != "footer":
+            steps += 1
             d = ImageStat.Stat(ImageChops.difference(im, prev)).mean[0]
-            flag = "  <-- DEAD" if d < 0.15 else ""
-            print(f"{y:6d} {st:16s} diff={d:.2f}{flag}", flush=True)
-        prev = im; y += 120
+            is_dead = d < args.threshold
+            if is_dead:
+                dead.append((y, beat, prog, d))
+            if is_dead or not args.quiet:
+                print(f"{y:6d} {beat:10s} {prog:.2f} diff={d:.2f}{'  <-- DEAD' if is_dead else ''}", flush=True)
+        prev = im
+        y += args.step
     b.close()
+
+per_beat = Counter(beat for _, beat, _, _ in dead)
+print(f"\n{len(dead)} dead {args.step}px steps of {steps} inside pins ({len(dead) * args.step}px)")
+for beat, n in per_beat.items():
+    span = [f"{pr:.2f}" for _, bt, pr, _ in dead if bt == beat]
+    print(f"  {beat:10s} {n}  at progress {', '.join(span)}")
+if len(dead) > args.max_dead:
+    print(f"dead-scroll check: FAIL (allowed {args.max_dead})")
+    sys.exit(1)
+print("dead-scroll check: OK")

@@ -15,6 +15,10 @@
  *   story.scrollToBeat(id, at = 0, opts?)        scroll (through Lenis when present) to a point inside a beat
  *   story.scrollToAct(id, opts?)                 scroll to an act's landing point (used for #board, #prep, #join links)
  *   story.invalidate()                           mark the state dirty (call after changing something subscribers read)
+ *   story.breath(el, beat, opts?): () => void    write a scrubbed 0..1 `--breath` on `el` for the back half of a beat
+ *   story.breathOf(beat, from?, to?): number     the same value, for JS
+ *   story.useBreath(beat, opts?)                 React ref that does story.breath
+ *   story.lineScope(el): () => void              make `el` (and its subtree) receive --line-y / --day-top / --day-side
  *
  *   BEATS, ACTS          the scroll budget (storyboard 2.2). Single source of truth for section heights.
  *   LINE_TRACK           per beat: where the Line goes (storyboard section 2, "Line label" and line moves)
@@ -34,6 +38,30 @@
  *   // nav link:
  *   <a href="#join" onClick={(e) => { e.preventDefault(); story.scrollToAct("seat"); }}>Request a seat</a>
  *
+ * BREATH — no dead scroll. A timed performance ends after about a second; the
+ * rest of the beat must still answer the wheel. `story.breath` gives every beat
+ * a second, scrubbed channel: 0 until beat progress reaches `from`, then linear
+ * to 1 at `to` (default: the end of the beat), 0 before the beat and 1 after it.
+ * It is written as a CSS variable on the element you register, and only when
+ * the value changes. No React render, nothing on <html>.
+ *
+ *   // CSS: .card-dolly { transform: rotateY(calc((var(--breath) - 0.5) * 6deg)); }
+ *   const dolly = story.useBreath("reason", { from: 0.45 });
+ *   return <div ref={dolly} className="card-dolly">…</div>;
+ *
+ *   // several beats on one element: one variable each
+ *   story.breath(board, "applied", { from: 0.5, name: "--breath-applied" });
+ *   story.breath(board, "interview", { from: 0.5, name: "--breath-interview" });
+ *
+ *   // or one variable that restarts in each listed beat (0→1, 0→1, 0→1)
+ *   story.breath(sheet, ["q1", "q2", "q3"], { from: 0.55 });
+ *
+ * Register the smallest element that needs it: a CSS variable restyles the
+ * subtree of the element it is set on. Start the breath where the performance
+ * ends (from ≈ performance seconds ÷ the time a visitor spends in the beat;
+ * 0.4 to 0.55 suits most beats), or overlap it a little so there is no seam.
+ * Under reduced motion the variable is set once, to `opts.reduced` (default 1).
+ *
  * Frame order (one gsap.ticker callback chain, never a second rAF):
  *   Lenis → ScrollTrigger → store compute (all layout reads: active + watched anchors)
  *   → subscribers → "actor" → "line" → "world".
@@ -43,9 +71,19 @@
  * desktop and 0.85svh under 768px (CSS variable --u), so progress fractions are
  * identical on every screen. Viewport values (line, pointer, rects) are CSS px.
  *
- * On <html> the store maintains: --line-y (px), --day-top (px: everything below it
- * is day, above it night; 0 = all day, viewport height = all night), --day-side
- * ("below" while the line is sweeping a chapter change, else "none"),
+ * LINE VARIABLES. --line-y (px), --day-top (px: everything below it is day,
+ * above it night; 0 = all day, viewport height = all night) and --day-side
+ * ("below" while the line is sweeping a chapter change, else "none") change
+ * every frame, so they are NOT written on <html>: that restyled the whole
+ * document. They are written on "line scopes": small wrappers registered with
+ * story.lineScope(el) or rendered with <LineScope>. StoryRoot wraps its `world`
+ * and `chrome` props in one each, and app/page.tsx wraps the nav. CSS inside a
+ * scope reads var(--day-top) exactly as before; :root keeps static defaults
+ * (first-frame values) for anything outside a scope. The act sections are not
+ * a scope: stages are clipped by an inline clip-path, and act code that needs
+ * the line reads story.get().line / .dayTop in a subscriber.
+ *
+ * On <html> the store keeps only what changes on beat boundaries:
  * data-chapter ("night" | "day"), data-beat, and data-wipe (the wipe beat id
  * while a wipe beat is current). Day is always below the line: day rises from
  * the bottom, night falls from the top.
@@ -55,7 +93,7 @@
  * sit in their end state, and scrollToBeat jumps to the beat's panel.
  */
 
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { anchorElement, anchorRect, measureAnchorFrame, type AnchorId } from "./anchors";
 import { gsap } from "./gsap";
 
@@ -124,6 +162,8 @@ export type StoryState = {
     weight: number;
     /** True while the line is performing a chapter change. */
     sweep: boolean;
+    /** True once the current move has finished and the line sits on an anchor (docked as a rule). */
+    rest: boolean;
   };
   /** Written by the Actor engine each frame. Viewport px. */
   actor: {
@@ -148,26 +188,32 @@ export type StoryState = {
 
 /* ───────────────────────────────────────────────────────────── budget ── */
 
-/** Storyboard 2.2. Order is scroll order. */
+/**
+ * The scroll budget. Order is scroll order. Storyboard 2.2, re-cut after review 1
+ * so no beat outlasts what is on screen: every timed beat is now about one
+ * performance plus one breath long. Pins: read 375, board 210, prep 230, seat 60.
+ * With the three wipes (190), the seat stage scrolling away (100) and the footer
+ * (about 60) the document is about 1,225vh, 12.25 viewports (was 14.3).
+ */
 export const BEATS: readonly Beat[] = [
   { id: "hero", act: "read", vh: 55, kind: "beat" },
   { id: "pass1", act: "read", vh: 100, kind: "beat" },
   { id: "pass2", act: "read", vh: 90, kind: "beat" },
-  { id: "ranked", act: "read", vh: 75, kind: "beat" },
-  { id: "reason", act: "read", vh: 100, kind: "beat" },
+  { id: "ranked", act: "read", vh: 60, kind: "beat" },
+  { id: "reason", act: "read", vh: 70, kind: "beat" },
   { id: "daybreak", act: "read", vh: 60, kind: "wipe" },
-  { id: "saved", act: "board", vh: 60, kind: "beat" },
-  { id: "applied", act: "board", vh: 60, kind: "beat" },
-  { id: "interview", act: "board", vh: 65, kind: "beat" },
-  { id: "hinge", act: "board", vh: 75, kind: "beat" },
+  { id: "saved", act: "board", vh: 50, kind: "beat" },
+  { id: "applied", act: "board", vh: 45, kind: "beat" },
+  { id: "interview", act: "board", vh: 45, kind: "beat" },
+  { id: "hinge", act: "board", vh: 70, kind: "beat" },
   { id: "nightfall", act: "board", vh: 60, kind: "wipe" },
-  { id: "unfold", act: "prep", vh: 45, kind: "beat" },
-  { id: "q1", act: "prep", vh: 60, kind: "beat" },
-  { id: "q2", act: "prep", vh: 60, kind: "beat" },
-  { id: "q3", act: "prep", vh: 60, kind: "beat" },
-  { id: "votes", act: "prep", vh: 75, kind: "beat" },
+  { id: "unfold", act: "prep", vh: 40, kind: "beat" },
+  { id: "q1", act: "prep", vh: 45, kind: "beat" },
+  { id: "q2", act: "prep", vh: 45, kind: "beat" },
+  { id: "q3", act: "prep", vh: 45, kind: "beat" },
+  { id: "votes", act: "prep", vh: 55, kind: "beat" },
   { id: "dawn", act: "prep", vh: 70, kind: "wipe" },
-  { id: "seat", act: "seat", vh: 100, kind: "beat" },
+  { id: "seat", act: "seat", vh: 60, kind: "beat" },
   // The seat stage scrolling away (100) plus the footer (about 60). Not pinned.
   { id: "footer", act: "seat", vh: 160, kind: "beat" },
 ];
@@ -301,8 +347,27 @@ export function stageIsActive(act: ActId, current: BeatId): boolean {
  *   `weight` overrides the thickness; by default a thin anchor (6px or less) lends its own height.
  */
 export type LineTarget =
-  | { y: number; weight?: number }
-  | { anchor: AnchorId; edge?: "top" | "center" | "bottom"; span?: "anchor" | "full"; weight?: number };
+  | {
+      y: number;
+      weight?: number;
+      /** Part of the viewport width to span, as fractions. Default [0, 1]. */
+      x?: [number, number];
+    }
+  | {
+      anchor: AnchorId;
+      edge?: "top" | "center" | "bottom";
+      span?: "anchor" | "full";
+      weight?: number;
+      /**
+       * Part of the anchor's width to span, as fractions from its left edge.
+       * Default [0, 1]. `[0, 0.4]` on the Mon→Fri strip is "Monday to the end of Tuesday".
+       */
+      x?: [number, number];
+      /** Offset from the edge in px (positive is down). */
+      dy?: number;
+      /** Anchor to use while `anchor` is not on the page. */
+      or?: AnchorId;
+    };
 
 export type LineMove = {
   /** Sub-range of beat progress this move is scrubbed over. Before it the line holds `from`, after it `to`. */
@@ -313,9 +378,24 @@ export type LineMove = {
   label: string;
   /** This move is the chapter change: the screen is split at the line while it runs. */
   sweep?: boolean;
+  /**
+   * The line ends this move as a rule under copy. Its label is blanked once the
+   * move completes, so a label never sits on the text the line underlines.
+   */
+  quiet?: boolean;
 };
 
+/**
+ * The Mon→Fri strip above the board (`board-days`): five equal day cells.
+ * The line runs along its bottom edge from Monday's left edge, and its right
+ * end is scrubbed to the right edge of the day the story has reached.
+ */
+export const BOARD_DAY_X = { mon: 0.2, tue: 0.4, wed: 0.6, thu: 0.8, fri: 1 } as const;
+const DAYS = (to: number, or: AnchorId): LineTarget => ({ anchor: "board-days", x: [0, to], weight: 2, or });
+
 const FULL_W = 2;
+/** Where the `ranked` stub starts, as a fraction of the viewport width (right of the list header text). */
+const RANKED_STUB = 0.82;
 const A = (anchor: AnchorId, extra: Partial<Extract<LineTarget, { anchor: AnchorId }>> = {}): LineTarget => ({ anchor, ...extra });
 const Y = (y: number): LineTarget => ({ y, weight: FULL_W });
 
@@ -328,31 +408,39 @@ export const LINE_TRACK: Record<BeatId, readonly LineMove[]> = {
   ],
   pass1: [{ range: [0, 1], from: Y(0.14), to: Y(0.9), label: "PASS 1 · LEVEL AND CITY" }],
   pass2: [{ range: [0, 1], from: Y(0.9), to: Y(0.14), label: "PASS 2 · PORTFOLIO FIT" }],
-  ranked: [{ range: [0.2, 0.6], from: Y(0.14), to: A("ranked-rule", { weight: 1 }), label: "RANKED" }],
-  reason: [{ range: [0, 0.35], from: A("ranked-rule", { weight: 1 }), to: A("card-meter", { edge: "center" }), label: "9 OUT OF 10" }],
+  // Docks from below. It first pulls in to a short stub at the right end of the list, clear of the
+  // "12 fit your portfolio" header, drops just under the rule, then rises onto it while drawing leftward.
+  ranked: [
+    { range: [0.04, 0.22], from: Y(0.14), to: { y: 0.14, x: [RANKED_STUB, 1], weight: FULL_W }, label: "RANKED" },
+    { range: [0.22, 0.4], from: { y: 0.14, x: [RANKED_STUB, 1], weight: FULL_W }, to: A("ranked-rule", { x: [0.86, 1], dy: 16, weight: 1.5 }), label: "RANKED" },
+    { range: [0.4, 0.62], from: A("ranked-rule", { x: [0.86, 1], dy: 16, weight: 1.5 }), to: A("ranked-rule", { weight: 1 }), label: "RANKED", quiet: true },
+  ],
+  // No label: the card already says 9/10 twice.
+  reason: [{ range: [0, 0.35], from: A("ranked-rule", { weight: 1 }), to: A("card-meter", { edge: "center" }), label: "", quiet: true }],
   daybreak: [
     { range: [0, 0.2], from: A("card-meter", { edge: "center" }), to: Y(1), label: "SAVED TO YOUR BOARD" },
     { range: [0.2, 1], from: Y(1), to: Y(0), label: "SAVED TO YOUR BOARD", sweep: true },
   ],
-  saved: [{ range: [0, 0.6], from: Y(0), to: A("col-saved", { weight: 2 }), label: "SAVED" }],
-  applied: [{ range: [0.05, 0.5], from: A("col-saved", { weight: 2 }), to: A("col-applied", { weight: 2 }), label: "APPLIED BY YOU" }],
-  interview: [{ range: [0.05, 0.5], from: A("col-applied", { weight: 2 }), to: A("col-interview", { weight: 2 }), label: "INTERVIEW BOOKED" }],
-  hinge: [{ range: [0, 0.25], from: A("col-interview", { weight: 2 }), to: A("hinge-text", { weight: 2 }), label: "" }],
+  // The board is read along time: the line rides the Mon→Fri strip and reaches the day of each step.
+  saved: [{ range: [0, 0.6], from: Y(0), to: DAYS(BOARD_DAY_X.mon, "col-saved"), label: "SAVED" }],
+  applied: [{ range: [0.05, 0.6], from: DAYS(BOARD_DAY_X.mon, "col-saved"), to: DAYS(BOARD_DAY_X.tue, "col-applied"), label: "APPLIED BY YOU" }],
+  interview: [{ range: [0.05, 0.6], from: DAYS(BOARD_DAY_X.tue, "col-applied"), to: DAYS(BOARD_DAY_X.thu, "col-interview"), label: "INTERVIEW BOOKED" }],
+  hinge: [{ range: [0, 0.25], from: DAYS(BOARD_DAY_X.thu, "col-interview"), to: A("hinge-text", { weight: 2 }), label: "", quiet: true }],
   nightfall: [
     { range: [0, 0.15], from: A("hinge-text", { weight: 2 }), to: Y(0), label: "THE NIGHT BEFORE" },
     { range: [0.15, 1], from: Y(0), to: Y(1), label: "THE NIGHT BEFORE", sweep: true },
   ],
-  unfold: [{ range: [0, 0.7], from: Y(1), to: A("sheet-folded", { weight: 1 }), label: "WRITING YOUR PREP SHEET" }],
-  q1: [{ range: [0, 0.2], from: A("sheet-folded", { weight: 1 }), to: A("sheet-q1"), label: "FROM THE JD" }],
-  q2: [{ range: [0, 0.2], from: A("sheet-q1"), to: A("sheet-q2"), label: "FROM YOUR CASE STUDY" }],
-  q3: [{ range: [0, 0.2], from: A("sheet-q2"), to: A("sheet-q3"), label: "ASKED HERE BEFORE" }],
-  votes: [{ range: [0, 0.4], from: A("sheet-q3"), to: A("sheet-foot"), label: "THE DAY AFTER" }],
+  unfold: [{ range: [0, 0.7], from: Y(1), to: A("sheet-folded", { weight: 1 }), label: "WRITING YOUR PREP SHEET", quiet: true }],
+  q1: [{ range: [0, 0.2], from: A("sheet-folded", { weight: 1 }), to: A("sheet-q1"), label: "FROM THE JD", quiet: true }],
+  q2: [{ range: [0, 0.2], from: A("sheet-q1"), to: A("sheet-q2"), label: "FROM YOUR CASE STUDY", quiet: true }],
+  q3: [{ range: [0, 0.2], from: A("sheet-q2"), to: A("sheet-q3"), label: "ASKED HERE BEFORE", quiet: true }],
+  votes: [{ range: [0, 0.4], from: A("sheet-q3"), to: A("sheet-foot"), label: "THE DAY AFTER", quiet: true }],
   dawn: [
     { range: [0, 0.15], from: A("sheet-foot"), to: Y(1), label: "READY" },
     { range: [0.15, 1], from: Y(1), to: Y(0), label: "READY", sweep: true },
   ],
-  seat: [{ range: [0, 0.3], from: Y(0), to: A("ready-underline", { edge: "center" }), label: "" }],
-  footer: [{ range: [0, 1], from: A("ready-underline", { edge: "center" }), to: A("ready-underline", { edge: "center" }), label: "" }],
+  seat: [{ range: [0, 0.3], from: Y(0), to: A("ready-underline", { edge: "center" }), label: "", quiet: true }],
+  footer: [{ range: [0, 1], from: A("ready-underline", { edge: "center" }), to: A("ready-underline", { edge: "center" }), label: "", quiet: true }],
 };
 
 /** A value that either follows the Actor's travel or plays on its own clock. */
@@ -508,7 +596,7 @@ const state: StoryState = {
   velocity: 0,
   chapter: "night",
   dayTop: 100000,
-  line: { x0: 0, x1: 0, y: 0, daySide: "none", label: "READING", weight: FULL_W, sweep: false },
+  line: { x0: 0, x1: 0, y: 0, daySide: "none", label: "READING", weight: FULL_W, sweep: false, rest: false },
   actor: { present: false, docked: false, face: null, x: 0, y: 0, w: 0, h: 0, travel: 0, fold: 1, flip: 0 },
   pointer: { x: 0, y: 0, inside: false, fine: false },
   viewport: { w: 0, h: 0 },
@@ -528,6 +616,7 @@ const beatHandlers = new Map<BeatId, Set<BeatHandlers>>();
 const beatChangeFns = new Set<BeatChangeFn>();
 const phases: Record<FramePhase, Set<FrameFn>> = { actor: new Set(), line: new Set(), world: new Set() };
 
+const scopes = new Set<HTMLElement>();
 let lenis: LenisLike | null = null;
 let running = false;
 let dirty = true;
@@ -536,7 +625,7 @@ let fedThisFrame = false;
 let needsViewport = true;
 let lineReady = false;
 let lastCss = { lineY: "", dayTop: "", daySide: "", chapter: "", beat: "", wipe: "" };
-const activeIds: (AnchorId | undefined)[] = [undefined, undefined, undefined, undefined];
+const activeIds: (AnchorId | undefined)[] = [undefined, undefined, undefined, undefined, undefined, undefined];
 const resolved = { a: { x0: 0, x1: 0, y: 0, w: FULL_W, ok: false }, b: { x0: 0, x1: 0, y: 0, w: FULL_W, ok: false } };
 
 function readFlags() {
@@ -574,23 +663,31 @@ function computePos(): number {
 function resolveTarget(t: LineTarget, out: { x0: number; x1: number; y: number; w: number; ok: boolean }) {
   const { w: vw, h: vh } = state.viewport;
   if ("y" in t) {
-    out.x0 = 0;
-    out.x1 = vw;
+    out.x0 = t.x ? t.x[0] * vw : 0;
+    out.x1 = t.x ? t.x[1] * vw : vw;
     out.y = t.y * vh;
     out.w = t.weight ?? FULL_W;
     out.ok = true;
     return;
   }
-  const r = anchorRect(t.anchor);
+  let r = anchorRect(t.anchor);
+  let fallback = false;
+  if (!r && t.or) {
+    r = anchorRect(t.or);
+    fallback = true;
+  }
   if (!r) {
     out.ok = false;
     return;
   }
   const edge = t.edge ?? "bottom";
-  out.y = edge === "top" ? r.y : edge === "center" ? r.y + r.h / 2 : r.y + r.h;
+  out.y = (edge === "top" ? r.y : edge === "center" ? r.y + r.h / 2 : r.y + r.h) + (t.dy ?? 0);
   if (t.span === "full") {
     out.x0 = 0;
     out.x1 = vw;
+  } else if (t.x && !fallback) {
+    out.x0 = r.x + r.w * t.x[0];
+    out.x1 = r.x + r.w * t.x[1];
   } else {
     out.x0 = r.x;
     out.x1 = r.x + r.w;
@@ -623,13 +720,30 @@ function setBeat(index: number, direction: Direction) {
   beatChangeFns.forEach((fn) => fn(state.beat, previous, direction));
 }
 
+function writeScope(el: HTMLElement) {
+  if (lastCss.lineY) el.style.setProperty("--line-y", `${lastCss.lineY}px`);
+  if (lastCss.dayTop) el.style.setProperty("--day-top", `${lastCss.dayTop}px`);
+  if (lastCss.daySide) el.style.setProperty("--day-side", lastCss.daySide);
+}
+
 function writeCss() {
   const d = document.documentElement;
   const lineY = state.line.y.toFixed(1);
   const dayTop = state.dayTop.toFixed(1);
-  if (lineY !== lastCss.lineY) d.style.setProperty("--line-y", `${(lastCss.lineY = lineY)}px`);
-  if (dayTop !== lastCss.dayTop) d.style.setProperty("--day-top", `${(lastCss.dayTop = dayTop)}px`);
-  if (state.line.daySide !== lastCss.daySide) d.style.setProperty("--day-side", (lastCss.daySide = state.line.daySide));
+  // Per-frame values go to the line scopes only (small subtrees), never to <html>.
+  if (lineY !== lastCss.lineY) {
+    lastCss.lineY = lineY;
+    scopes.forEach((el) => el.style.setProperty("--line-y", `${lineY}px`));
+  }
+  if (dayTop !== lastCss.dayTop) {
+    lastCss.dayTop = dayTop;
+    scopes.forEach((el) => el.style.setProperty("--day-top", `${dayTop}px`));
+  }
+  if (state.line.daySide !== lastCss.daySide) {
+    lastCss.daySide = state.line.daySide;
+    scopes.forEach((el) => el.style.setProperty("--day-side", lastCss.daySide));
+  }
+  // Beat-boundary values stay on <html>.
   if (state.chapter !== lastCss.chapter) d.setAttribute("data-chapter", (lastCss.chapter = state.chapter));
   if (state.beat !== lastCss.beat) d.setAttribute("data-beat", (lastCss.beat = state.beat));
   const wipe = beatOf(state.beat).kind === "wipe" ? state.beat : "";
@@ -638,6 +752,39 @@ function writeCss() {
     if (wipe) d.setAttribute("data-wipe", wipe);
     else d.removeAttribute("data-wipe");
   }
+}
+
+/* ── breath ── */
+
+export type BreathOptions = {
+  /** Beat progress where the breath starts. Default 0.5. */
+  from?: number;
+  /** Beat progress where it reaches 1. Default 1 (the end of the beat). */
+  to?: number;
+  /** CSS variable to write. Default "--breath". */
+  name?: string;
+  /** Value under reduced motion (written once). Default 1. */
+  reduced?: number;
+};
+
+type Breath = { el: HTMLElement; beats: number[]; from: number; to: number; name: string; last: string };
+const breaths = new Set<Breath>();
+
+function breathValue(beats: readonly number[], from: number, to: number): number {
+  const here = BEAT_INDEX[state.beat];
+  let passed = false;
+  for (let i = 0; i < beats.length; i++) {
+    if (beats[i] === here) return clamp01((state.beatProgress - from) / (to - from || 1));
+    if (beats[i] < here) passed = true;
+  }
+  return passed ? 1 : 0;
+}
+
+function writeBreaths() {
+  breaths.forEach((b) => {
+    const v = breathValue(b.beats, b.from, b.to).toFixed(4);
+    if (v !== b.last) b.el.style.setProperty(b.name, (b.last = v));
+  });
 }
 
 function compute() {
@@ -677,6 +824,8 @@ function compute() {
   activeIds[1] = "anchor" in move.to ? move.to.anchor : undefined;
   activeIds[2] = actorMove?.from;
   activeIds[3] = actorMove?.to;
+  activeIds[4] = "anchor" in move.from ? move.from.or : undefined;
+  activeIds[5] = "anchor" in move.to ? move.to.or : undefined;
   measureAnchorFrame(activeIds);
 
   /* ── derive ── */
@@ -706,6 +855,8 @@ function compute() {
     y = state.viewport.h * 0.58;
   }
   lineReady = true;
+  const rest = state.beatProgress >= move.range[1] && "anchor" in move.to;
+  const label = move.quiet && rest ? "" : move.label;
   const sweeping = Boolean(move.sweep);
   const vh = state.viewport.h;
   let dayTop: number;
@@ -728,7 +879,7 @@ function compute() {
     x1 !== line.x1 ||
     y !== line.y ||
     weight !== line.weight ||
-    move.label !== line.label ||
+    label !== line.label ||
     daySide !== line.daySide ||
     dayTop !== state.dayTop
   ) {
@@ -738,7 +889,8 @@ function compute() {
   line.x1 = x1;
   line.y = y;
   line.weight = weight;
-  line.label = move.label;
+  line.label = label;
+  line.rest = rest;
   line.daySide = daySide;
   line.sweep = sweeping;
   state.dayTop = dayTop;
@@ -746,6 +898,7 @@ function compute() {
 
   /* ── write phase starts here ── */
   writeCss();
+  if (dirty) writeBreaths();
 }
 
 function tick(time: number, deltaMs: number) {
@@ -860,6 +1013,58 @@ export const story = {
   /** Mark the state dirty so subscribers run next frame. */
   invalidate() {
     dirty = true;
+  },
+
+  /**
+   * Write a scrubbed 0..1 CSS variable (default `--breath`) on `el`: 0 until beat
+   * progress reaches `from`, linear to 1 at `to`, 0 before the beat, 1 after it.
+   * With several beats the value restarts in each. Written only when it changes.
+   */
+  breath(el: HTMLElement, beat: BeatId | readonly BeatId[], opts: BreathOptions = {}): () => void {
+    const name = opts.name ?? "--breath";
+    if (story.reduced()) {
+      el.style.setProperty(name, String(opts.reduced ?? 1));
+      return () => {};
+    }
+    const beats = (typeof beat === "string" ? [beat] : beat).map((b) => BEAT_INDEX[b]).sort((x, y) => x - y);
+    const entry: Breath = { el, beats, from: opts.from ?? 0.5, to: opts.to ?? 1, name, last: "" };
+    entry.last = breathValue(beats, entry.from, entry.to).toFixed(4);
+    el.style.setProperty(name, entry.last);
+    breaths.add(entry);
+    return () => {
+      breaths.delete(entry);
+    };
+  },
+
+  /** The breath value for a beat right now, for JS that cannot use the CSS variable. */
+  breathOf(beat: BeatId | readonly BeatId[], from = 0.5, to = 1): number {
+    const beats = (typeof beat === "string" ? [beat] : beat).map((b) => BEAT_INDEX[b]);
+    return breathValue(beats, from, to);
+  },
+
+  /** React ref callback for `story.breath`. Keep `opts` values primitive: they are the hook's dependencies. */
+  useBreath(beat: BeatId | readonly BeatId[], opts: BreathOptions = {}): (el: HTMLElement | null) => void | (() => void) {
+    const key = typeof beat === "string" ? beat : beat.join(" ");
+    const { from, to, name, reduced } = opts;
+    return useCallback(
+      (el: HTMLElement | null) => {
+        if (!el) return;
+        return story.breath(el, key.split(" ") as BeatId[], { from, to, name, reduced });
+      },
+      [key, from, to, name, reduced],
+    );
+  },
+
+  /**
+   * Make `el` a line scope: it receives --line-y, --day-top and --day-side every
+   * frame they change, and its subtree inherits them. Keep scopes small.
+   */
+  lineScope(el: HTMLElement): () => void {
+    scopes.add(el);
+    writeScope(el);
+    return () => {
+      scopes.delete(el);
+    };
   },
 
   /* ── wiring: used by StoryRoot, SmoothScroll and Actor only ── */
