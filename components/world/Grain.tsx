@@ -1,0 +1,40 @@
+"use client";
+
+/**
+ * GRAIN — one fixed layer over the chapter backdrops (storyboard 4).
+ * A 128px noise tile, baked once on mount into a data URL and tiled; it never
+ * animates and has no blend mode. Each pixel is black or white at a low alpha
+ * (a few percent), so it reads on night and on cream alike and keeps the
+ * big gradients from banding.
+ */
+
+import { useEffect, useRef } from "react";
+
+export function Grain() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    try {
+      const size = 128;
+      const c = document.createElement("canvas");
+      c.width = c.height = size;
+      const ctx = c.getContext("2d");
+      if (!ctx) return;
+      const img = ctx.createImageData(size, size);
+      let seed = 1234567;
+      const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+      for (let i = 0; i < size * size; i++) {
+        const v = rand() < 0.5 ? 0 : 255;
+        const a = rand();
+        img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v;
+        img.data[i * 4 + 3] = Math.round(a * 10);
+      }
+      ctx.putImageData(img, 0, 0);
+      el.style.backgroundImage = `url(${c.toDataURL("image/png")})`;
+    } catch {
+      /* no grain is fine */
+    }
+  }, []);
+  return <div ref={ref} aria-hidden="true" data-grain className="world-grain only-motion" />;
+}

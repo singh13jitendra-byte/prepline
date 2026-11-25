@@ -1,7 +1,8 @@
 import { ActBoard } from "@/components/acts/ActBoard";
 import { ActRead } from "@/components/acts/ActRead";
 import { StoryRoot } from "@/components/story/StoryRoot";
-import { StubActs, StubFooter, StubLine, StubPerformances } from "@/components/story/stubs";
+import { StubActs, StubFooter, StubPerformances } from "@/components/story/stubs";
+import { World } from "@/components/world";
 import { story as copy } from "@/lib/content";
 
 /**
@@ -20,7 +21,7 @@ export default function Home() {
         {copy.common.skipLink}
       </a>
       <main>
-        <StoryRoot world={<StubLine />} chrome={<StubPerformances />}>
+        <StoryRoot world={<World />} chrome={<StubPerformances />}>
           <ActRead />
           <ActBoard />
           <StubActs />
