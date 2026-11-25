@@ -1,131 +1,163 @@
 "use client";
 
-import { AnimatePresence, motion, useMotionValueEvent, useScroll, useSpring } from "motion/react";
-import { useState } from "react";
-import { navLinks } from "@/lib/content";
-import { Logo } from "./Icons";
-import { Magnetic } from "./Magnetic";
+/**
+ * NAV — floating pill with two skins, split at the line (storyboard 3 "Nav").
+ *
+ * - Clear over the hero, frosted from the first reading pass on.
+ * - Night glass on night chapters, day paper on day chapters. During a wipe both
+ *   skins are drawn and each is clipped at the line (--day-top), like the stages.
+ *   The base copy is the real one (keyboard, screen readers); the second copy is
+ *   aria-hidden and only there for the split.
+ * - Hides upward while you scroll down through the hinge and the prep beats;
+ *   comes back on any upward scroll, on keyboard focus, and near the top edge.
+ * - Links to #board, #prep and #join are routed by StoryRoot into the right beat.
+ * - Under 768px: logo, CTA and a menu button.
+ */
 
-/** Floating nav: clear over the hero, frosted once you scroll, with a reading-progress line. */
+import { useEffect, useRef, useState } from "react";
+import { pkg3Copy, storyCopy } from "@/lib/content";
+import { BEATS, story, type ActId, type BeatId } from "@/lib/story";
+import { Magnetic } from "./Magnetic";
+import "./cta.css";
+import "./chrome.css";
+
+const HIDE_IN: readonly BeatId[] = ["hinge", "nightfall", "unfold", "q1", "q2", "q3", "votes"];
+const LINK_ACT: Record<string, ActId> = { "#board": "board", "#prep": "prep", "#join": "seat" };
+const idx = (b: BeatId) => BEATS.findIndex((x) => x.id === b);
+
+function Arrow() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="cta-arrow" aria-hidden>
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+function PillContent({ live, open, onMenu }: { live: boolean; open?: boolean; onMenu?: () => void }) {
+  const t = live ? undefined : -1;
+  return (
+    <>
+      <a href="#read" className="nav-brand" tabIndex={t} onClick={(e) => {
+        e.preventDefault();
+        story.scrollToBeat("hero", 0);
+      }}>
+        <span className="nav-logo" aria-hidden="true" />
+        {storyCopy.nav.brand}
+      </a>
+      <nav aria-label={live ? pkg3Copy.landmarks.sections : undefined}>
+        <ul className="nav-links">
+          {storyCopy.nav.links.map((l) => (
+            <li key={l.label}>
+              <a href={l.href} className="nav-link" data-act={LINK_ACT[l.href]} tabIndex={t}>
+                {l.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      <div className="nav-right">
+        {live ? (
+          <Magnetic strength={0.3}>
+            <a href="#join" className="cta cta-ink">
+              <span className="cta-label">
+                {storyCopy.nav.cta}
+                <Arrow />
+              </span>
+              <span className="cta-line" aria-hidden="true" />
+            </a>
+          </Magnetic>
+        ) : (
+          <span className="inline-flex">
+            <a href="#join" className="cta cta-ink" tabIndex={-1}>
+              <span className="cta-label">
+                {storyCopy.nav.cta}
+                <Arrow />
+              </span>
+              <span className="cta-line" aria-hidden="true" />
+            </a>
+          </span>
+        )}
+        <button
+          type="button"
+          className="nav-menu-btn"
+          tabIndex={t}
+          aria-label={live ? storyCopy.nav.menu : undefined}
+          aria-expanded={live ? Boolean(open) : undefined}
+          aria-controls={live ? "nav-menu" : undefined}
+          onClick={onMenu}
+        >
+          <span aria-hidden="true" />
+        </button>
+      </div>
+    </>
+  );
+}
+
 export function Nav() {
-  const { scrollY, scrollYProgress } = useScroll();
-  const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 24 });
-  const [solid, setSolid] = useState(false);
+  const ref = useRef<HTMLElement>(null);
   const [open, setOpen] = useState(false);
 
-  useMotionValueEvent(scrollY, "change", (v) => setSolid(v > 60));
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || story.reduced()) return;
+    let hidden = false;
+    let act = "";
+    let travelled = 0;
+    let lastPos = 0;
+    const links = () => el.querySelectorAll<HTMLElement>(".nav-link[data-act]");
+    return story.subscribe((s) => {
+      // Hide on a real downward scroll inside the quiet beats; return on any upward scroll.
+      const dPos = s.pos - lastPos;
+      lastPos = s.pos;
+      travelled = dPos > 0 ? travelled + dPos : 0;
+      const nearTop = s.pointer.fine && s.pointer.inside && s.pointer.y < 72;
+      let want = hidden;
+      if (!HIDE_IN.includes(s.beat) || nearTop || dPos < -0.05) want = false;
+      else if (travelled > 2.5) want = true;
+      if (want !== hidden) {
+        hidden = want;
+        el.toggleAttribute("data-hidden", hidden);
+      }
+      // The current act's link carries a short line.
+      const i = idx(s.beat);
+      const current = i >= idx("seat") || s.beat === "dawn" ? "seat" : i >= idx("unfold") || s.beat === "nightfall" ? "prep" : i >= idx("saved") ? "board" : "read";
+      if (current !== act) {
+        act = current;
+        links().forEach((a) => {
+          if (a.dataset.act === act) a.setAttribute("aria-current", "true");
+          else a.removeAttribute("aria-current");
+        });
+      }
+    });
+  }, []);
 
-  const light = !solid && !open;
+  // Close the menu on Escape or after following a link.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-50 px-3 pt-3">
-      <motion.div
-        initial={{ y: -24, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-        className={`pointer-events-auto relative mx-auto flex max-w-[1240px] items-center justify-between gap-4 overflow-hidden rounded-full px-3 py-2 transition-[background-color,box-shadow,border-color] duration-500 md:px-4 ${
-          light
-            ? "border border-transparent"
-            : "border border-line/80 bg-canvas/80 shadow-[0_10px_30px_-18px_rgba(27,25,22,0.35)] backdrop-blur-xl"
-        }`}
-      >
-        <a
-          href="#top"
-          className={`flex items-center gap-2.5 pl-2 text-lg font-semibold tracking-tight transition-colors duration-500 ${
-            light ? "text-white" : "text-ink"
-          }`}
-        >
-          <Logo dark={!light} />
-          Prepline
-        </a>
-
-        <nav
-          aria-label="Sections"
-          className={`hidden items-center gap-1 text-sm transition-colors duration-500 md:flex ${
-            light ? "text-white/90" : "text-muted"
-          }`}
-        >
-          {navLinks.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className={`rounded-full px-4 py-2 transition ${light ? "hover:bg-white/15" : "hover:bg-sunk hover:text-ink"}`}
-            >
+    <header ref={ref} className="nav" data-open={open ? "" : undefined}>
+      <div className="nav-stack">
+        <div className="nav-pill nav-base">
+          <PillContent live open={open} onMenu={() => setOpen((o) => !o)} />
+        </div>
+        <div className="nav-pill nav-overlay" data-skin-overlay="" aria-hidden="true">
+          <PillContent live={false} onMenu={() => setOpen((o) => !o)} />
+        </div>
+      </div>
+      {open ? (
+        <nav id="nav-menu" className="nav-menu" aria-label={storyCopy.nav.menu}>
+          {[...storyCopy.nav.links, { href: "#join", label: storyCopy.nav.cta }].map((l) => (
+            <a key={l.label} href={l.href} onClick={() => setOpen(false)}>
               {l.label}
             </a>
           ))}
         </nav>
-
-        <div className="flex items-center gap-2">
-          <Magnetic strength={0.3}>
-          <a
-            href="#join"
-            className={`inline-flex h-10 items-center rounded-full px-5 text-sm font-medium transition-colors duration-500 ${
-              light ? "bg-white text-ink hover:bg-white/90" : "bg-ink text-white hover:bg-ink/90"
-            }`}
-          >
-            Join the beta
-          </a>
-          </Magnetic>
-          <button
-            type="button"
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-            aria-controls="mobile-menu"
-            onClick={() => setOpen((o) => !o)}
-            className={`inline-flex size-10 items-center justify-center rounded-full md:hidden ${
-              light ? "text-white hover:bg-white/15" : "text-ink hover:bg-sunk"
-            }`}
-          >
-            <span className="relative block h-3 w-4" aria-hidden>
-              <motion.span
-                className="absolute left-0 top-0 h-[1.5px] w-4 rounded bg-current"
-                animate={open ? { y: 5.5, rotate: 45 } : { y: 0, rotate: 0 }}
-              />
-              <motion.span
-                className="absolute bottom-0 left-0 h-[1.5px] w-4 rounded bg-current"
-                animate={open ? { y: -5.5, rotate: -45 } : { y: 0, rotate: 0 }}
-              />
-            </span>
-          </button>
-        </div>
-
-        <motion.span
-          aria-hidden
-          style={{ scaleX: progress }}
-          className={`absolute inset-x-6 bottom-0 h-px origin-left bg-accent transition-opacity duration-500 ${
-            solid ? "opacity-100" : "opacity-0"
-          }`}
-        />
-      </motion.div>
-
-      <AnimatePresence>
-        {open && (
-          <motion.nav
-            id="mobile-menu"
-            aria-label="Sections"
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.25 }}
-            className="pointer-events-auto mx-auto mt-2 flex max-w-[1240px] flex-col rounded-3xl border border-line bg-canvas/95 p-2 shadow-xl backdrop-blur-xl md:hidden"
-          >
-            {navLinks.map((l, i) => (
-              <motion.a
-                key={l.href}
-                href={l.href}
-                onClick={() => setOpen(false)}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.04 * i }}
-                className="rounded-2xl px-4 py-3 text-base text-ink hover:bg-sunk"
-              >
-                {l.label}
-              </motion.a>
-            ))}
-          </motion.nav>
-        )}
-      </AnimatePresence>
+      ) : null}
     </header>
   );
 }

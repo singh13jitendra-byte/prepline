@@ -456,6 +456,30 @@ export const story = {
   },
 } as const;
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * PACKAGE 3 ADDITIONS (Acts III and IV, nav, footer) — strings the storyboard
+ * did not spell out. Kept in one marked block so the integrator can review them.
+ * ────────────────────────────────────────────────────────────────────────── */
+export const pkg3Copy = {
+  /** Accessible names for the landmarks (not shown). */
+  landmarks: { sections: "Sections", footer: "Footer" },
+  sheet: {
+    /** Mono label at the top of the prep sheet, and on the outside of the folded sheet. */
+    label: "Prep sheet",
+    /** Mono label above the three questions. */
+    questions: "Likely questions",
+  },
+  ticket: {
+    /** Visible label above the ticket's email field (the hero form keeps it visually hidden). */
+    emailLabel: "Email",
+    /** The ticket stub. */
+    stubLabel: "Seat",
+    stubOf: "One of 25",
+    /** The stamp pressed onto the ticket after a successful request. */
+    stamp: "Seat requested",
+  },
+} as const;
+
 /** Alias for files that also import the `story` store. */
 export { story as storyCopy };
 

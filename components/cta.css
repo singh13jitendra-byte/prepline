@@ -1,0 +1,99 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Primary button — one wording everywhere: "Request a seat" (storyboard 3).
+   Ink on day, white on night, pill. Hover: a gold rule draws along the bottom
+   edge, left to right (the Line, in miniature). Press: 0.97. Focus: designed ring.
+   ══════════════════════════════════════════════════════════════════════════ */
+.cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  cursor: pointer;
+  overflow: hidden;
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.45s ease,
+    color 0.45s ease,
+    box-shadow 0.45s ease;
+}
+.cta-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.cta-ink {
+  background: #1b1916;
+  color: #fff;
+}
+.cta-white {
+  background: #fff;
+  color: #1b1916;
+}
+.cta:active {
+  transform: scale(0.97);
+}
+.cta:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+.cta:focus-visible {
+  outline: 2px solid #b45309;
+  outline-offset: 2px;
+}
+/* On night the amber ring would not show: gold carries the focus there. */
+.cta-white:focus-visible {
+  outline-color: #ffd77a;
+}
+.cta-line {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: #ffd77a;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+.cta-white .cta-line {
+  background: #d99a1c;
+}
+.cta .cta-arrow {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (hover: hover) {
+  .cta:hover .cta-line {
+    transform: scaleX(1);
+    transition-duration: 0.25s;
+  }
+  .cta:hover .cta-arrow {
+    transform: translateX(3px);
+    transition-duration: 0.2s;
+  }
+  .cta-ink:hover {
+    background: #2a2723;
+  }
+}
+.cta:focus-visible .cta-line {
+  transform: scaleX(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cta,
+  .cta-line,
+  .cta .cta-arrow {
+    transition-duration: 0.01ms;
+  }
+}

@@ -1,0 +1,591 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   CHROME — nav, beat rail, footer (storyboard 3 "Nav", 2.7 "Footer", 5.9).
+   The nav and the rail have two skins (night glass, day paper). During a wipe
+   both are drawn and each is clipped at the line (--day-top), exactly like the
+   stages, so the chrome splits with the world.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.nav {
+  --nav-top: 12px;
+  --nav-h: 56px;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: var(--z-nav, 5);
+  padding: var(--nav-top) 12px 0;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.5, 0, 0.75, 0);
+}
+html.motion .nav[data-hidden]:not(:focus-within):not([data-open]) {
+  transform: translateY(calc(-100% - 8px));
+}
+html.motion .nav:not([data-hidden]) {
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-stack {
+  position: relative;
+  max-width: 1240px;
+  margin: 0 auto;
+  height: var(--nav-h);
+}
+.nav-pill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 8px 0 18px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  pointer-events: auto;
+  transition:
+    background-color 0.5s ease,
+    border-color 0.5s ease,
+    box-shadow 0.5s ease,
+    color 0.5s ease;
+}
+
+/* skins */
+html.motion[data-chapter="night"] .nav-base,
+html.motion[data-chapter="day"] .nav-overlay {
+  --nav-fg: #fff;
+  --nav-fg-2: rgba(255, 255, 255, 0.78);
+  --nav-hover: rgba(255, 255, 255, 0.1);
+  --nav-accent: #ffd77a;
+  color: var(--nav-fg);
+  background: rgba(7, 20, 42, 0.52);
+  border-color: rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  backdrop-filter: blur(16px) saturate(1.3);
+}
+.nav-base,
+html.motion[data-chapter="night"] .nav-overlay {
+  --nav-fg: #1b1916;
+  --nav-fg-2: #5f5a53;
+  --nav-hover: rgba(27, 25, 22, 0.06);
+  --nav-accent: #b45309;
+  color: var(--nav-fg);
+  background: rgba(246, 244, 239, 0.8);
+  border-color: rgba(27, 25, 22, 0.08);
+  box-shadow: 0 10px 30px -18px rgba(27, 25, 22, 0.35);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+html.motion[data-chapter="night"] .nav-base {
+  box-shadow: none;
+}
+/* Over the hero (and before the story has started) the nav is clear. */
+html.motion[data-beat="hero"] .nav-base,
+html.motion:not([data-beat]) .nav-base {
+  --nav-fg: #fff;
+  --nav-fg-2: rgba(255, 255, 255, 0.86);
+  --nav-hover: rgba(255, 255, 255, 0.12);
+  --nav-accent: #ffd77a;
+  color: #fff;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+/* the CTA swaps with the skin: white on night, ink on day */
+.nav .cta {
+  height: 40px;
+  padding: 0 18px;
+}
+html.motion[data-chapter="night"] .nav-base .cta,
+html.motion[data-beat="hero"] .nav-base .cta,
+html.motion:not([data-beat]) .nav-base .cta,
+html.motion[data-chapter="day"] .nav-overlay .cta {
+  background: #fff;
+  color: #1b1916;
+}
+html.motion[data-chapter="night"] .nav-overlay .cta {
+  background: #1b1916;
+  color: #fff;
+}
+html.motion[data-chapter="night"] .nav-base .cta .cta-line,
+html.motion[data-beat="hero"] .nav-base .cta .cta-line,
+html.motion[data-chapter="day"] .nav-overlay .cta .cta-line {
+  background: #d99a1c;
+}
+html.motion[data-chapter="night"] .nav-base .cta:focus-visible,
+html.motion[data-beat="hero"] .nav-base .cta:focus-visible {
+  outline-color: #ffd77a;
+}
+
+/* the split, during wipes: each skin keeps to its side of the line */
+.nav-overlay {
+  display: none;
+}
+html.motion[data-wipe] .nav-overlay {
+  display: flex;
+}
+html.motion[data-wipe][data-chapter="night"] .nav-base,
+html.motion[data-wipe][data-chapter="day"] .nav-overlay {
+  clip-path: inset(0 0 max(0px, calc(100% - var(--day-top) + var(--nav-top))) 0);
+}
+html.motion[data-wipe][data-chapter="day"] .nav-base,
+html.motion[data-wipe][data-chapter="night"] .nav-overlay {
+  clip-path: inset(max(0px, calc(var(--day-top) - var(--nav-top))) 0 0 0);
+}
+html.motion[data-wipe] .nav-pill {
+  transition: none;
+}
+
+.nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--nav-fg);
+  border-radius: 10px;
+}
+.nav-logo {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: var(--nav-fg);
+}
+.nav-logo::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #b45309;
+}
+.nav-logo::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: 4px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--nav-accent);
+  opacity: 0.9;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  color: var(--nav-fg-2);
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+.nav-link::after {
+  /* the current act: a short Line under its link */
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 6px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--nav-accent);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-link[aria-current="true"] {
+  color: var(--nav-fg);
+}
+.nav-link[aria-current="true"]::after {
+  transform: scaleX(1);
+}
+@media (hover: hover) {
+  .nav-link:hover {
+    background: var(--nav-hover);
+    color: var(--nav-fg);
+    transition-duration: 0.18s;
+  }
+}
+.nav-link:focus-visible,
+.nav-brand:focus-visible,
+.nav-menu-btn:focus-visible {
+  outline: 2px solid var(--nav-accent);
+  outline-offset: 2px;
+}
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--nav-fg);
+  cursor: pointer;
+}
+.nav-menu-btn span {
+  position: relative;
+  display: block;
+  width: 16px;
+  height: 10px;
+}
+.nav-menu-btn span::before,
+.nav-menu-btn span::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 16px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: currentColor;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-menu-btn span::before {
+  top: 0;
+}
+.nav-menu-btn span::after {
+  bottom: 0;
+}
+.nav[data-open] .nav-menu-btn span::before {
+  transform: translateY(4.25px) rotate(45deg);
+}
+.nav[data-open] .nav-menu-btn span::after {
+  transform: translateY(-4.25px) rotate(-45deg);
+}
+.nav-menu {
+  position: relative;
+  max-width: 1240px;
+  margin: 8px auto 0;
+  padding: 8px;
+  border-radius: 24px;
+  pointer-events: auto;
+  background: rgba(246, 244, 239, 0.94);
+  border: 1px solid rgba(27, 25, 22, 0.08);
+  box-shadow: 0 30px 60px -30px rgba(27, 25, 22, 0.45);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  animation: nav-menu-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+html.motion[data-chapter="night"] .nav-menu {
+  background: rgba(7, 20, 42, 0.92);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.nav-menu a {
+  display: block;
+  padding: 14px 16px;
+  border-radius: 16px;
+  font-size: 17px;
+  color: #1b1916;
+}
+html.motion[data-chapter="night"] .nav-menu a {
+  color: #fff;
+}
+.nav-menu a:focus-visible {
+  outline: 2px solid #b45309;
+  outline-offset: -2px;
+}
+@keyframes nav-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+}
+
+@media (max-width: 767px) {
+  .nav {
+    --nav-top: 10px;
+    --nav-h: 52px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .nav-pill {
+    padding: 0 6px 0 14px;
+    gap: 8px;
+  }
+  .nav-links {
+    display: none;
+  }
+  .nav-menu-btn {
+    display: inline-flex;
+  }
+  .nav .cta {
+    height: 38px;
+    padding: 0 14px;
+    font-size: 13.5px;
+  }
+}
+
+/* ── beat rail: five ticks on the right edge (desktop) ── */
+.rail {
+  --rail-top: calc(50svh - 74px);
+  position: fixed;
+  right: 18px;
+  top: var(--rail-top);
+  z-index: var(--z-nav, 5);
+  width: 120px;
+  height: 148px;
+  pointer-events: none;
+}
+.rail-copy {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+html.motion[data-chapter="night"] .rail-base,
+html.motion[data-chapter="day"] .rail-overlay {
+  --rail-fg: #fff;
+  --rail-dim: rgba(255, 255, 255, 0.4);
+  --rail-accent: #ffd77a;
+}
+.rail-base,
+html.motion[data-chapter="night"] .rail-overlay {
+  --rail-fg: #1b1916;
+  --rail-dim: rgba(27, 25, 22, 0.32);
+  --rail-accent: #b45309;
+}
+.rail-overlay {
+  display: none;
+}
+html.motion[data-wipe] .rail-overlay {
+  display: flex;
+}
+html.motion[data-wipe][data-chapter="night"] .rail-base,
+html.motion[data-wipe][data-chapter="day"] .rail-overlay {
+  clip-path: inset(0 0 max(0px, calc(100% - var(--day-top) + var(--rail-top))) 0);
+}
+html.motion[data-wipe][data-chapter="day"] .rail-base,
+html.motion[data-wipe][data-chapter="night"] .rail-overlay {
+  clip-path: inset(max(0px, calc(var(--day-top) - var(--rail-top))) 0 0 0);
+}
+.rail-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  height: 24px;
+  padding-left: 12px;
+  pointer-events: auto;
+  border-radius: 6px;
+  color: var(--rail-fg);
+}
+.rail-tick {
+  display: block;
+  width: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--rail-dim);
+  transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s ease;
+}
+.rail-link[aria-current="true"] .rail-tick {
+  width: 16px;
+  background: var(--rail-accent);
+}
+.rail-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateX(4px);
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (hover: hover) {
+  .rail-link:hover .rail-label {
+    opacity: 1;
+    transform: none;
+    transition-duration: 0.18s;
+  }
+  .rail-link:hover .rail-tick {
+    background: var(--rail-fg);
+  }
+}
+.rail-link:focus-visible {
+  outline: none;
+}
+.rail-link:focus-visible .rail-label {
+  opacity: 1;
+  transform: none;
+}
+.rail-link:focus-visible .rail-tick {
+  box-shadow: 0 0 0 3px var(--rail-accent);
+}
+@media (max-width: 767px) {
+  .rail {
+    display: none;
+  }
+}
+
+/* ── footer: small, quiet, ink ── */
+.ft {
+  position: relative;
+  z-index: var(--z-acts, 2);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 56px;
+  min-height: 60svh;
+  padding: 72px 32px 28px;
+  background: #1b1916;
+  color: #f6f4ef;
+}
+.ft::before {
+  /* a static gold hairline along the top edge */
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 215, 122, 0) 0%, rgba(255, 215, 122, 0.75) 18%, rgba(255, 215, 122, 0.75) 82%, rgba(255, 215, 122, 0) 100%);
+}
+.ft-time {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  font-size: clamp(34px, 4vw, 60px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  font-weight: 500;
+}
+.ft-time time {
+  font-variant-numeric: tabular-nums;
+}
+.ft-time span {
+  color: #a8a097;
+}
+.ft-bottom {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+.ft-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 40px;
+  padding-bottom: 28px;
+}
+.ft-brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 30ch;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #d9d3c9;
+}
+.ft-brand .nav-logo {
+  --nav-fg: #f6f4ef;
+  --nav-accent: #ffd77a;
+  flex: none;
+  margin-top: 1px;
+}
+.ft-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ft-links a {
+  position: relative;
+  display: inline-block;
+  font-size: 15px;
+  color: #d9d3c9;
+  border-radius: 4px;
+  transition: color 0.4s ease;
+}
+.ft-links a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 1px;
+  background: #ffd77a;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (hover: hover) {
+  .ft-links a:hover {
+    color: #fff;
+    transition-duration: 0.18s;
+  }
+  .ft-links a:hover::after {
+    transform: scaleX(1);
+    transition-duration: 0.25s;
+  }
+}
+.ft-links a:focus-visible {
+  outline: 2px solid #ffd77a;
+  outline-offset: 4px;
+  color: #fff;
+}
+.ft-last {
+  padding-top: 18px;
+  border-top: 1px solid rgba(246, 244, 239, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.6;
+}
+@media (max-width: 767px) {
+  .ft {
+    padding: 56px 20px 24px;
+    gap: 40px;
+  }
+  .ft-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 24px;
+  }
+}
+/* The rail steps aside over the footer. */
+html.motion[data-beat="footer"] .rail {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0s 0.3s;
+}
+.rail {
+  transition: opacity 0.4s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav,
+  .nav-pill,
+  .rail-tick,
+  .rail-label,
+  .nav-link::after,
+  .ft-links a::after {
+    transition-duration: 0.01ms !important;
+  }
+  .nav-menu {
+    animation: none;
+  }
+}

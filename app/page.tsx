@@ -1,16 +1,15 @@
 import { ActBoard } from "@/components/acts/ActBoard";
+import { ActPrep } from "@/components/acts/ActPrep";
 import { ActRead } from "@/components/acts/ActRead";
+import { ActSeat } from "@/components/acts/ActSeat";
+import { BeatRail } from "@/components/BeatRail";
+import { Footer } from "@/components/Footer";
+import { Nav } from "@/components/Nav";
 import { StoryRoot } from "@/components/story/StoryRoot";
-import { StubActs, StubFooter, StubPerformances } from "@/components/story/stubs";
 import { World } from "@/components/world";
 import { story as copy } from "@/lib/content";
 
-/**
- * "One role, read." Foundation build: the four acts are stubs.
- * Integration swaps them for <ActRead />, <ActBoard />, <ActPrep />, <ActSeat />,
- * passes <World /> as `world` and <Nav /> + <BeatRail /> as `chrome`, and
- * replaces StubFooter with <Footer />.
- */
+/** "One role, read." — the page follows one role from 2,340 specks to your seat ticket. */
 export default function Home() {
   return (
     <>
@@ -21,13 +20,22 @@ export default function Home() {
         {copy.common.skipLink}
       </a>
       <main>
-        <StoryRoot world={<World />} chrome={<StubPerformances />}>
+        <StoryRoot
+          world={<World />}
+          chrome={
+            <>
+              <Nav />
+              <BeatRail />
+            </>
+          }
+        >
           <ActRead />
           <ActBoard />
-          <StubActs />
+          <ActPrep />
+          <ActSeat />
         </StoryRoot>
       </main>
-      <StubFooter />
+      <Footer />
     </>
   );
 }

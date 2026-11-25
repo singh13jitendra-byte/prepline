@@ -1,0 +1,264 @@
+"use client";
+
+/**
+ * ACT IV — SEAT (day, dawn light). Storyboard 2.7.
+ *
+ *   dawn (wipe, prep's)  the sheet folds and flips into the ticket on its way here
+ *   seat                 the Line docks under "ready." (scrubbed, 0 to 30%), the 25 seat
+ *                        rings gather; the ticket straightens and its fields print in (timed)
+ *   footer               the stage scrolls away
+ *
+ * The ticket is the real <WaitlistForm tone="ticket">, docked in a FaceSlot. On a
+ * successful request one ring fills, a stamp presses onto the ticket and the Line
+ * under "ready." draws itself once more.
+ */
+
+import { useEffect, useRef, type CSSProperties } from "react";
+import { useAnchor } from "@/lib/anchors";
+import { storyCopy } from "@/lib/content";
+import { gsap } from "@/lib/gsap";
+import { usePerformance } from "@/lib/perform";
+import { BEATS, clamp01, story } from "@/lib/story";
+import { FaceFrame, FaceSlot } from "@/components/story/FaceSlot";
+import { Panel, Stage } from "@/components/story/Stage";
+import "@/components/faces/TicketFace";
+import { seatState, useSeatState } from "./seat/seatState";
+import "./seat/seat.css";
+
+const idx = (b: string) => BEATS.findIndex((x) => x.id === b);
+const RINGS = storyCopy.seat.ringCount;
+
+function PromiseIcon({ i }: { i: number }) {
+  const p = { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: 1.4, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
+  if (i === 0)
+    return (
+      <svg {...p}>
+        <rect x="3" y="7" width="10" height="7" rx="1.6" />
+        <path d="M5.5 7V5a2.5 2.5 0 015 0v2" />
+      </svg>
+    );
+  if (i === 1)
+    return (
+      <svg {...p}>
+        <circle cx="8" cy="8" r="5.75" />
+        <path d="M4 12l8-8" />
+      </svg>
+    );
+  if (i === 2)
+    return (
+      <svg {...p}>
+        <path d="M2.5 8.6V3.2c0-.4.3-.7.7-.7h5.4l5 5-6.1 6.1z" />
+        <circle cx="5.6" cy="5.6" r="1" />
+      </svg>
+    );
+  return (
+    <svg {...p}>
+      <path d="M2.5 6.5c0-1.6 2.5-3 5.5-3s5.5 1.4 5.5 3-2.5 3-5.5 3-5.5-1.4-5.5-3z" />
+      <path d="M5 9.2L4 13M11 9.2l1 3.8" />
+    </svg>
+  );
+}
+
+/** The real ticket, inside its FaceSlot: a tilt layer around the shared face. */
+function TicketDock({ tiltRef }: { tiltRef: React.RefObject<HTMLDivElement | null> }) {
+  return (
+    <div ref={tiltRef} className="seat-tilt" style={{ "--rest": "-2deg" } as CSSProperties}>
+      <FaceFrame face="ticket" skin="day" fold={1} progress={1} host="dock" />
+    </div>
+  );
+}
+
+function Rings({ hostRef }: { hostRef: React.RefObject<HTMLUListElement | null> }) {
+  const { status, at } = useSeatState();
+  const done = status === "done";
+  const fresh = done && typeof performance !== "undefined" && performance.now() - at < 2500;
+  const near = useRef(-1);
+
+  // Fine pointers: the ring nearest the cursor lights up (an open seat).
+  const onMove = (e: React.PointerEvent<HTMLUListElement>) => {
+    if (e.pointerType !== "mouse" || story.reduced()) return;
+    const host = e.currentTarget;
+    let best = -1;
+    let bestD = 30 * 30;
+    host.querySelectorAll<HTMLElement>(".seat-ring").forEach((el, i) => {
+      const r = el.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2);
+      const dy = e.clientY - (r.top + r.height / 2);
+      const d = dx * dx + dy * dy;
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    });
+    if (best === near.current) return;
+    host.children[near.current]?.removeAttribute("data-near");
+    if (best >= 0) host.children[best]?.setAttribute("data-near", "");
+    near.current = best;
+  };
+  const onLeave = (e: React.PointerEvent<HTMLUListElement>) => {
+    e.currentTarget.children[near.current]?.removeAttribute("data-near");
+    near.current = -1;
+  };
+
+  return (
+    <ul ref={hostRef} className="seat-ring-grid" aria-hidden="true" onPointerMove={onMove} onPointerLeave={onLeave}>
+      {Array.from({ length: RINGS }, (_, i) => {
+        // Gather from the centre outward.
+        const col = i % 5;
+        const row = Math.floor(i / 5);
+        const d = Math.hypot(col - 2, row - 2) / Math.hypot(2, 2);
+        return (
+          <li
+            key={i}
+            className="seat-ring"
+            data-filled={done && i === 0 ? "" : undefined}
+            data-fresh={fresh && i === 0 ? "" : undefined}
+            style={{ "--d": (d * 0.55).toFixed(3) } as CSSProperties}
+          />
+        );
+      })}
+    </ul>
+  );
+}
+
+export function ActSeat() {
+  const underline = useAnchor("ready-underline");
+  const underlineEl = useRef<HTMLSpanElement | null>(null);
+  const tiltRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const ringsRef = useRef<HTMLUListElement>(null);
+  const promisesRef = useRef<HTMLUListElement>(null);
+  const noteRef = useRef<HTMLParagraphElement>(null);
+
+  // Scrubbed: the rings gather as the Line docks (seat, first 30%).
+  useEffect(() => {
+    const rings = ringsRef.current;
+    if (!rings || story.reduced()) return;
+    let last = "";
+    return story.subscribe((s) => {
+      const i = idx(s.beat);
+      const g = i < idx("seat") ? 0 : s.beat === "seat" ? clamp01(s.beatProgress / 0.3) : 1;
+      const key = g.toFixed(3);
+      if (key === last) return;
+      last = key;
+      rings.style.setProperty("--gather", key);
+    });
+  }, []);
+
+  // Timed (0.9s on entry): the ticket straightens, the promises rise, the field comes alive.
+  usePerformance("seat", (tl, ctx) => {
+    const tilt = tiltRef.current;
+    const root = tilt?.querySelector<HTMLElement>(".tk-root");
+    if (!tilt || !root) return;
+    const rows = promisesRef.current ? [...Array.from(promisesRef.current.children), ...(noteRef.current ? [noteRef.current] : [])] : [];
+    const rest = { r: -2 };
+    tl.to(rest, {
+      r: 0,
+      duration: 0.75,
+      ease: "back.out(1.6)",
+      onUpdate: () => tilt.style.setProperty("--rest", `${rest.r.toFixed(3)}deg`),
+    });
+    if (rows.length) tl.fromTo(rows, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: "expo.out", stagger: 0.06 }, 0.16);
+    // The field invites typing once everything has landed (visual only, never a programmatic focus).
+    const invite = { k: 0 };
+    tl.to(invite, {
+      k: 1,
+      duration: 0.01,
+      onUpdate: () => root.toggleAttribute("data-invite", invite.k >= 1 && !ctx.reduced),
+    }, 0.85);
+  });
+
+  // Fine pointer: the ticket tilts toward the cursor, with a moving highlight.
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    const tilt = tiltRef.current;
+    if (!wrap || !tilt || story.reduced() || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    const v = { tx: 0, ty: 0, hl: 0, hx: 50, hy: 30 };
+    const write = () => {
+      tilt.style.setProperty("--tx", `${v.tx.toFixed(2)}deg`);
+      tilt.style.setProperty("--ty", `${v.ty.toFixed(2)}deg`);
+      tilt.style.setProperty("--hl", v.hl.toFixed(3));
+      tilt.style.setProperty("--hx", `${v.hx.toFixed(1)}%`);
+      tilt.style.setProperty("--hy", `${v.hy.toFixed(1)}%`);
+    };
+    const to = (vars: Partial<typeof v>, duration: number) => gsap.to(v, { ...vars, duration, ease: "power3.out", overwrite: "auto", onUpdate: write });
+    const move = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") return;
+      const r = wrap.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - 0.5;
+      const py = (e.clientY - r.top) / r.height - 0.5;
+      to({ tx: -py * 7, ty: px * 9, hl: 1, hx: (px + 0.5) * 100, hy: (py + 0.5) * 100 }, 0.5);
+    };
+    const leave = () => to({ tx: 0, ty: 0, hl: 0 }, 0.9);
+    wrap.addEventListener("pointermove", move);
+    wrap.addEventListener("pointerleave", leave);
+    return () => {
+      wrap.removeEventListener("pointermove", move);
+      wrap.removeEventListener("pointerleave", leave);
+      gsap.killTweensOf(v);
+    };
+  }, []);
+
+  // A successful request: the Line under "ready." draws itself once more.
+  useEffect(() => {
+    let was = seatState.get().status;
+    return seatState.subscribe(() => {
+      const now = seatState.get().status;
+      if (now === "done" && was !== "done" && underlineEl.current && !story.reduced()) {
+        gsap.fromTo(underlineEl.current, { scaleX: 0 }, { scaleX: 1, duration: 0.9, ease: "power3.inOut", delay: 0.2, clearProps: "transform" });
+      }
+      was = now;
+    });
+  }, []);
+
+  return (
+    <Stage act="seat" labelledBy="join-title">
+      <div className="seat-dawn" aria-hidden="true" />
+      <Panel beats={["seat", "footer"]} focusable className="seat-panel">
+        <div className="seat-grid">
+          <div className="seat-left">
+            <h2 id="join-title" className="seat-h">
+              <span className="seat-h-line">{storyCopy.seat.h2}</span>{" "}
+              <span className="seat-h-line">
+                <span className="seat-accent">
+                  {storyCopy.seat.h2Accent}
+                  <span
+                    ref={(el) => {
+                      underlineEl.current = el;
+                      return underline(el) ?? undefined;
+                    }}
+                    className="seat-underline"
+                    aria-hidden="true"
+                  />
+                </span>
+              </span>
+            </h2>
+            <p className="type-body seat-body">{storyCopy.seat.body}</p>
+            <ul ref={promisesRef} className="seat-promises">
+              {storyCopy.seat.promises.map((p, i) => (
+                <li key={p.title} className="seat-promise">
+                  <PromiseIcon i={i} />
+                  <span className="seat-promise-t">{p.title}</span>
+                  <span className="seat-promise-b">{p.body}</span>
+                </li>
+              ))}
+            </ul>
+            <p ref={noteRef} className="seat-note">{storyCopy.seat.dataNote}</p>
+          </div>
+
+          <div className="seat-right">
+            <div ref={wrapRef} className="seat-ticket-wrap">
+              <FaceSlot anchor="ticket" face="ticket" skin="day" className="seat-ticket-slot">
+                <TicketDock tiltRef={tiltRef} />
+              </FaceSlot>
+            </div>
+            <div className="seat-rings">
+              <Rings hostRef={ringsRef} />
+              <span className="type-mono seat-rings-caption">{storyCopy.seat.rings}</span>
+            </div>
+          </div>
+        </div>
+      </Panel>
+    </Stage>
+  );
+}

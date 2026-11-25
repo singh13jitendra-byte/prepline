@@ -20,7 +20,7 @@ import "./read/read.css";
  * Until the World's ChapterBackdrop is merged, the stub CSS (components/story/stubs.tsx)
  * paints this class night or day. It does nothing once stubs.tsx is deleted at integration.
  */
-export const DEV_BACKDROP = "stub-stage";
+export const DEV_BACKDROP = "";
 
 export function Illustrative() {
   return (
