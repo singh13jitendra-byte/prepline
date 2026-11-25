@@ -11,9 +11,9 @@
 import { anchorElement, anchorRect, watchAnchors, type AnchorId } from "@/lib/anchors";
 import { rankedRoles, storyCopy } from "@/lib/content";
 import { mountGL, type GLController } from "@/lib/gl";
-import { ACTOR_TRACK, BEATS, clamp01, story, type BeatId, type StoryState } from "@/lib/story";
+import { BEATS, clamp01, story, type BeatId, type StoryState } from "@/lib/story";
 import { LENS_RADIUS, worldBus } from "./bus";
-import { BIG, FLIGHT, LAND_FADE, PASS_DOLLY, STAGGER, buildField, createField, nearestSpeck, type FieldData, type FieldUniforms, type Verdict } from "./fieldScene";
+import { BIG, FLIGHT, LAND_FADE, PASS_DOLLY, ROW_PILL, STAGGER, buildField, createField, nearestSpeck, type FieldData, type FieldUniforms, type Verdict } from "./fieldScene";
 import { createLight, type LightUniforms } from "./lightPass";
 
 const ORDER = Object.fromEntries(BEATS.map((b, i) => [b.id, i])) as Record<BeatId, number>;
@@ -244,15 +244,13 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     }
     fu.uGatherT.value = gatherT;
     fu.uAnt.value = beat === "ranked" ? 0.08 * ss(0, 0.2, bp) : i > ORDER.ranked ? 0.08 : 0;
-    // Row 1 hands over to the Actor: its speck goes exactly as the Actor arrives.
-    const fade = ACTOR_TRACK.ranked?.fadeIn ?? [0.22, 0.34];
-    const actorIn = beat === "ranked" ? clamp01((bp - fade[0]) / (fade[1] - fade[0] || 1)) : i > ORDER.ranked ? 1 : 0;
-    fu.uLand1.value = actorIn * clamp01((gatherT - FLIGHT) / LAND_FADE);
+    // Row 1 is a real row until the Actor is born (Act I keeps it visible), so its speck fades like the rest.
+    fu.uLand1.value = clamp01((gatherT - FLIGHT) / LAND_FADE);
     fu.uRowR.value = rowRadius;
     if (watching === "rows") {
       for (let n = 0; n < 12; n++) {
         const r = anchorRect(ROW_IDS[n]);
-        if (r && r.w > 1) fu.uRows.value[n].set(r.x, r.y, r.w, r.h);
+        if (r && r.w > 1) fu.uRows.value[n].set(r.x, r.y, Math.min(ROW_PILL, r.w), r.h);
         else fu.uRows.value[n].set(0, 0, 0, 0);
       }
     }
