@@ -25,7 +25,7 @@
 
 import { useEffect } from "react";
 import { registerAnchor, type AnchorId } from "@/lib/anchors";
-import { BEATS, SCENE_TRACK, clamp01, story, type BeatId, type StoryState } from "@/lib/story";
+import { BEATS, SCENE_TRACK, clamp01, story, DAWN_WIPE, type BeatId, type StoryState } from "@/lib/story";
 import { worldBus } from "./bus";
 import { DESK, DESK_CLOSE, FOCUS, HERO_SMALL, HOTSPOTS, ROOM_HANDOFF, WINDOW_SKY, coverBox, type HotspotId } from "./sceneGeometry";
 
@@ -384,7 +384,7 @@ export function SceneDirector() {
         clock.flips++;
       }
       if (mode !== "off") {
-        const sp = i === ORDER.dawn ? ss(0.15, 1, bp) * 0.6 : i === ORDER.seat ? 0.6 + 0.4 * ss(0, 0.5, bp) : 1;
+        const sp = i === ORDER.dawn ? ss(DAWN_WIPE, 1, bp) * 0.6 : i === ORDER.seat ? 0.6 + 0.4 * ss(0, 0.5, bp) : 1;
         // The light crosses in whole pixels and 1% steps: about a third of the writes, no visible step.
         put(sun, sp < 1, Math.round(Math.sin(Math.PI * sp) * 34) / 100, Math.round(mix(vw * 0.02, vw * 0.4, sp)), Math.round(-stageH * 0.1), 1);
         put(washD, true, 1);
