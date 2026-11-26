@@ -51,6 +51,7 @@ const BIRTH = ACTOR_TRACK.ranked?.fadeIn ?? [0.22, 0.34];
 const fig = storyCopy.common.figures;
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 const idx = (id: BeatId) => BEATS.findIndex((b) => b.id === id);
+const DAYBREAK = idx("daybreak");
 const I = { hero: idx("hero"), pass1: idx("pass1"), pass2: idx("pass2"), ranked: idx("ranked"), reason: idx("reason") };
 /** Progress through beat `id`: 0 before it, 1 after it. */
 function through(s: Readonly<StoryState>, id: keyof typeof I) {
@@ -109,8 +110,16 @@ export function ReadPanel() {
   const row1Ref = useRef<HTMLLIElement>(null);
   const rule = useAnchor("ranked-rule");
   // Breaths (Foundation helper): the list keeps drifting up through ranked and reason.
-  const breathRanked = story.useBreath("ranked", { from: 0.15, name: "--breath-ranked" });
-  const breathReason = story.useBreath("reason", { from: 0, name: "--breath-reason" });
+  const targets = useRef<{
+    k: NodeListOf<HTMLElement>;
+    fly: NodeListOf<HTMLElement>;
+    head: NodeListOf<HTMLElement>;
+    digits: NodeListOf<HTMLElement>;
+    stmt: NodeListOf<HTMLElement>;
+    ranked: NodeListOf<HTMLElement>;
+    reason: NodeListOf<HTMLElement>;
+    list: HTMLElement | null;
+  } | null>(null);
   const morph = useRef({ dn: { x: 0, y: 0, s: 1 }, st: { x: 0, y: 0, s: 1 } });
 
   /* ── rows 2..12 anchors; on small screens rows 7..12 hide and their specks land on "and 6 more" ── */
@@ -183,6 +192,19 @@ export function ReadPanel() {
     const set = (el: HTMLElement | null, prop: string, v: string) => {
       if (el && el.style.getPropertyValue(prop) !== v) el.style.setProperty(prop, v);
     };
+    // Per-frame custom properties go to the few elements that read them (see read.css), never to
+    // the panel root, where every node of the act would inherit and be restyled.
+    const tg = (targets.current ??= {
+      k: root.querySelectorAll<HTMLElement>(".rd-detail, .rd-pass-marks"),
+      fly: root.querySelectorAll<HTMLElement>(".rd-digits, .rd-stmt-fly"),
+      head: root.querySelectorAll<HTMLElement>(".rd-list-head, .rd-rule"),
+      digits: root.querySelectorAll<HTMLElement>(".rd-digits"),
+      stmt: root.querySelectorAll<HTMLElement>(".rd-stmt-fly"),
+      ranked: root.querySelectorAll<HTMLElement>(".rd-copy-ranked"),
+      reason: root.querySelectorAll<HTMLElement>(".rd-copy-reason"),
+      list: root.querySelector<HTMLElement>(".rd-list-wrap"),
+    });
+    const setAll = (els: NodeListOf<HTMLElement>, prop: string, v: string) => els.forEach((el) => set(el, prop, v));
 
     // Hero: the counter inks in below the rising Line (a 24px soft edge, not a guillotine),
     // and rises 12vh to its rest while it does, so it never sits under the outgoing headline.
@@ -190,7 +212,10 @@ export function ReadPanel() {
     const i = idx(s.beat);
     const revealing = i === I.hero;
     const ly = s.line.y;
-    const mask = !revealing ? "none" : h > 0.22 ? `linear-gradient(to bottom, transparent ${ly.toFixed(1)}px, #000 ${(ly + 24).toFixed(1)}px)` : "linear-gradient(transparent, transparent)";
+    // The ink edge trails the Line by a tenth of the screen, so the outgoing "right roles." (erased
+    // at the Line) and the incoming 2,340 never touch: there is always clear night between them.
+    const gap = 0.1 * s.viewport.h;
+    const mask = !revealing ? "none" : h > 0.22 ? `linear-gradient(to bottom, transparent ${(ly + gap).toFixed(1)}px, #000 ${(ly + gap + 40).toFixed(1)}px)` : "linear-gradient(transparent, transparent)";
     if (pass.dataset.mask !== mask) {
       pass.dataset.mask = mask;
       pass.style.setProperty("-webkit-mask-image", mask);
@@ -222,17 +247,19 @@ export function ReadPanel() {
     // 60vh beat: the counter is in the header by 15%, before the line starts docking (0.40).
     const k = span(r, 0, 0.15);
     const m = morph.current;
-    set(root, "--k", k.toFixed(4));
-    set(root, "--k-fly", (1 - span(k, 0.75, 1)).toFixed(4));
-    set(root, "--k-head", span(k, 0.7, 1).toFixed(4));
-    set(root, "--dn-x", `${(m.dn.x * k).toFixed(2)}px`);
-    set(root, "--dn-y", `${(m.dn.y * k).toFixed(2)}px`);
-    set(root, "--dn-s", (1 + (m.dn.s - 1) * k).toFixed(4));
-    set(root, "--st-x", `${(m.st.x * k).toFixed(2)}px`);
-    set(root, "--st-y", `${(m.st.y * k).toFixed(2)}px`);
-    set(root, "--st-s", (1 + (m.st.s - 1) * k).toFixed(4));
-    set(root, "--h2a", span(r, 0.05, 0.2).toFixed(4));
-    set(root, "--b2a", span(r, 0.1, 0.26).toFixed(4));
+    setAll(tg.k, "--k", k.toFixed(4));
+    // The flying "12 fit your portfolio" and the list header are the same words: the header takes
+    // over only when the flyer has landed and gone, so the phrase is never on screen twice.
+    setAll(tg.fly, "--k-fly", (1 - span(k, 0.88, 0.97)).toFixed(4));
+    setAll(tg.head, "--k-head", span(k, 0.97, 1).toFixed(4));
+    setAll(tg.digits, "--dn-x", `${(m.dn.x * k).toFixed(2)}px`);
+    setAll(tg.digits, "--dn-y", `${(m.dn.y * k).toFixed(2)}px`);
+    setAll(tg.digits, "--dn-s", (1 + (m.dn.s - 1) * k).toFixed(4));
+    setAll(tg.stmt, "--st-x", `${(m.st.x * k).toFixed(2)}px`);
+    setAll(tg.stmt, "--st-y", `${(m.st.y * k).toFixed(2)}px`);
+    setAll(tg.stmt, "--st-s", (1 + (m.st.s - 1) * k).toFixed(4));
+    setAll(tg.ranked, "--h2a", span(r, 0.05, 0.2).toFixed(4));
+    setAll(tg.ranked, "--b2a", span(r, 0.1, 0.26).toFixed(4));
 
     // Row 1 before the Actor is born: the real row shows, then hands over.
     const birth = i === I.ranked ? span(r, BIRTH[0], BIRTH[1]) : i > I.ranked ? 1 : 0;
@@ -244,16 +271,29 @@ export function ReadPanel() {
 
     // Daybreak: the night copy inks out through a 24px soft edge above the rising Line.
     setMask(root, s.line.sweep && s.beat === "daybreak" ? softAbove(s.line.y) : "none");
+    // ...and is gone by 30% of the wipe (power2.in), so the line crosses only the night and the card.
+    const dk = i === DAYBREAK ? span(s.beatProgress, 0.04, 0.3) : i > DAYBREAK ? 1 : 0;
+    const dop = (1 - dk * dk).toFixed(3);
+    if (root.style.opacity !== dop) root.style.opacity = dop;
 
     // Reason: the list falls back, the copy swaps.
     const q = through(s, "reason");
     const j = span(q, 0, REASON_AT);
-    set(root, "--j", j.toFixed(4));
+    // The list: it breathes up through `ranked` and `reason`, and falls back behind the card.
+    // One inline transform and opacity on the wrapper (it holds all twelve rows).
+    if (tg.list) {
+      const y = 10 - 22 * story.breathOf("ranked", 0.15) - 10 * story.breathOf("reason", 0);
+      const tf = `translate3d(0,${y.toFixed(2)}px,0) scale(${(1 - 0.04 * j).toFixed(4)})`;
+      if (tg.list.style.transform !== tf) tg.list.style.transform = tf;
+      // Behind the card the list falls well back; on small screens the card covers it, so it goes entirely.
+      const op = (1 - (s.flags.small ? 1 : 0.8) * j).toFixed(4);
+      if (tg.list.style.opacity !== op) tg.list.style.opacity = op;
+    }
     // Reason breath: after the card lands, its chips are read one by one.
     cardShow.focus = i === I.reason && q >= REASON_AT ? span(q, REASON_AT + 0.08, 0.98) * 3 : i > I.reason ? 3 : -1;
-    set(root, "--out", span(q, 0, 0.12).toFixed(4));
-    set(root, "--in", span(q, 0.08, 0.22).toFixed(4));
-    set(root, "--in2", span(q, 0.13, 0.27).toFixed(4));
+    setAll(tg.ranked, "--out", span(q, 0, 0.12).toFixed(4));
+    setAll(tg.reason, "--in", span(q, 0.08, 0.22).toFixed(4));
+    setAll(tg.reason, "--in2", span(q, 0.13, 0.27).toFixed(4));
   });
 
   /* ── statement swaps: when the Line reaches the end of each pass ── */
@@ -411,17 +451,7 @@ export function ReadPanel() {
               <p className="rd-body">{storyCopy.ranked.body}</p>
             </div>
             <div className="rd-obj">
-              <div
-                className="rd-list-wrap"
-                ref={(el) => {
-                  const a = breathRanked(el);
-                  const b = breathReason(el);
-                  return () => {
-                    if (typeof a === "function") a();
-                    if (typeof b === "function") b();
-                  };
-                }}
-              >
+              <div className="rd-list-wrap">
                 <p className="rd-list-head">
                   <span ref={headNRef} className="rd-list-n">
                     {HEADER_N}

@@ -22,11 +22,15 @@ export default function Home() {
       </a>
       {/* The nav <header> is a landmark of its own: before <main>, so Tab reaches it first.
           It splits at the line during wipes, so it sits in a line scope. */}
-      <LineScope>
+      <LineScope targets=".nav-pill" lineY={false}>
         <Nav />
       </LineScope>
       <main>
-        <StoryRoot world={<World />} chrome={<BeatRail />}>
+        <StoryRoot world={<World />} chrome={
+            <LineScope targets=".rail-copy" lineY={false}>
+              <BeatRail />
+            </LineScope>
+          }>
           <ActRead />
           <ActBoard />
           <ActPrep />

@@ -198,7 +198,7 @@ html.hp [data-hero-hide] {
 /* The constant "Illustrative data" caption: one position in every stage. */
 .story-caption {
   position: absolute;
-  left: clamp(16px, 3.4vw, 48px);
+  left: clamp(20px, 3.4vw, 48px);
   bottom: clamp(16px, 2.6vh, 28px);
   z-index: 2;
   font-family: var(--font-mono);
@@ -292,8 +292,25 @@ html:not(.motion) .story-stage[data-chapter="night"] {
   --face-muted: var(--color-muted);
   --face-border: var(--color-line);
   --face-accent: var(--color-accent);
-  /* Warm and long. It deepens while the Actor is in flight (--lift goes 0, 1, 0). */
-  --face-shadow: 0 calc(40px + 16px * var(--lift, 0)) 80px -50px rgba(27, 25, 22, calc(0.45 + 0.2 * var(--lift, 0)));
+  /* Warm and long. */
+  --face-shadow: 0 40px 80px -50px rgba(27, 25, 22, 0.45);
+}
+/* It deepens while the Actor is in flight. --lift (0, 1, 0) is written on the chrome itself, a leaf. */
+.face[data-skin="day"] > .face-chrome {
+  box-shadow: 0 calc(40px + 16px * var(--lift, 0)) 80px -50px rgba(27, 25, 22, calc(0.45 + 0.2 * var(--lift, 0)));
+}
+/* The tile at night (nightfall only) is already the prep sheet's cover: lamp-lit paper, not glass.
+   Same paper as .sh-face-back in sheet.css, so the sheet can take over without a visible change. */
+.face[data-face="tile"][data-skin="night"] {
+  --face-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 40%), #f8f3e8;
+  --face-fg: var(--color-ink);
+  --face-muted: var(--color-muted);
+  --face-border: rgba(255, 238, 206, 0.22);
+  --face-accent: var(--color-accent);
+  --face-chip: #f4efe6;
+  --face-chip-line: #e8e1d4;
+  --face-tile: #f1ece3;
+  --face-shadow: 0 30px 120px -30px rgba(255, 186, 102, 0.38), 0 0 60px -10px rgba(255, 210, 150, 0.12);
 }
 .face {
   position: absolute;

@@ -258,6 +258,6 @@ html:not(.motion) .prep-sheet-wrap {
 
 /* Breath: 4px (unfold), 8px per question, 8px (votes), scrubbed. Reduced motion leaves the breaths at 1: no offset there. */
 html.motion .prep-sheet-wrap {
-  transform: translate3d(0, calc(-4px * var(--slide-unfold, 0) - 8px * (var(--slide-q1, 0) + var(--slide-q2, 0) + var(--slide-q3, 0) + var(--slide-votes, 0))), 0);
+  /* transform written inline by ActPrep */
   will-change: transform;
 }

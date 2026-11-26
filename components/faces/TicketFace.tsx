@@ -55,7 +55,7 @@ function TicketFace({ skin, host }: FaceProps) {
 
   return (
     <div className="tk-root" data-skin={skin} data-host={host} data-status={status} data-fresh={fresh ? "" : undefined}>
-      <div className="tk-plate" aria-hidden="true" />
+      <div className="tk-plate" data-actor-var="lift" aria-hidden="true" />
       <div className="tk-paper tk-paper-main">
         <div className="tk-main">
           <p className="tk-head">
@@ -71,7 +71,7 @@ function TicketFace({ skin, host }: FaceProps) {
         <div className="tk-light" aria-hidden="true" />
         {live ? null : (
           <div className="tk-sheen-box" aria-hidden="true">
-            <div className="tk-sheen" />
+            <div className="tk-sheen" data-actor-var="flip" />
           </div>
         )}
       </div>
@@ -89,7 +89,7 @@ function TicketFace({ skin, host }: FaceProps) {
           <div className="tk-light" />
           {live ? null : (
             <div className="tk-sheen-box">
-              <div className="tk-sheen" />
+              <div className="tk-sheen" data-actor-var="flip" />
             </div>
           )}
         </div>

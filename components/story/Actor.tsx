@@ -13,17 +13,23 @@
  * - Box = interpolation of the beat's from and to anchor rects (x, y, width,
  *   height, radius), plus a low arc perpendicular to travel and a lean into it.
  *   Travel is scrubbed (linear in beat progress) or timed (cubic-bezier(0.65,0,0.15,1)).
- * - Faces: the from-face crossfades to the to-face at travel midpoint (t 0.45..0.55)
- *   with a 2px blur dip (only while the box is 300px wide or less), or flips on rotateY when the move has a `flip` channel.
- *   Each face is scaled uniformly from its natural size to the box width.
+ * - Faces: at travel midpoint the surface stays whole while the old content
+ *   leaves (t 0.40..0.50) and the new content arrives (t 0.50..0.60): no frame
+ *   shows two layouts at once. A move with `crossfade: false` wears the
+ *   from-face for the whole travel and cuts to the to-face at the end. A move
+ *   with a `flip` channel turns on rotateY instead.
+ *   Each face is scaled uniformly from its natural size to the box width
+ *   (or to the box height, with a flexing width, when its meta says fit: "height").
  * - Skins: outside wipes one skin is shown. While the line sweeps, both are
  *   stacked and each is clipped at the line (state.dayTop), so the Actor is cut
  *   into glass above and paper below at exactly the line. Lean is 0 while split.
  * - Docking: on a `dock` move, once travel is complete the real DOM face in the
  *   `to` anchor gets `data-docked` (FaceSlot shows it) and the Actor is hidden
  *   in the same frame. Leaving the beat undocks.
- * - Fold and flip: published as CSS variables --fold, --flip, --progress and
- *   --lift (0..1..0 while travelling) on the Actor, and in story.get().actor.
+ * - Fold, flip, progress and lift (0..1..0 while travelling): in
+ *   story.get().actor, and as CSS variables ONLY on elements inside a face that
+ *   ask for them with data-actor-var="fold flip progress lift". They are not
+ *   set on the Actor itself: an inherited variable there restyled 700 nodes a frame.
  *
  * Timed channels chase their target: scrolling back above their start point
  * plays them in reverse (the fold and the flip are visibly reversible). Entering
@@ -60,6 +66,8 @@ const DEFAULT_LEAN = 4;
 const FAR = 4000;
 /** Faces wider than this are never blurred. */
 const BLUR_MAX_W = 300;
+/** How far outside its box a skin may draw (shadow, glow): it is kept while the line is this close. */
+const SKIN_PAD = 80;
 
 function facesFor(move: ActorMove | undefined): FaceId[] {
   if (!move) return [];
@@ -109,13 +117,36 @@ export function Actor() {
     let clockBeat: BeatId | null = null;
     let pendingDirection: 1 | -1 | 0 = 0;
     let dockedEl: HTMLElement | null = null;
-    const last = new Map<string, string>();
-    const seen = new Map<FaceId, HTMLElement>();
-    const put = (key: string, el: HTMLElement, prop: string, value: string) => {
-      if (last.get(key) === value) return;
-      last.set(key, value);
+    let wasMoving = false;
+    let frameNo = 0;
+    // Last value written per element and property: a write happens only when the value changes.
+    const written = new WeakMap<HTMLElement, Map<string, string>>();
+    const put = (el: HTMLElement, prop: string, value: string) => {
+      let m = written.get(el);
+      if (!m) written.set(el, (m = new Map()));
+      if (m.get(prop) === value) return;
+      m.set(prop, value);
       if (prop.startsWith("--")) el.style.setProperty(prop, value);
       else (el.style as unknown as Record<string, string>)[prop] = value;
+    };
+    // The few elements inside a skin that take per-frame values. Looked up again every half second
+    // and after a beat change, because a face may re-render and replace them.
+    type Leaves = { at: number; chrome: HTMLElement | null; clip: HTMLElement | null; content: HTMLElement | null; vars: { el: HTMLElement; names: string[] }[] };
+    const leafCache = new WeakMap<HTMLElement, Leaves>();
+    let leavesValidFrom = 0;
+    const leaves = (wrap: HTMLElement): Leaves => {
+      let l = leafCache.get(wrap);
+      if (!l || l.at < leavesValidFrom || frameNo - l.at > 30) {
+        l = {
+          at: frameNo,
+          chrome: wrap.querySelector<HTMLElement>(":scope > .face > .face-chrome"),
+          clip: wrap.querySelector<HTMLElement>(":scope > .face > .face-clip"),
+          content: wrap.querySelector<HTMLElement>(":scope > .face > .face-clip > .face-content"),
+          vars: Array.from(wrap.querySelectorAll<HTMLElement>("[data-actor-var]"), (el) => ({ el, names: (el.dataset.actorVar ?? "").split(" ") })),
+        };
+        leafCache.set(wrap, l);
+      }
+      return l;
     };
 
     const undock = () => {
@@ -127,6 +158,8 @@ export function Actor() {
 
     const offBeat = story.onBeatChange((_beat, _prev, direction) => {
       pendingDirection = direction;
+      // Faces re-render on beat change: look their leaves up again over the next frames.
+      leavesValidFrom = frameNo + 2;
     });
 
     const frame = (_time: number, dt: number, s: Readonly<StoryState>) => {
@@ -134,7 +167,7 @@ export function Actor() {
       const move = ACTOR_TRACK[s.beat];
       if (!move) {
         undock();
-        put("vis", root, "visibility", "hidden");
+        put(root, "visibility", "hidden");
         actor.present = false;
         actor.docked = false;
         actor.face = null;
@@ -181,7 +214,7 @@ export function Actor() {
       const b = anchorRect(move.to) ?? a;
       if (!a || !b) {
         undock();
-        put("vis", root, "visibility", "hidden");
+        put(root, "visibility", "hidden");
         actor.present = false;
         actor.docked = false;
         return;
@@ -234,7 +267,7 @@ export function Actor() {
 
       actor.present = docked || opacity > 0.01;
       actor.docked = docked;
-      actor.face = faceFrom && t < 0.5 ? faceFrom.id : faceTo.id;
+      actor.face = faceFrom && (move.crossfade === false ? t < 1 : t < 0.5) ? faceFrom.id : faceTo.id;
       actor.x = x;
       actor.y = y;
       actor.w = w;
@@ -244,74 +277,90 @@ export function Actor() {
       actor.flip = flip;
 
       /* ── writes ── */
-      put("vis", root, "visibility", docked || opacity <= 0.01 ? "hidden" : "visible");
+      // Everything below is written on the element that uses it. Nothing inheritable is ever set on the
+      // Actor root or a skin wrapper: those have hundreds of descendants and would all be restyled.
+      put(root, "visibility", docked || opacity <= 0.01 ? "hidden" : "visible");
       if (docked) return;
-      put("w", root, "width", `${w.toFixed(2)}px`);
-      put("h", root, "height", `${h.toFixed(2)}px`);
-      put("tf", root, "transform", `translate3d(${x.toFixed(2)}px,${y.toFixed(2)}px,0) rotate(${rot.toFixed(3)}deg)`);
-      put("op", root, "opacity", opacity.toFixed(3));
-      put("rad", root, "--face-radius", `${radius.toFixed(2)}px`);
-      put("fold", root, "--fold", fold.toFixed(4));
-      put("flipv", root, "--flip", flip.toFixed(4));
-      put("prog", root, "--progress", t.toFixed(4));
-      put("lift", root, "--lift", bump.toFixed(3));
-      put("flip", flipEl, "transform", move.flip ? `rotateY(${(flip * 180).toFixed(2)}deg)` : "none");
+      put(root, "width", `${w.toFixed(2)}px`);
+      put(root, "height", `${h.toFixed(2)}px`);
+      put(root, "transform", `translate3d(${x.toFixed(2)}px,${y.toFixed(2)}px,0) rotate(${rot.toFixed(3)}deg)`);
+      put(root, "opacity", opacity.toFixed(3));
+      put(flipEl, "transform", move.flip ? `rotateY(${(flip * 180).toFixed(2)}deg)` : "none");
 
-      // A short crossfade (t 0.45..0.55) with a 2px blur dip (t 0.42..0.58). Big faces are never blurred:
-      // re-rastering a 560x720 sheet every frame costs more than the dip is worth.
-      const mix = faceFrom ? clamp01((t - 0.45) / 0.1) : 1;
-      const blur = faceFrom && !move.flip && w <= BLUR_MAX_W ? 2 * Math.sin(Math.PI * clamp01((t - 0.42) / 0.16)) : 0;
-      put("blur", root, "filter", blur > 0.05 ? `blur(${blur.toFixed(2)}px)` : "none");
-      const moving = t > 0 && t < 1 ? "1" : "";
-      if (last.get("moving") !== moving) {
-        last.set("moving", moving);
-        root.toggleAttribute("data-moving", moving === "1");
+      // Face change. Default: the surface (chrome) never dips; the old content leaves (t 0.40..0.50)
+      // before the new content arrives (t 0.50..0.60), so no frame shows two layouts at once.
+      // `crossfade: false`: the from-face is worn for the whole travel and the to-face takes over at
+      // the end (the two are designed to be identical there: the tile is the folded sheet's cover).
+      const cut = move.crossfade === false;
+      const outK = !faceFrom ? 0 : cut ? (t < 1 ? 1 : 0) : 1 - clamp01((t - 0.4) / 0.1);
+      const inK = !faceFrom ? 1 : cut ? (t < 1 ? 0 : 1) : clamp01((t - 0.5) / 0.1);
+      const surfaceK = !faceFrom ? 1 : cut ? inK : clamp01((t - 0.4) / 0.2);
+      const blur = faceFrom && !cut && !move.flip && w <= BLUR_MAX_W ? 2 * Math.sin(Math.PI * clamp01((t - 0.42) / 0.16)) : 0;
+      put(root, "filter", blur > 0.05 ? `blur(${blur.toFixed(2)}px)` : "none");
+      const moving = t > 0 && t < 1;
+      if (moving !== wasMoving) {
+        wasMoving = moving;
+        root.toggleAttribute("data-moving", moving);
       }
 
-      const nightOn = s.dayTop > 0;
-      const dayOn = s.dayTop < vh;
-      const nightClip = split ? `inset(${-FAR}px ${-FAR}px ${(y + h - s.dayTop).toFixed(2)}px ${-FAR}px)` : "none";
-      const dayClip = split ? `inset(${(s.dayTop - y).toFixed(2)}px ${-FAR}px ${-FAR}px ${-FAR}px)` : "none";
+      // Skins: one outside a wipe. During a wipe a skin is drawn only if the line leaves it something to show.
+      const reach = Math.max(h, ...[faceFrom, faceTo].map((f) => (f && !f.meta.clip ? f.meta.height * (w / f.meta.width) : 0)));
+      const nightOn = split ? s.dayTop > y - SKIN_PAD : s.dayTop > 0;
+      const dayOn = split ? s.dayTop < y + reach + SKIN_PAD : s.dayTop <= 0;
+      const nightClip = split && dayOn ? `inset(${-FAR}px ${-FAR}px ${(y + h - s.dayTop).toFixed(2)}px ${-FAR}px)` : "none";
+      const dayClip = split && nightOn ? `inset(${(s.dayTop - y).toFixed(2)}px ${-FAR}px ${-FAR}px ${-FAR}px)` : "none";
+      const radiusPx = `${radius.toFixed(2)}px`;
+      frameNo++;
 
       els.current.forEach((e, id) => {
         if (!e.root) return;
-        if (seen.get(id) !== e.root) {
-          // A face was (re)mounted: its element has none of the cached styles.
-          seen.set(id, e.root);
-          last.forEach((_, key) => {
-            if (key.startsWith(`${id}:`)) last.delete(key);
-          });
-        }
         const isTo = id === faceTo.id;
         const isFrom = faceFrom !== null && id === faceFrom.id;
-        if (!isTo && !isFrom) {
-          put(`${id}:d`, e.root, "display", "none");
-          return;
-        }
-        const faceOpacity = move.flip ? 1 : isTo ? mix : 1 - mix;
-        if (faceOpacity <= 0.001) {
-          put(`${id}:d`, e.root, "display", "none");
+        const k = move.flip ? 1 : isTo ? inK : isFrom ? outK : 0;
+        // Under the incoming surface the old one holds (opaque paper) or hands over (glass, where two
+        // translucent layers would read denser), and is gone once the new one is whole.
+        const surface = move.flip ? 1 : isTo ? surfaceK : !isFrom ? 0 : cut ? outK : surfaceK >= 1 ? 0 : nightOn && !dayOn ? 1 - surfaceK : 1;
+        if ((!isTo && !isFrom) || (k <= 0.001 && surface <= 0.001)) {
+          put(e.root, "display", "none");
           return;
         }
         const meta = isTo ? faceTo.meta : (faceFrom ?? faceTo).meta;
-        put(`${id}:d`, e.root, "display", "block");
-        put(`${id}:s`, e.root, "--face-scale", (w / meta.width).toFixed(4));
-        if (move.flip) {
-          put(`${id}:o`, e.root, "opacity", "1");
-          put(`${id}:t`, e.root, "transform", isTo ? "rotateY(180deg)" : "none");
-          put(`${id}:b`, e.root, "backfaceVisibility", "hidden");
-        } else {
-          put(`${id}:o`, e.root, "opacity", faceOpacity.toFixed(3));
-          put(`${id}:t`, e.root, "transform", "none");
-          put(`${id}:b`, e.root, "backfaceVisibility", "visible");
-        }
-        if (e.night) {
-          put(`${id}:nv`, e.night, "display", nightOn ? "block" : "none");
-          put(`${id}:nc`, e.night, "clipPath", nightClip);
-        }
-        if (e.day) {
-          put(`${id}:dv`, e.day, "display", dayOn ? "block" : "none");
-          put(`${id}:dc`, e.day, "clipPath", dayClip);
+        put(e.root, "display", "block");
+        put(e.root, "transform", move.flip && isTo ? "rotateY(180deg)" : "none");
+        put(e.root, "backfaceVisibility", move.flip ? "hidden" : "visible");
+        // Height-fit faces keep their natural height and let their layout take the box's width.
+        const scale = meta.fit === "height" ? h / meta.height : w / meta.width;
+        const tf = `scale(${scale.toFixed(4)})`;
+        const cw = meta.fit === "height" ? `${(w / scale).toFixed(2)}px` : "";
+        for (let n = 0; n < 2; n++) {
+          const wrap = n === 0 ? e.night : e.day;
+          if (!wrap) continue;
+          const on = n === 0 ? nightOn : dayOn;
+          put(wrap, "display", on ? "block" : "none");
+          if (!on) continue;
+          put(wrap, "clipPath", n === 0 ? nightClip : dayClip);
+          const leaf = leaves(wrap);
+          if (leaf.chrome) {
+            put(leaf.chrome, "borderRadius", radiusPx);
+            put(leaf.chrome, "opacity", surface.toFixed(3));
+            if (n === 1) put(leaf.chrome, "--lift", bump.toFixed(3));
+          }
+          if (leaf.clip) {
+            put(leaf.clip, "borderRadius", radiusPx);
+            put(leaf.clip, "opacity", (meta.chrome ? k : Math.max(k, surface)).toFixed(3));
+          }
+          if (leaf.content) {
+            put(leaf.content, "transform", tf);
+            if (cw) put(leaf.content, "width", cw);
+          }
+          for (let i = 0; i < leaf.vars.length; i++) {
+            const v = leaf.vars[i];
+            for (let j = 0; j < v.names.length; j++) {
+              const name = v.names[j];
+              const value = name === "fold" ? fold : name === "flip" ? flip : name === "progress" ? t : name === "lift" ? bump : null;
+              if (value !== null) put(v.el, `--${name}`, value.toFixed(4));
+            }
+          }
         }
       });
     };

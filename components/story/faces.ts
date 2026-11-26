@@ -33,11 +33,17 @@
  * - `host` is "actor" (the flying copy: aria-hidden and inert, purely visual)
  *   or "dock" (the real, semantic, interactive copy inside a <FaceSlot>).
  * - Per-frame values never arrive as React props (that would re-render every
- *   frame). They arrive as CSS variables on the face wrapper:
- *     --fold      0 folded .. 1 open        (sheet hinges: rotateX(calc((1 - var(--fold)) * -179deg)))
+ *   frame). They are in story.get().actor ({ fold, flip, travel }) for JS, and
+ *   as CSS variables for the elements that ASK for them:
+ *     <div data-actor-var="progress lift">…</div>
+ *     --fold      0 folded .. 1 open
  *     --progress  0 at the from anchor .. 1 at the to anchor
  *     --flip      0 front .. 1 back
- *   and numerically in story.get().actor ({ fold, flip, travel }).
+ *     --lift      0 at rest, 1 mid-flight
+ *   The Actor writes each variable on those elements only, never on itself, so
+ *   put the attribute on the smallest element that reads the variable (a leaf
+ *   if you can). In a <FaceSlot> the same variables are static on the slot
+ *   (fold as given, progress 1, flip 0) and simply inherit.
  *   The `fold` and `progress` props are the settled values for the current beat
  *   (they change on beat change only): use them for discrete decisions.
  * - A face that contains an anchor (the card's `card-meter`, the sheet's
@@ -71,6 +77,12 @@ export type FaceMeta = {
   chrome: boolean;
   /** Clip content to the box (needed while the box morphs between aspect ratios). Default true. */
   clip: boolean;
+  /**
+   * How the Actor scales the face to its box. "width" (default): uniform scale to the box width.
+   * "height": uniform scale to the box height, and the content's layout width follows the box
+   * (natural height stays), so a flex layout re-spaces as the box changes aspect ratio.
+   */
+  fit?: "width" | "height";
 };
 
 export type RegisteredFace = { id: FaceId; Component: ComponentType<FaceProps>; meta: FaceMeta; placeholder: boolean };

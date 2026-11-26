@@ -156,10 +156,11 @@ def check_wipes(page, shots):
               });
               const at = (y) => document.elementFromPoint(innerWidth / 2, y)?.closest('.story-stage')?.dataset.stage ?? null;
               // The live line variables are written on line scopes (.story-vars), not on <html>.
-              const scopes = [...document.querySelectorAll('.story-vars')].map((el) => getComputedStyle(el));
-              const v = scopes[0];
+              // The world's wrapper takes all three; the nav pills and rail copies take --day-top only.
+              const scopes = [...document.querySelectorAll('.story-root > .story-vars:first-child, .nav-pill, .rail-copy')].map((el) => getComputedStyle(el));
+              const v = getComputedStyle(document.querySelector('.story-root > .story-vars:first-child'));
               const split = parseFloat(v.getPropertyValue('--day-top'));
-              const agree = scopes.every((c) => c.getPropertyValue('--day-top') === v.getPropertyValue('--day-top') && c.getPropertyValue('--line-y') === v.getPropertyValue('--line-y'));
+              const agree = scopes.every((c) => c.getPropertyValue('--day-top') === v.getPropertyValue('--day-top'));
               return { stages, wipe: d.dataset.wipe, split, lineY: parseFloat(v.getPropertyValue('--line-y')), scopes: scopes.length, agree,
                        htmlInline: d.style.getPropertyValue('--day-top') + d.style.getPropertyValue('--line-y'),
                        side: v.getPropertyValue('--day-side').trim(), above: at(split - 4), below: at(split + 4) };
@@ -374,7 +375,10 @@ def main():
         check(s["beat"] == "hero" and s["chapter"] == "night", f"desktop: starts on hero at night, got {s['beat']} {s['chapter']}")
         total = page.evaluate("() => document.documentElement.scrollHeight / innerHeight")
         print(f"document height: {total:.2f} viewports")
-        check(11.9 < total < 12.7, f"desktop: the document is about 12.25 viewports tall, got {total:.2f}")
+        check(11.5 < total < 12.3, f"desktop: the document is about 11.9 viewports tall, got {total:.2f}")
+        ends = page.evaluate("() => [...document.querySelectorAll('.story-act')].map((e) => Math.round(e.getBoundingClientRect().bottom + scrollY))")
+        foot = page.evaluate("() => Math.round(document.querySelector('footer').getBoundingClientRect().top + scrollY)")
+        check(max(ends) == ends[-1] and abs(foot - ends[-1]) <= 1, f"desktop: no act section ends below the last one, and the footer follows it directly (ends {ends}, footer {foot})")
         if args.shots:
             page.screenshot(path=str(args.shots / "hero.png"))
         check_beats(page, "desktop")

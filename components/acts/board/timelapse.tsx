@@ -6,8 +6,11 @@
  * One scrubbed clock runs across Act II, Monday morning to Wednesday night:
  *   saved      Mon 08:30 → Mon 18:30
  *   applied    Mon 18:30 → Tue 17:00
- *   interview  Tue 17:00 → Wed 13:00   (the slot booked is Thu 11:40)
- *   hinge      Wed 13:00 → Wed 21:40   (then nightfall: the night before)
+ *   interview  Tue 17:00 → Wed 16:05   the booking moment: the clock reads "WED 16:05 · BOOKED"
+ *                                      and a flag marks the slot, Thu 11:40, where the Line's
+ *                                      right end comes to rest (it reads ahead of "now")
+ *   hinge      Wed 16:05 → Wed 21:40   (then nightfall: the night before)
+ * One story, Monday to Thursday: nothing on the strip contradicts "Thursday, 11:40".
  * It drives the "now" dot and clock on the week strip, and the light that
  * crosses the board with the time of day. Also: the ledger odometer.
  */
@@ -17,12 +20,16 @@ import { storyActs12 } from "@/lib/content";
 import { BEATS, type BeatId, type StoryState } from "@/lib/story";
 
 export const DAYS = storyActs12.board.days;
+/** Wednesday 16:05, in hours since Monday 00:00: the invite lands. */
+export const BOOKED_AT = 48 + 16 + 5 / 60;
+/** Thursday 11:40: the slot. */
+export const SLOT_AT = 72 + 11 + 40 / 60;
 
 const KEYS: [BeatId, number, number][] = [
   ["saved", 8.5, 18.5],
   ["applied", 18.5, 41],
-  ["interview", 41, 61],
-  ["hinge", 61, 69 + 2 / 3],
+  ["interview", 41, BOOKED_AT],
+  ["hinge", BOOKED_AT, 69 + 2 / 3],
 ];
 const idx = (id: BeatId) => BEATS.findIndex((b) => b.id === id);
 
@@ -59,13 +66,15 @@ export function boardHours(s: Readonly<StoryState> | null): number {
   if (i < idx("saved")) return KEYS[0][1];
   for (let k = 0; k < KEYS.length; k++) {
     const [id, a, b] = KEYS[k];
-    if (s.beat === id) return hourAt(a, b, TOTALS[k] * s.beatProgress);
+    // The interview is booked as the tile lands (60% of the beat), not at the beat's last pixel.
+    if (s.beat === id) return hourAt(a, b, TOTALS[k] * (id === "interview" ? Math.min(1, s.beatProgress / 0.6) : s.beatProgress));
   }
   return KEYS[KEYS.length - 1][2];
 }
 
-/** "TUE 14:20" (ten-minute steps, so the digits tick like a clock). */
+/** "TUE 14:20" (ten-minute steps, so the digits tick like a clock). At the booking moment: "WED 16:05 · BOOKED". */
 export function clockLabel(hours: number): string {
+  if (hours >= BOOKED_AT - 1e-6) return `${DAYS[2]} 16:05 · ${storyActs12.board.booked}`;
   const day = Math.min(DAYS.length - 1, Math.floor(hours / 24));
   const mins = Math.floor(((hours % 24) * 60) / 10) * 10;
   const hh = String(Math.floor(mins / 60)).padStart(2, "0");

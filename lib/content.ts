@@ -497,6 +497,10 @@ export const storyActs12 = {
     /** The week strip above the board (the Line rides it; the clock runs along it). */
     days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
     /** Visually hidden name of the strip. */
-    daysLabel: "This week, Monday to Friday",
+    daysLabel: "This week, Monday to Friday. The interview is booked on Wednesday for Thursday, 11:40.",
+    /** Appended to the board clock at the moment the interview is booked: "WED 16:05 · BOOKED". */
+    booked: "Booked",
+    /** The flag on the strip at the booked slot, where the Line's right end comes to rest. */
+    slot: "Thu 11:40",
   },
 } as const;

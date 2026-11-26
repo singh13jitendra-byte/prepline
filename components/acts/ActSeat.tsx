@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { registerAnchor, useAnchor, type AnchorId } from "@/lib/anchors";
+import { anchorElement, registerAnchor, useAnchor, type AnchorId } from "@/lib/anchors";
 import { storyCopy } from "@/lib/content";
 import { gsap } from "@/lib/gsap";
 import { usePerformance } from "@/lib/perform";
@@ -161,6 +161,25 @@ export function ActSeat() {
   const rideRef = useRef<HTMLDivElement>(null);
   const [claimed, setClaimed] = useState<number | null>(null);
   const [worldFill, setWorldFill] = useState(false);
+
+  // The bookend: the Line ends the page under "ready." at the hero underline's own size, not the
+  // (larger) closing word's. Measured from the hero's anchor, so it holds at every breakpoint.
+  useEffect(() => {
+    const el = underlineEl.current;
+    if (!el) return;
+    const fit = () => {
+      const hero = anchorElement("hero-underline");
+      const w = hero?.offsetWidth ?? 0;
+      el.style.right = w > 0 ? "auto" : "";
+      el.style.width = w > 0 ? `${w}px` : "";
+      el.style.height = hero && hero.offsetHeight > 0 ? `${hero.offsetHeight}px` : "";
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(document.documentElement);
+    document.fonts?.ready.then(fit).catch(() => {});
+    return () => ro.disconnect();
+  }, []);
 
   // Scrubbed, every pixel (the "breath"):
   // - dawn: "Walk in / ready." rides up just under the rising line, so the line reveals it bottom-up;

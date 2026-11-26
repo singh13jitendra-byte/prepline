@@ -30,7 +30,7 @@ import { rankedRoles, storyActs12, storyCopy } from "@/lib/content";
 import { useAnchor, type AnchorId } from "@/lib/anchors";
 import { ACTOR_TRACK, BEATS, story, travelEase, type BeatId, type StoryState } from "@/lib/story";
 import { offsetIn, setMask, softBelow, span, tileShow, useActorExtra, usePerformanceAt, useScrub } from "../read/runtime";
-import { boardHours, clockLabel, DAYS, Odo, setOdo, sunAt } from "./timelapse";
+import { boardHours, BOOKED_AT, clockLabel, DAYS, Odo, setOdo, SLOT_AT, sunAt } from "./timelapse";
 
 const copy = storyCopy;
 const L = copy.ledger;
@@ -93,6 +93,9 @@ function Col({ col, children, count }: { col: (typeof COLS)[number]; children: R
   const rule = useAnchor(`col-${col.key}` as AnchorId);
   return (
     <li className="bd-col" data-col={col.key}>
+      {/* Leaves for the per-frame floor light, so a scroll frame restyles two empty elements, not the column. */}
+      <i className="bd-col-warm" aria-hidden="true" />
+      <i className="bd-col-breath" aria-hidden="true" />
       <h3 className="bd-col-h">
         <span className="bd-col-name">{col.name}</span>
         <span className="bd-count" data-count={col.key}>
@@ -111,8 +114,13 @@ function WeekStrip() {
   return (
     <div className="bd-days" role="img" aria-label={storyActs12.board.daysLabel}>
       <div className="bd-days-now" aria-hidden="true">
+        {/* Server and reduced-motion markup show the end of the week's story: booked on Wednesday. */}
         <span className="bd-days-clock" data-clock>
-          {clockLabel(boardHours(null))}
+          {clockLabel(BOOKED_AT)}
+        </span>
+        {/* The booked slot. The Line's right end comes to rest under it. */}
+        <span className="bd-days-slot" data-slot style={{ left: `${((SLOT_AT / (24 * DAYS.length)) * 100).toFixed(3)}%` }}>
+          {storyActs12.board.slot}
         </span>
       </div>
       {/* `board-days`: five equal day cells; day i spans [i/5, (i+1)/5]. Its bottom edge is the time axis the Line rides. */}
@@ -130,6 +138,17 @@ function WeekStrip() {
 
 export function BoardPanel() {
   const rootRef = useRef<HTMLDivElement>(null);
+  const odo = useRef({ ranked: 0, saved: 0, applied: 0, pos: -1, movedAt: 0 });
+  const targets = useRef<{
+    copy: NodeListOf<HTMLElement>;
+    obj: HTMLElement | null;
+    fade: NodeListOf<HTMLElement>;
+    now: NodeListOf<HTMLElement>;
+    slot: HTMLElement | null;
+    surface: HTMLElement | null;
+    sun: NodeListOf<HTMLElement>;
+    glow: NodeListOf<HTMLElement>;
+  } | null>(null);
   const [layout, setLayout] = useState(0);
   const deltas = useRef({ g: [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }], g4: { x: 0, y: 0 }, up: { x: 0, y: 0 } });
 
@@ -166,6 +185,16 @@ export function BoardPanel() {
       if (obj && col && glow) {
         const r = offsetIn(col, obj);
         Object.assign(glow.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
+      }
+      // Where the surface's window sits: the Interview column, inside the board.
+      const board = root.querySelector<HTMLElement>(".bd-board");
+      const surface = root.querySelector<HTMLElement>(".bd-surface");
+      if (board && col && surface) {
+        const r = offsetIn(col, board);
+        surface.style.setProperty("--wx", `${(r.x + 1).toFixed(1)}px`);
+        surface.style.setProperty("--wy", `${(r.y + 1).toFixed(1)}px`);
+        surface.style.setProperty("--ww", `${Math.max(0, r.w - 2).toFixed(1)}px`);
+        surface.style.setProperty("--wh", `${Math.max(0, r.h - 2).toFixed(1)}px`);
       }
       const next = JSON.stringify(deltas.current);
       if (next !== key) {
@@ -215,16 +244,41 @@ export function BoardPanel() {
       const col = root.querySelector<HTMLElement>(`[data-col="${c.key}"]`);
       if (col && col.style.getPropertyValue("--draw") !== v) col.style.setProperty("--draw", v);
     });
-    const set = (el: HTMLElement | null, prop: string, v: string) => {
-      if (el && el.style.getPropertyValue(prop) !== v) el.style.setProperty(prop, v);
+    // Per-frame custom properties go to the elements that read them (see board.css), never to the
+    // panel root: a variable there is inherited by all 250 nodes and every one is restyled.
+    const tg = (targets.current ??= {
+      copy: root.querySelectorAll<HTMLElement>(".bd-copy"),
+      obj: root.querySelector<HTMLElement>(".bd-obj"),
+      fade: root.querySelectorAll<HTMLElement>(".bd-obj > :not(.bd-glow)"),
+      now: root.querySelectorAll<HTMLElement>(".bd-days-clock, .bd-days-dot"),
+      slot: root.querySelector<HTMLElement>("[data-slot]"),
+      surface: root.querySelector<HTMLElement>(".bd-surface"),
+      sun: root.querySelectorAll<HTMLElement>(".bd-sun"),
+      glow: root.querySelectorAll<HTMLElement>(".bd-glow"),
+    });
+    const set = (els: NodeListOf<HTMLElement>, prop: string, v: string) => {
+      els.forEach((el) => {
+        if (el.style.getPropertyValue(prop) !== v) el.style.setProperty(prop, v);
+      });
     };
     // Hinge, sequenced (review P1-A5): the board copy is gone by 12% (power2.in, faster than
     // any entry), the board itself steps back by 25%, then the sentence starts reading.
     const hp = through(s, "hinge");
     const out = span(hp, 0, 0.12);
-    set(root, "--copy-out", (out * out).toFixed(4));
-    set(root, "--rc", span(hp, 0, 0.14).toFixed(4));
-    set(root, "--rc2", hp.toFixed(4));
+    set(tg.copy, "--copy-out", (out * out).toFixed(4));
+    // The board steps back and is gone by 20% of the hinge: the rest is the sentence and the tile.
+    const rc = span(hp, 0, 0.14);
+    const gone = span(hp, 0.02, 0.2);
+    if (tg.obj) {
+      const tf = `scale(${(1 - 0.08 * rc - 0.03 * hp).toFixed(4)})`;
+      if (tg.obj.style.transform !== tf) tg.obj.style.transform = tf;
+    }
+    const op = (1 - gone * gone * (3 - 2 * gone)).toFixed(4);
+    const vis = gone >= 1 ? "hidden" : "";
+    tg.fade.forEach((el) => {
+      if (el.style.opacity !== op) el.style.opacity = op;
+      if (el.style.visibility !== vis) el.style.visibility = vis;
+    });
 
     // While a wipe sweeps (day rises at daybreak, night falls at nightfall), the board inks in or
     // out through a 24px soft edge below the Line rather than being cut at it.
@@ -234,42 +288,93 @@ export function BoardPanel() {
     // crosses the board with the time of day. Every pixel of scroll moves it.
     const hours = boardHours(s);
     const sun = sunAt(hours);
-    set(root, "--now", (hours / (24 * DAYS.length)).toFixed(5));
-    set(root, "--sun-x", `${sun.x.toFixed(2)}%`);
-    set(root, "--sun-y", `${sun.y.toFixed(2)}%`);
-    set(root, "--sun-a", sun.a.toFixed(4));
-    set(root, "--night", sun.night.toFixed(4));
+    set(tg.now, "--now", (hours / (24 * DAYS.length)).toFixed(5));
+    set(tg.sun, "--sun-x", `${sun.x.toFixed(2)}%`);
+    set(tg.sun, "--sun-y", `${sun.y.toFixed(2)}%`);
+    set(tg.sun, "--sun-a", sun.a.toFixed(4));
+    set(tg.sun, "--night", sun.night.toFixed(4));
     const clock = root.querySelector<HTMLElement>("[data-clock]");
     const label = clockLabel(hours);
-    if (clock && clock.textContent !== label) clock.textContent = label;
+    if (clock && clock.textContent !== label) {
+      clock.textContent = label;
+      clock.toggleAttribute("data-booked", hours >= BOOKED_AT - 1e-6);
+    }
     const today = String(Math.min(DAYS.length - 1, Math.floor(hours / 24)));
     if (root.dataset.today !== today) root.dataset.today = today;
 
-    // Ledger odometer: the digits roll with the scroll.
+    // Ledger odometer: the digits roll with the scroll (and settle on whole digits at rest: see below).
     const sp = through(s, "saved");
     const ap = through(s, "applied");
-    setOdo(root, "ranked", END.ranked * span(sp, 0.08, 0.7));
-    setOdo(root, "saved", END.saved * span(sp, 0.2, 0.78));
     const applied = END.applied * span(ap, 0.25, 0.85);
-    setOdo(root, "applied", applied);
+    odo.current.ranked = END.ranked * span(sp, 0.08, 0.7);
+    odo.current.saved = END.saved * span(sp, 0.2, 0.78);
+    odo.current.applied = applied;
+    if (s.pos !== odo.current.pos) {
+      odo.current.pos = s.pos;
+      odo.current.movedAt = performance.now();
+    }
     const byYou = applied >= 0.5 ? "1" : "0";
     if (root.dataset.appliedByYou !== byYou) root.setAttribute("data-applied-by-you", byYou);
 
-    // The Interview floor glows amber from `interview` on and keeps glowing into the hinge
-    // (the World turns this glow into the Act III lamp at nightfall).
+    // The Interview floor glows amber through `interview` and is out by 15% of the hinge. From there
+    // the World carries the warmth as a small pool under the floating tile (review 2, P1-4).
     const ip = through(s, "interview");
-    set(root, "--glow", Math.min(1, span(ip, 0.25, 1) * 0.85 + hp * 0.15).toFixed(4));
+    // The Interview floor turns translucent while the tile lands (p 0.2 to 0.7), so the World's
+    // "iron filings" (day dust pulled into amber lanes in this column) read through it.
+    if (tg.surface) {
+      const w = (0.72 * span(ip, 0.2, 0.3) * (1 - span(ip, 0.6, 0.72))).toFixed(3);
+      if (tg.surface.style.getPropertyValue("--win") !== w) tg.surface.style.setProperty("--win", w);
+    }
+    // The slot flag appears as the Line's right end arrives at Thursday 11:40.
+    if (tg.slot) {
+      const v = span(ip, 0.42, 0.6).toFixed(3);
+      if (tg.slot.style.opacity !== v) tg.slot.style.opacity = v;
+    }
+    set(tg.glow, "--glow", (span(ip, 0.25, 1) * 0.85 * (1 - span(hp, 0, 0.15))).toFixed(4));
   });
+
+  /* ── odometer: rolls with the wheel, rests on whole digits ── */
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || story.reduced()) return;
+    const shown = { ranked: -1, saved: -1, applied: -1 };
+    const ids = ["ranked", "saved", "applied"] as const;
+    return story.frame("actor", (_t, dt) => {
+      const o = odo.current;
+      // 140ms without scroll counts as rest: each wheel then eases to the nearest whole digit.
+      const still = performance.now() - o.movedAt > 140;
+      for (const id of ids) {
+        const goal = still ? Math.round(o[id]) : o[id];
+        let v = shown[id];
+        if (v < 0 || !still) v = goal;
+        else {
+          v += (goal - v) * Math.min(1, dt * 14);
+          if (Math.abs(goal - v) < 0.004) v = goal;
+        }
+        if (v !== shown[id]) {
+          shown[id] = v;
+          setOdo(root, id, v);
+        }
+      }
+    });
+  }, []);
 
   /* ── breaths (Foundation helper): the arrival column keeps warming after the tile lands ── */
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    const offs = [
-      story.breath(root, "saved", { from: 0.7, name: "--breath-saved" }),
-      story.breath(root, "applied", { from: 0.45, name: "--breath-applied" }),
-      story.breath(root, "interview", { from: 0.45, name: "--breath-interview" }),
-    ];
+    // Registered on each column's empty breath leaf (the smallest element that reads them).
+    const leaf = (col: string) => root.querySelector<HTMLElement>(`[data-col="${col}"] > .bd-col-breath`);
+    const offs: (() => void)[] = [];
+    const add = (col: string, beat: BeatId, from: number) => {
+      const el = leaf(col);
+      if (el) offs.push(story.breath(el, beat, { from, name: `--breath-${beat}` }));
+    };
+    add("saved", "saved", 0.7);
+    add("saved", "applied", 0.45);
+    add("applied", "applied", 0.45);
+    add("applied", "interview", 0.45);
+    add("interview", "interview", 0.45);
     return () => offs.forEach((off) => off());
   }, []);
 
@@ -278,6 +383,7 @@ export function BoardPanel() {
     const root = rootRef.current;
     if (!root || story.reduced()) return;
     const cols = Array.from(root.querySelectorAll<HTMLElement>(".bd-col"));
+    const warmEls = cols.map((c) => c.querySelector<HTMLElement>(":scope > .bd-col-warm"));
     const ghosts = Array.from(root.querySelectorAll<HTMLElement>(".bd-ghost-shift"));
     const warm = cols.map(() => 0);
     const spring = ghosts.map(() => ({ x: 0, y: 0, vx: 0, vy: 0 }));
@@ -307,7 +413,8 @@ export function BoardPanel() {
         const v = warm[n].toFixed(3);
         if (last[n] !== v) {
           last[n] = v;
-          c.style.setProperty("--warm", v);
+          const w = warmEls[n];
+          if (w) w.style.opacity = v;
         }
       });
       ghosts.forEach((g, n) => {
@@ -557,6 +664,9 @@ export function BoardPanel() {
             <div className="bd-glow" aria-hidden="true" />
 
             <div className="bd-board">
+              {/* The board's white surface, as a leaf: it opens a translucent window over the Interview
+                  column while the tile lands, so the World's amber lanes read through the floor. */}
+              <div className="bd-surface" aria-hidden="true" />
               <div className="bd-sun" aria-hidden="true" />
               <p className="bd-board-title">{copy.board.title}</p>
               <ul className="bd-cols" aria-label={copy.board.title}>

@@ -21,7 +21,12 @@ import { usePerformance } from "@/lib/perform";
 import { BEATS, clamp01, story, type BeatId } from "@/lib/story";
 import { registerFace, type FaceProps } from "@/components/story/faces";
 import { asked, prepState, usePrepState, type Vote } from "@/components/acts/prep/prepState";
+import { TileFace } from "./TileFace";
 import "./sheet.css";
+
+/** The folded sheet's cover is the tile face scaled to the folded panel's height (240 / 92). */
+const TILE_H = 92;
+const COVER_SCALE = 240 / TILE_H;
 
 const QUESTIONS = [storyCopy.q1, storyCopy.q2, storyCopy.q3] as const;
 const Q_BEATS: readonly BeatId[] = ["q1", "q2", "q3"];
@@ -370,10 +375,10 @@ function Question({ index, live, typed, vote }: QuestionProps) {
 
 /* ───────────────────────────────────────────────────────── the sheet ── */
 
-function Header({ live }: { live: boolean }) {
+function Header({ live, writing }: { live: boolean; writing: boolean }) {
   const h = storyCopy.unfold.sheetHeader;
   return (
-    <div className="sh-header">
+    <div className="sh-header" data-actor-var={writing ? "progress" : undefined}>
       <div className="sh-top sh-w" style={{ "--i": 0 } as CSSProperties}>
         <span className="sh-label sh-brand">
           <i aria-hidden="true" />
@@ -449,7 +454,7 @@ function Footer({ live }: { live: boolean }) {
   );
 }
 
-function SheetContent({ live, typedCount }: { live: boolean; typedCount: number }) {
+function SheetContent({ live, typedCount, writing = false }: { live: boolean; typedCount: number; writing?: boolean }) {
   const { votes } = usePrepState();
   return (
     <div className="sh-paper">
@@ -457,7 +462,7 @@ function SheetContent({ live, typedCount }: { live: boolean; typedCount: number 
       <div className="sh-crease" style={{ top: 240 }} aria-hidden="true" />
       <div className="sh-crease" style={{ top: 480 }} aria-hidden="true" />
       <div className="sh-content">
-        <Header live={live} />
+        <Header live={live} writing={writing} />
         <ol className="sh-list" aria-label={live ? pkg3Copy.sheet.questions : undefined}>
           {([0, 1, 2] as const).map((i) => (
             <Question key={i} index={i} live={live} typed={i < typedCount} vote={votes[i]} />
@@ -493,7 +498,10 @@ function SheetDock({ skin }: { skin: FaceProps["skin"] }) {
     const ro = new ResizeObserver(measure);
     lis.forEach((li) => li && ro.observe(li));
     // votes: the ring around "n of 3" fills with scroll (breath API).
-    const offFill = story.breath(root, "votes", { from: 0.06, name: "--vote-fill" });
+    // Per-frame values go on the leaves that read them (the ring's arc, the lamp wash), not on the article.
+    const ringFill = root.querySelector<HTMLElement>(".sh-ring-fill");
+    const wash = root.querySelector<HTMLElement>(".sh-lampwash");
+    const offFill = ringFill ? story.breath(ringFill, "votes", { from: 0.06, name: "--vote-fill" }) : () => {};
     let last = "";
     const off = story.subscribe((s) => {
       const qi = Q_BEATS.indexOf(s.beat);
@@ -524,8 +532,8 @@ function SheetDock({ skin }: { skin: FaceProps["skin"] }) {
       if (key === last) return;
       last = key;
       texts.forEach((el, n) => el?.style.setProperty("--q-dim", dims[n].toFixed(3)));
-      root.style.setProperty("--lamp-y", `${lampY.toFixed(2)}%`);
-      root.style.setProperty("--lamp-k", lampK.toFixed(3));
+      wash?.style.setProperty("--lamp-y", `${lampY.toFixed(2)}%`);
+      wash?.style.setProperty("--lamp-k", lampK.toFixed(3));
     });
     return () => {
       off();
@@ -588,6 +596,8 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
   const h2Ref = useRef<HTMLDivElement>(null);
   const h3Ref = useRef<HTMLDivElement>(null);
   const front3Ref = useRef<HTMLDivElement>(null);
+  const p1Ref = useRef<HTMLDivElement>(null);
+  const back2Ref = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
   const shades = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -613,6 +623,10 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
       // Folded, panel 3's hinge edge sits at the sheet's top corners: round it as it closes.
       const r = (20 * Math.min(1, a3 / 120)).toFixed(1);
       if (front3Ref.current) front3Ref.current.style.clipPath = `inset(0 round ${r}px ${r}px 20px 20px)`;
+      // Folded, the cover is a card with four round corners (it is the tile); they square off as it opens.
+      const rc = (20 * Math.min(1, a2 / 120)).toFixed(1);
+      if (p1Ref.current) p1Ref.current.style.borderRadius = `20px 20px ${rc}px ${rc}px`;
+      if (back2Ref.current) back2Ref.current.style.clipPath = `inset(0 round 20px 20px ${rc}px ${rc}px)`;
       const s2 = Math.max(0, Math.sin(r2));
       const s3 = Math.max(0, Math.sin(r3));
       const set = (k: string, v: number) => {
@@ -639,10 +653,10 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
   const shade = (k: string, cls: string) => <div ref={(el) => void (shades.current[k] = el)} className={`sh-shade ${cls}`} />;
   const slice = (i: number) => (
     <div className="sh-slice" style={{ top: -240 * i }}>
-      <SheetContent live={false} typedCount={typedCount} />
+      {/* Only the first slice shows the header, and it only reads --progress while it writes in. */}
+      <SheetContent live={false} typedCount={typedCount} writing={i === 0 && beat === "unfold"} />
     </div>
   );
-  const h = storyCopy.unfold.sheetHeader;
 
   return (
     <div
@@ -653,9 +667,9 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
       data-writing={beat === "unfold" ? "" : undefined}
       data-lamp={order(beat) > order("votes") ? "end" : undefined}
     >
-      <div ref={glowRef} className="sh-glow" style={{ transform: "scaleY(0.3333)" }} />
+      <div ref={glowRef} className="sh-glow" data-actor-var="lift" style={{ transform: "scaleY(0.3333)" }} />
       <div className="sh-3d">
-        <div className="sh-panel sh-p1">
+        <div ref={p1Ref} className="sh-panel sh-p1">
           {slice(0)}
           {shade("p1", "sh-shade-hinge-bottom")}
         </div>
@@ -666,17 +680,13 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
             {shade("p2bot", "sh-shade-hinge-bottom")}
             {shade("f2", "sh-shade-dark")}
           </div>
-          <div className="sh-face-back">
-            <div className="sh-env">
-              <span className="sh-label sh-brand">
-                <i />
-                {pkg3Copy.sheet.label}
-              </span>
-              <div className="sh-env-title">{h.title}</div>
-              <div className="sh-env-meta">{h.meta}</div>
-              <div className="sh-env-rule">
-                <span className="sh-label">{storyCopy.unfold.label}</span>
-                <span className="sh-label">{h.score}</span>
+          <div ref={back2Ref} className="sh-face-back">
+            {/* The cover of the folded sheet is the board tile itself, at this size: same component,
+                same layout rule as the flying tile (natural height, width from the box). Nightfall
+                grows the tile into this exact picture, so the hand-over has nothing to dissolve. */}
+            <div className="sh-env" data-skin="day">
+              <div className="sh-env-tile" style={{ width: 560 / COVER_SCALE, height: TILE_H, transform: `scale(${COVER_SCALE})` }}>
+                <TileFace skin="day" fold={0} progress={1} host="actor" />
               </div>
             </div>
             {shade("b2", "sh-shade-light")}

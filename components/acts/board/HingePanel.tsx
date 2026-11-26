@@ -71,6 +71,10 @@ export function HingePanel() {
     // 24px soft edge just below the Line instead of letting the stage clip cut through letters.
     const root = rootRef.current;
     if (root) {
+      // Outgoing copy is gone by 30% of the wipe (power2.in): the line only ever crosses clean material.
+      const out = s.beat === "nightfall" ? span(s.beatProgress, 0.04, 0.3) : i > HINGE ? 1 : 0;
+      const op = (1 - out * out).toFixed(3);
+      if (root.style.opacity !== op) root.style.opacity = op;
       const mask = s.line.sweep && s.beat === "nightfall" ? softBelow(s.line.y) : "none";
       if (root.dataset.mask !== mask) {
         root.dataset.mask = mask;

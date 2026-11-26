@@ -109,4 +109,6 @@ export function TileFace(_props: FaceProps) {
   );
 }
 
-registerFace("tile", TileFace);
+// Height-fit: the tile keeps its type size relative to its height and lets the layout take the
+// box's width, so it can grow into the folded prep sheet (a wider rectangle) without distortion.
+registerFace("tile", TileFace, { fit: "height" });

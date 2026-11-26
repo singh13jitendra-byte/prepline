@@ -53,7 +53,7 @@ type Props = {
   children: ReactNode;
   /** Fixed world layers (backdrop, canvas, line). */
   world?: ReactNode;
-  /** Fixed chrome above everything (nav, beat rail, lens label). */
+  /** Fixed chrome above everything (beat rail, lens label). Wrap what splits at the line in its own <LineScope>. */
   chrome?: ReactNode;
 };
 
@@ -111,7 +111,8 @@ export function StoryRoot({ children, world, chrome }: Props) {
       const wipe = beatOf(s.beat).kind === "wipe";
       for (let i = 0; i < stages.length; i++) {
         const st = stages[i];
-        const clip = !wipe ? "" : st.night ? `inset(0 0 ${Math.max(0, s.viewport.h - s.dayTop).toFixed(1)}px 0)` : `inset(${s.dayTop.toFixed(1)}px 0 0 0)`;
+        // Only the two stages on screen are clipped: a hidden stage needs no write.
+        const clip = !wipe || !st.el.hasAttribute("data-active") ? "" : st.night ? `inset(0 0 ${Math.max(0, s.viewport.h - s.dayTop).toFixed(1)}px 0)` : `inset(${s.dayTop.toFixed(1)}px 0 0 0)`;
         if (clip !== st.last) st.el.style.clipPath = st.last = clip;
       }
     });
@@ -164,7 +165,7 @@ export function StoryRoot({ children, world, chrome }: Props) {
     <div ref={rootRef} className="story-root">
       <LineScope>{world}</LineScope>
       {/* Before the acts in the DOM, so chrome comes first in the tab order. Painting order is by z-index. */}
-      <LineScope>{chrome}</LineScope>
+      {chrome}
       {children}
       <Actor />
       {DebugOverlay ? <DebugOverlay /> : null}

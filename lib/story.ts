@@ -193,7 +193,7 @@ export type StoryState = {
  * so no beat outlasts what is on screen: every timed beat is now about one
  * performance plus one breath long. Pins: read 375, board 210, prep 230, seat 60.
  * With the three wipes (190), the seat stage scrolling away (100) and the footer
- * (about 60) the document is about 1,225vh, 12.25 viewports (was 14.3).
+ * (its own height, about 25vh) the document is about 11.9 viewports (was 14.3).
  */
 export const BEATS: readonly Beat[] = [
   { id: "hero", act: "read", vh: 55, kind: "beat" },
@@ -225,7 +225,9 @@ export const MOBILE_SCALE = 0.85;
  * Extra pinned length after an act's closing wipe. The stage is hidden by then,
  * but stays pinned so its anchors hold still while the Actor leaves them
  * (for example `card` during the `saved` beat). It adds no document height:
- * the next act's negative margin absorbs it.
+ * the next act's negative margin absorbs it, and it is capped at the length of
+ * the act that follows (the prep stage's tail is 60, the seat act's pin), so no
+ * section ever ends below the last one.
  */
 export const STAGE_TAIL = 100;
 
@@ -270,14 +272,26 @@ const TOTAL = FOOTER_AT + BEATS[BEATS.length - 1].vh;
 
 export const ACTS: readonly Act[] = (() => {
   const out: Act[] = [];
+  const sizes = ACT_META.map((m) => {
+    const own = BEATS.filter((b) => b.act === m.id && b.id !== "footer");
+    return {
+      pin: own.filter((b) => b.kind === "beat").reduce((n, b) => n + b.vh, 0),
+      wipeOut: own.filter((b) => b.kind === "wipe").reduce((n, b) => n + b.vh, 0),
+    };
+  });
+  // A tail may never outlast the act that follows it, or this section would end below the next
+  // one and add height to the page. Worked out from the last act back (the last has no tail).
+  const tails: number[] = [];
+  for (let i = ACT_META.length - 1; i >= 0; i--) {
+    const next = sizes[i + 1];
+    tails[i] = next ? Math.min(STAGE_TAIL, next.pin + next.wipeOut + tails[i + 1]) : 0;
+  }
   let start = 0;
   ACT_META.forEach((m, i) => {
-    const own = BEATS.filter((b) => b.act === m.id && b.id !== "footer");
-    const pin = own.filter((b) => b.kind === "beat").reduce((n, b) => n + b.vh, 0);
-    const wipeOut = own.filter((b) => b.kind === "wipe").reduce((n, b) => n + b.vh, 0);
+    const { pin, wipeOut } = sizes[i];
     const prev = out[i - 1];
     const wipeIn = prev ? prev.wipeOut : 0;
-    const tail = i === ACT_META.length - 1 ? 0 : STAGE_TAIL;
+    const tail = tails[i];
     out.push({
       ...m,
       start,
@@ -365,6 +379,8 @@ export type LineTarget =
       x?: [number, number];
       /** Offset from the edge in px (positive is down). */
       dy?: number;
+      /** Take x from the anchor but put the line at this fraction of the stage height instead. */
+      atY?: number;
       /** Anchor to use while `anchor` is not on the page. */
       or?: AnchorId;
     };
@@ -385,12 +401,19 @@ export type LineMove = {
   quiet?: boolean;
 };
 
+/** A time on the Mon→Fri strip as a fraction of its width (day 0 = Monday, hours 0..24). */
+export const weekX = (day: number, hours: number) => (day * 24 + hours) / 120;
 /**
- * The Mon→Fri strip above the board (`board-days`): five equal day cells.
- * The line runs along its bottom edge from Monday's left edge, and its right
- * end is scrubbed to the right edge of the day the story has reached.
+ * The Mon→Fri strip above the board (`board-days`): five equal day cells, one
+ * time axis. The line runs along its bottom edge from Monday's left edge and
+ * its right end is scrubbed to the time the story has reached:
+ *   saved      Monday 18:30     (where the board clock stands when the tile lands)
+ *   applied    Tuesday 17:00    ("Applied Tue")
+ *   interview  Thursday 11:40   the booked slot. The clock stops at "WED 16:05 · BOOKED":
+ *              the line reads ahead of "now" to the interview, and stays there
+ *              into the hinge. Nightfall is then, truly, the night before.
  */
-export const BOARD_DAY_X = { mon: 0.2, tue: 0.4, wed: 0.6, thu: 0.8, fri: 1 } as const;
+export const BOARD_DAY_X = { mon: weekX(0, 18.5), tue: weekX(1, 17), wed: weekX(2, 16 + 5 / 60), thu: weekX(3, 11 + 40 / 60), fri: 1 } as const;
 const DAYS = (to: number, or: AnchorId): LineTarget => ({ anchor: "board-days", x: [0, to], weight: 2, or });
 
 const FULL_W = 2;
@@ -430,7 +453,12 @@ export const LINE_TRACK: Record<BeatId, readonly LineMove[]> = {
     { range: [0, 0.15], from: A("hinge-text", { weight: 2 }), to: Y(0), label: "THE NIGHT BEFORE" },
     { range: [0.15, 1], from: Y(0), to: Y(1), label: "THE NIGHT BEFORE", sweep: true },
   ],
-  unfold: [{ range: [0, 0.7], from: Y(1), to: A("sheet-folded", { weight: 1 }), label: "WRITING YOUR PREP SHEET", quiet: true }],
+  // The line first pulls in to the sheet's width along the bottom edge, then rises inside the sheet's
+  // column to the fold: it never pokes out of the sheet's side into the night.
+  unfold: [
+    { range: [0, 0.3], from: Y(1), to: A("sheet-folded", { atY: 1, weight: FULL_W }), label: "WRITING YOUR PREP SHEET" },
+    { range: [0.3, 0.75], from: A("sheet-folded", { atY: 1, weight: FULL_W }), to: A("sheet-folded", { weight: 1 }), label: "WRITING YOUR PREP SHEET", quiet: true },
+  ],
   q1: [{ range: [0, 0.2], from: A("sheet-folded", { weight: 1 }), to: A("sheet-q1"), label: "FROM THE JD", quiet: true }],
   q2: [{ range: [0, 0.2], from: A("sheet-q1"), to: A("sheet-q2"), label: "FROM YOUR CASE STUDY", quiet: true }],
   q3: [{ range: [0, 0.2], from: A("sheet-q2"), to: A("sheet-q3"), label: "ASKED HERE BEFORE", quiet: true }],
@@ -488,6 +516,11 @@ export type ActorMove = {
   dock?: boolean;
   /** Beat-progress range over which the Actor fades in (its birth). */
   fadeIn?: [number, number];
+  /**
+   * false: no face change mid-travel. The from-face is worn all the way and the to-face takes
+   * over at travel 1. Use it when the two faces are drawn identically at the `to` anchor.
+   */
+  crossfade?: boolean;
 };
 
 /** The Actor's journey per beat, transcribed from storyboard section 2. Beats without an entry have no Actor. */
@@ -510,6 +543,8 @@ export const ACTOR_TRACK: Partial<Record<BeatId, ActorMove>> = {
     range: [0.15, 1],
     rotate: [6, 0],
     fold: { from: 0, to: 0, drive: "travel" },
+    // The tile IS the folded sheet's cover: it grows into place and the sheet takes over unseen.
+    crossfade: false,
   },
   unfold: {
     from: "sheet-folded",
@@ -616,7 +651,8 @@ const beatHandlers = new Map<BeatId, Set<BeatHandlers>>();
 const beatChangeFns = new Set<BeatChangeFn>();
 const phases: Record<FramePhase, Set<FrameFn>> = { actor: new Set(), line: new Set(), world: new Set() };
 
-const scopes = new Set<HTMLElement>();
+/** Line scopes: element → does it take --line-y too (true), or only --day-top / --day-side (false). */
+const scopes = new Map<HTMLElement, boolean>();
 let lenis: LenisLike | null = null;
 let running = false;
 let dirty = true;
@@ -681,7 +717,7 @@ function resolveTarget(t: LineTarget, out: { x0: number; x1: number; y: number; 
     return;
   }
   const edge = t.edge ?? "bottom";
-  out.y = (edge === "top" ? r.y : edge === "center" ? r.y + r.h / 2 : r.y + r.h) + (t.dy ?? 0);
+  out.y = t.atY !== undefined ? t.atY * vh : (edge === "top" ? r.y : edge === "center" ? r.y + r.h / 2 : r.y + r.h) + (t.dy ?? 0);
   if (t.span === "full") {
     out.x0 = 0;
     out.x1 = vw;
@@ -720,8 +756,8 @@ function setBeat(index: number, direction: Direction) {
   beatChangeFns.forEach((fn) => fn(state.beat, previous, direction));
 }
 
-function writeScope(el: HTMLElement) {
-  if (lastCss.lineY) el.style.setProperty("--line-y", `${lastCss.lineY}px`);
+function writeScope(el: HTMLElement, lineY: boolean) {
+  if (lineY && lastCss.lineY) el.style.setProperty("--line-y", `${lastCss.lineY}px`);
   if (lastCss.dayTop) el.style.setProperty("--day-top", `${lastCss.dayTop}px`);
   if (lastCss.daySide) el.style.setProperty("--day-side", lastCss.daySide);
 }
@@ -733,15 +769,17 @@ function writeCss() {
   // Per-frame values go to the line scopes only (small subtrees), never to <html>.
   if (lineY !== lastCss.lineY) {
     lastCss.lineY = lineY;
-    scopes.forEach((el) => el.style.setProperty("--line-y", `${lineY}px`));
+    scopes.forEach((wantsLineY, el) => {
+      if (wantsLineY) el.style.setProperty("--line-y", `${lineY}px`);
+    });
   }
   if (dayTop !== lastCss.dayTop) {
     lastCss.dayTop = dayTop;
-    scopes.forEach((el) => el.style.setProperty("--day-top", `${dayTop}px`));
+    scopes.forEach((_, el) => el.style.setProperty("--day-top", `${dayTop}px`));
   }
   if (state.line.daySide !== lastCss.daySide) {
     lastCss.daySide = state.line.daySide;
-    scopes.forEach((el) => el.style.setProperty("--day-side", lastCss.daySide));
+    scopes.forEach((_, el) => el.style.setProperty("--day-side", lastCss.daySide));
   }
   // Beat-boundary values stay on <html>.
   if (state.chapter !== lastCss.chapter) d.setAttribute("data-chapter", (lastCss.chapter = state.chapter));
@@ -1058,10 +1096,14 @@ export const story = {
   /**
    * Make `el` a line scope: it receives --line-y, --day-top and --day-side every
    * frame they change, and its subtree inherits them. Keep scopes small.
+   * `lineY: false` leaves --line-y out: --day-top only moves during a wipe, while
+   * --line-y moves on almost every scroll frame, so a scope that only splits at
+   * the wipe (nav, rail) should not take it.
    */
-  lineScope(el: HTMLElement): () => void {
-    scopes.add(el);
-    writeScope(el);
+  lineScope(el: HTMLElement, opts: { lineY?: boolean } = {}): () => void {
+    const lineY = opts.lineY ?? true;
+    scopes.set(el, lineY);
+    writeScope(el, lineY);
     return () => {
       scopes.delete(el);
     };

@@ -54,13 +54,15 @@ export function ActPrep() {
   // the dawn's take-off follow it. One breath per beat (they restart per beat), summed in CSS.
   useEffect(() => {
     const wrap = wrapRef.current;
-    if (!wrap) return;
-    const offs = [
-      story.breath(wrap, "unfold", { from: 0.4, name: "--slide-unfold" }),
-      ...Q_BEATS.map((b) => story.breath(wrap, b, { from: 0, name: `--slide-${b}` })),
-      story.breath(wrap, "votes", { from: 0, name: "--slide-votes" }),
-    ];
-    return () => offs.forEach((off) => off());
+    if (!wrap || story.reduced()) return;
+    // Written as one inline transform: the wrapper holds the whole sheet, and a custom property
+    // on it would be inherited (and restyled) by every node of it on every scroll frame.
+    let last = "";
+    return story.subscribe(() => {
+      const y = 4 * story.breathOf("unfold", 0.4) + 8 * (Q_BEATS.reduce((n, b) => n + story.breathOf(b, 0), 0) + story.breathOf("votes", 0));
+      const tf = `translate3d(0,${(-y).toFixed(2)}px,0)`;
+      if (tf !== last) wrap.style.transform = last = tf;
+    });
   }, []);
 
   // Dawn (scrubbed): the left copy steps back before the rising line reaches it, so the outgoing
@@ -70,7 +72,9 @@ export function ActPrep() {
     if (!copy || story.reduced()) return;
     let last = "";
     return story.subscribe((s) => {
-      const o = s.beat === "dawn" ? 1 - Math.min(1, Math.max(0, (s.beatProgress - 0.18) / 0.3)) : idx(s.beat) > idx("dawn") ? 0 : 1;
+      // Gone by 30% of the wipe (power2.in), before the line is a third of the way up.
+      const k = Math.min(1, Math.max(0, (s.beatProgress - 0.04) / 0.26));
+      const o = s.beat === "dawn" ? 1 - k * k : idx(s.beat) > idx("dawn") ? 0 : 1;
       const key = o.toFixed(3);
       if (key === last) return;
       last = key;

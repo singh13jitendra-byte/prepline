@@ -253,8 +253,10 @@ html:not(.motion) .seat-grid {
   .seat-left > .seat-ride {
     order: 1;
   }
+  /* On a phone the headline does not ride up through the ticket's place: it waits at rest at the
+     top of the stack and the rising line uncovers it there, clear of the arriving ticket. */
   html.motion .seat-ride {
-    --ride-d: 66svh;
+    --ride-d: 0svh;
   }
   .seat-promises {
     order: 3;
