@@ -101,6 +101,12 @@ export const ANCHOR_IDS = [
   // The Interview column floor in Act II (its glow hands over to the Act III lamp).
   "col-offer",
   "board-days",
+  // Painted world (round 4): hotspots in the painted scenes, registered by the World's scene layer.
+  "laptop-screen",
+  "window-view",
+  "desk-lamp",
+  // After the stage: the founder note ("Why I'm building this").
+  "founder-note",
 ] as const;
 
 export type AnchorId = (typeof ANCHOR_IDS)[number];
