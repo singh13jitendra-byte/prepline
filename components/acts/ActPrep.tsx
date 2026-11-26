@@ -29,15 +29,6 @@ function stateOf(i: number, current: number): "before" | "on" | "after" {
   return i === current ? "on" : i < current ? "before" : "after";
 }
 
-function Arrow() {
-  return (
-    <svg viewBox="0 0 34 12" fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M1 6c8-3.5 18-3.5 31 0" />
-      <path d="M27.5 2.2L32 6l-4.8 3.2" />
-    </svg>
-  );
-}
-
 export function ActPrep() {
   const beat = story.useBeat();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -89,35 +80,25 @@ export function ActPrep() {
         <div className="prep-grid">
           <div ref={copyRef} className="prep-copy">
             <div className="prep-group" data-state={stateOf(0, group)}>
-              <p className="type-mono prep-label">{storyCopy.unfold.label}</p>
-              <h2 id="prep-title" className="type-h2 prep-h">
+              <p className="prep-label">{storyCopy.unfold.label}</p>
+              <h2 id="prep-title" className="prep-h">
                 {storyCopy.unfold.h2}
               </h2>
               <div className="prep-sources">
                 {SOURCES.map((s, i) => (
                   <div key={s.left} className="prep-src" data-state={stateOf(i, source)}>
-                    <p className="type-lead prep-src-lead">{s.left}</p>
-                    <p className="type-body prep-src-detail">{s.leftDetail}</p>
+                    <p className="prep-src-lead">{s.left}</p>
+                    <p className="prep-src-detail">{s.leftDetail}</p>
                   </div>
                 ))}
               </div>
-              <ol className="prep-steps" aria-hidden="true">
-                {SOURCES.map((s, i) => (
-                  <li key={s.lineLabel} className="prep-step type-mono" data-state={stateOf(i, source)}>
-                    {String(i + 1).padStart(2, "0")} · {s.lineLabel}
-                  </li>
-                ))}
-              </ol>
             </div>
 
             <div className="prep-group" data-state={stateOf(1, group)}>
-              <p className="type-mono prep-label">{storyCopy.votes.label}</p>
-              <h2 className="type-h2 prep-h">{storyCopy.votes.h2}</h2>
-              <p className="type-body prep-body">{storyCopy.votes.body}</p>
-              <p className="prep-hint">
-                {storyCopy.votes.hint}
-                <Arrow />
-              </p>
+              <p className="prep-label">{storyCopy.votes.label}</p>
+              <h2 className="prep-h">{storyCopy.votes.h2}</h2>
+              <p className="prep-body">{storyCopy.votes.body}</p>
+              <p className="prep-hint">{storyCopy.votes.hint}</p>
             </div>
           </div>
 

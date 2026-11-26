@@ -2,108 +2,45 @@
 
 /**
  * TICKET FACE — the visitor's beta seat, on the back of the folded prep sheet
- * (storyboard 2.7, 5.3).
+ * (storyboard 2.7, round-4 brief): the product's own <SeatTicket> holding the real
+ * <WaitlistForm tone="ticket">.
  *
- * - host "dock": the real ticket in Act IV. Holds the real <WaitlistForm tone="ticket">
- *   (a normal, focusable form) and, after a successful request, the success
- *   message, a stamp and a filled seat on the stub.
- * - host "actor": the flying copy seen while the sheet flips into the ticket.
- *   It carries an inert copy of the form so the flip reveals a complete ticket.
+ * - host "dock": the real ticket in Act IV (a normal, focusable form). A successful request
+ *   presses the stamp; the request status is shared (seatState) so the seat act can claim a
+ *   ring and redraw the Line.
+ * - host "actor": the flying copy seen while the sheet flips (inert, aria-hidden: the Actor
+ *   layer is both). It carries the same ticket so the flip reveals a complete seat.
  *
- * Request status is shared (seatState), so every copy agrees.
+ * Laid out at the face's natural size, 520 x 300. On phones the ticket is laid out 460 wide
+ * (still the wide layout, stub and all) and scaled up, so its text stays readable.
  */
 
-import { useCallback, useEffect, useRef } from "react";
-import { WaitlistForm } from "@/components/WaitlistForm";
-import { pkg3Copy, storyCopy } from "@/lib/content";
+import { useCallback } from "react";
+import { WaitlistForm, type WaitlistStatus } from "@/components/WaitlistForm";
+import { SeatTicket } from "@/components/product";
 import { registerFace, type FaceProps } from "@/components/story/faces";
-import { seatState, useSeatState, type SeatStatus } from "@/components/acts/seat/seatState";
-import "../cta.css";
+import { seatState, useSeatState } from "@/components/acts/seat/seatState";
 import "./ticket.css";
-
-function Check() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M5 12.5l4.5 4.5L19 7.5" />
-    </svg>
-  );
-}
-
-function Success({ live, fresh }: { live: boolean; fresh: boolean }) {
-  const ref = useRef<HTMLDivElement>(null);
-  // Keyboard focus was on the button that just disappeared: hand it to the message.
-  useEffect(() => {
-    if (live && fresh) ref.current?.focus({ preventScroll: true });
-  }, [live, fresh]);
-  return (
-    <div ref={ref} className="tk-success" role={live ? "status" : undefined} tabIndex={live ? -1 : undefined}>
-      <span className="tk-check" aria-hidden="true">
-        <Check />
-      </span>
-      <p>{storyCopy.common.success}</p>
-    </div>
-  );
-}
 
 function TicketFace({ skin, host }: FaceProps) {
   const { status, at } = useSeatState();
   const live = host === "dock";
-  const done = status === "done";
-  // Animate the stamp only for a request made just now, never on a later remount.
-  const fresh = done && typeof performance !== "undefined" && performance.now() - at < 2500;
-  const onStatus = useCallback((s: SeatStatus) => seatState.set(s), []);
+  const stamped = status === "done";
+  // Press the stamp only for a request made just now, never on a later remount.
+  const fresh = stamped && typeof performance !== "undefined" && performance.now() - at < 2500;
+  const onStatus = useCallback((s: WaitlistStatus) => seatState.set(s), []);
 
   return (
-    <div className="tk-root" data-skin={skin} data-paper="" data-host={host} data-status={status} data-fresh={fresh ? "" : undefined}>
-      <div className="tk-plate" data-actor-var="lift" aria-hidden="true" />
-      <div className="tk-paper tk-paper-main">
-        <div className="tk-main">
-          <p className="tk-head">
-            <i aria-hidden="true" />
-            {storyCopy.seat.ticketHeader}
-          </p>
-          <div className="tk-body">
-            {/* The flying copy carries the same form, inert (the Actor layer is inert and aria-hidden). */}
-            {done ? <Success live={live} fresh={fresh} /> : <WaitlistForm tone="ticket" onStatusChange={live ? onStatus : undefined} />}
-          </div>
-          <p className="tk-foot">{storyCopy.seat.ticketFoot}</p>
-        </div>
-        <div className="tk-light" aria-hidden="true" />
-        {live ? null : (
-          <div className="tk-sheen-box" aria-hidden="true">
-            <div className="tk-sheen" data-actor-var="flip" />
-          </div>
-        )}
+    <div className="tkx" data-host={host} data-skin={skin} data-fresh={fresh ? "" : undefined}>
+      <div className="tkx-inner" data-skin="day">
+        <SeatTicket skin="day" stamped={live ? stamped : false}>
+          <WaitlistForm tone="ticket" onStatusChange={live ? onStatus : undefined} />
+        </SeatTicket>
       </div>
-      <div className="tk-perf" aria-hidden="true" />
-      {/* The stub tears along the perforation as you scroll through the seat beat (--tear, 0..1). */}
-      <div className="tk-tear" aria-hidden="true">
-        <div className="tk-paper tk-paper-stub">
-          <div className="tk-stub">
-            <span className="tk-stub-label">{pkg3Copy.ticket.stubLabel}</span>
-            <span className="tk-ring">
-              <Check />
-            </span>
-            <span className="tk-stub-label">{pkg3Copy.ticket.stubOf}</span>
-          </div>
-          <div className="tk-light" />
-          {live ? null : (
-            <div className="tk-sheen-box">
-              <div className="tk-sheen" data-actor-var="flip" />
-            </div>
-          )}
-        </div>
-      </div>
-      {done ? (
-        <div className="tk-stamp" aria-hidden="true">
-          <Check />
-          {pkg3Copy.ticket.stamp}
-        </div>
-      ) : null}
     </div>
   );
 }
 
-registerFace("ticket", TicketFace, { chrome: false, clip: false });
+registerFace("ticket", TicketFace, { width: 520, height: 300, chrome: false, clip: false });
 
 export { TicketFace };

@@ -61,7 +61,21 @@ export const prepState = {
     emit();
     if (next[index] === "asked") bursts.forEach((fn) => fn(index, "user"));
   },
-  /** Ask the real buttons to play their press and burst (demo presses). */
+  /** A real vote with an explicit value (PrepSheet's onVote already toggled it). Cancels the demo. */
+  set(index: number, vote: Vote) {
+    if (!cancelled) {
+      user = demo;
+      cancelled = true;
+    }
+    pressedOnce = true;
+    const next = [...user] as Vote[];
+    next[index] = vote;
+    user = next as unknown as Votes;
+    emit();
+  },
+  /** Where the story leaves the sheet's own scroll at the end of `votes` (px), so the flying copy matches. */
+  scrollEnd: 0,
+  /** Ask the real buttons to play their press (demo presses). */
   burst(index: number) {
     bursts.forEach((fn) => fn(index, "demo"));
   },
