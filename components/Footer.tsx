@@ -1,14 +1,16 @@
 "use client";
 
 /**
- * FOOTER — small and quiet, on ink (storyboard 2.7). A static gold hairline on
- * top, no giant wordmark. Right: the visitor's local time, "11:25 PM. Interview
- * tomorrow?" (the suffix alone when the time cannot be read). Last line: the
- * page's figures, stated as illustrative.
+ * FOOTER — quiet, Night Desk (deep pine ground, no texture). A static hand-drawn lamp Line
+ * across the top. Left: the one-line description. Right: the visitor's local time,
+ * "11:25 PM. Close the laptop. The sheet will keep." beside the closed-laptop drawing, which
+ * draws itself once when the footer comes into view. Last line: the figures, as illustrative.
  */
 
-import { useEffect, useState } from "react";
-import { pkg3Copy, storyCopy } from "@/lib/content";
+import { useEffect, useRef, useState } from "react";
+import { storyCopy } from "@/lib/content";
+import { LaptopClosed } from "@/components/art";
+import { footerTime, landmarks } from "@/components/acts/after/copy";
 import "./chrome.css";
 
 function useLocalTime() {
@@ -23,7 +25,6 @@ function useLocalTime() {
       }
     };
     read();
-    // Keep the minute honest while the footer is open; nothing moves.
     const id = window.setInterval(read, 30_000);
     return () => window.clearInterval(id);
   }, []);
@@ -32,15 +33,32 @@ function useLocalTime() {
 
 export function Footer() {
   const time = useLocalTime();
+  const ref = useRef<HTMLElement>(null);
+  const [seen, setSeen] = useState(false);
   const f = storyCopy.footer;
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return setSeen(true);
+    const io = new IntersectionObserver((es) => {
+      if (es.some((e) => e.isIntersecting)) {
+        setSeen(true);
+        io.disconnect();
+      }
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   return (
-    <footer className="ft">
+    <footer ref={ref} className="ft" data-seen={seen ? "" : undefined}>
+      <svg className="ft-line" viewBox="0 0 1000 10" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <path d="M0 5.5C90 3.8 170 6.9 260 5.2S430 3.6 520 5.6 690 7 780 4.8 920 3.9 1000 5.4" vectorEffect="non-scaling-stroke" />
+      </svg>
       <div className="ft-inner">
-        <p className="ft-brand">
-          <span className="nav-logo" aria-hidden="true" />
-          <span>{f.left}</span>
-        </p>
-        <nav aria-label={pkg3Copy.landmarks.footer}>
+        <p className="ft-brand">{f.left}</p>
+        <nav aria-label={landmarks.footer}>
           <ul className="ft-links">
             {f.links.map((l) => (
               <li key={l.label}>
@@ -49,16 +67,19 @@ export function Footer() {
             ))}
           </ul>
         </nav>
-        <p className="ft-time">
-          {time ? (
-            <>
-              <time dateTime={time.iso}>{time.text}</time>.{" "}
-            </>
-          ) : null}
-          <span>{time ? f.timeSuffix : f.timeFallback}</span>
-        </p>
+        <div className="ft-time">
+          <LaptopClosed className="ft-laptop" />
+          <p>
+            {time ? (
+              <>
+                <time dateTime={time.iso}>{time.text}</time>.{" "}
+              </>
+            ) : null}
+            <span>{footerTime.line}</span>
+          </p>
+        </div>
       </div>
-      <p className="type-mono ft-last">{f.last}</p>
+      <p className="ft-last">{f.last}</p>
     </footer>
   );
 }

@@ -1,42 +1,61 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useId, useState, type FormEvent } from "react";
-import { pkg3Copy, storyCopy } from "@/lib/content";
-import { ArrowRight } from "./Icons";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { form as copy } from "@/components/acts/after/copy";
+import { Icon } from "@/components/product";
 import { Magnetic } from "./Magnetic";
+import "./waitlist.css";
 
-type Status = "idle" | "sending" | "done" | "error";
-type Tone = "light" | "glass" | "ticket";
+export type WaitlistStatus = "idle" | "sending" | "done" | "duplicate" | "error";
+type Tone = "light" | "glass" | "night" | "ticket";
 
 /**
- * Email sign-up. Used in the hero (glass, on night) and on the seat ticket (ticket).
+ * Email sign-up (Night Desk). Used in the hero (night pill) and on the seat ticket.
  *
- * The request logic and the /api/waitlist contract are unchanged. `onStatusChange`
- * only reports the status out (the ticket uses it to stamp itself and fill a seat
- * ring). In the ticket tone the success message is drawn by the ticket itself.
+ * States, from the copy deck: empty, invalid, sending, success ("Requested for {email}.
+ * Wrong address? Edit it."), duplicate (the API answers { ok: true, duplicate: true }),
+ * server error (the typed email stays), offline. Only /api/waitlist is ever called.
+ * `onStatusChange` reports the status out: the ticket stamps itself and claims a seat ring.
+ * Tone "glass" is kept as an alias of "night" for callers that still pass it.
  */
-export function WaitlistForm({ tone = "light", onStatusChange }: { tone?: Tone; onStatusChange?: (status: Status) => void }) {
+export function WaitlistForm({ tone = "night", onStatusChange }: { tone?: Tone; onStatusChange?: (status: WaitlistStatus) => void }) {
   const id = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<Status>("idle");
+  const [status, setStatus] = useState<WaitlistStatus>("idle");
   const [error, setError] = useState("");
-  const glass = tone === "glass";
+  const [live, setLive] = useState("");
+  const doneRef = useRef<HTMLParagraphElement>(null);
   const ticket = tone === "ticket";
 
   useEffect(() => {
     onStatusChange?.(status);
+    // Keyboard focus was on the button that just went away: hand it to the message, once.
+    if (status === "done" || status === "duplicate") doneRef.current?.focus({ preventScroll: true });
   }, [status, onStatusChange]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     const value = email.trim();
+    if (!value) {
+      setStatus("error");
+      setError(copy.empty);
+      inputRef.current?.focus();
+      return;
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
       setStatus("error");
-      setError("That email doesn’t look right. Check it and try again.");
+      setError(copy.invalid);
+      inputRef.current?.focus();
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setStatus("error");
+      setError(copy.offline);
       return;
     }
     setStatus("sending");
+    setLive(copy.sendingLive);
     try {
       const res = await fetch("/api/waitlist", {
         method: "POST",
@@ -44,171 +63,87 @@ export function WaitlistForm({ tone = "light", onStatusChange }: { tone?: Tone; 
         body: JSON.stringify({ email: value }),
       });
       if (!res.ok) throw new Error();
-      setStatus("done");
+      const data = (await res.json().catch(() => ({}))) as { duplicate?: boolean };
+      setLive("");
+      setStatus(data.duplicate ? "duplicate" : "done");
     } catch {
+      setLive("");
       setStatus("error");
-      setError("Something went wrong on our side. Please try again in a minute.");
+      setError(copy.error);
     }
   }
 
-  const buttonInner =
-    status === "sending" ? (
-      <>
-        <motion.span
-          aria-hidden
-          className="size-3.5 rounded-pill border-2 border-current border-t-transparent"
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
-        />
-        {storyCopy.common.ctaSending}
-      </>
-    ) : (
-      <>
-        {storyCopy.common.cta}
-        <ArrowRight className="cta-arrow size-4" />
-      </>
-    );
+  const edit = () => {
+    setStatus("idle");
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+  const sending = status === "sending";
+  const invalid = status === "error";
 
-  /* ── the ticket: a printed field and a stamped button ── */
-  if (ticket) {
-    if (status === "done") return null;
+  /* ── finished states ── */
+  if (status === "done" || status === "duplicate") {
+    const text =
+      status === "duplicate" ? (
+        copy.duplicate
+      ) : ticket ? (
+        <>
+          {copy.requestedFor.replace("{email}", email.trim())} {copy.wrongAddress}{" "}
+          <button type="button" className="wl-link" onClick={edit}>
+            {copy.edit}
+          </button>
+        </>
+      ) : (
+        copy.heroSuccess
+      );
     return (
-      <form onSubmit={onSubmit} noValidate className="tk-form" data-status={status}>
-        <div data-rise="">
-          <label htmlFor={id} className="tk-label">
-            {pkg3Copy.ticket.emailLabel}
-          </label>
-        </div>
-        <div data-rise="" className="tk-field-wrap">
-          <motion.div
-            className="tk-field"
-            animate={status === "error" ? { x: [0, -7, 6, -4, 2, 0] } : { x: 0 }}
-            transition={{ duration: 0.45 }}
-          >
-            <input
-              id={id}
-              type="email"
-              autoComplete="email"
-              placeholder={storyCopy.common.emailPlaceholder}
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (status === "error") setStatus("idle");
-              }}
-              aria-invalid={status === "error"}
-              aria-describedby={`${id}-msg`}
-              className="tk-input"
-            />
-            <span className="tk-underline" aria-hidden="true" />
-            <span className="tk-caret" aria-hidden="true" />
-          </motion.div>
-          <p id={`${id}-msg`} role={status === "error" ? "alert" : undefined} className="tk-msg">
-            {status === "error" ? error : ""}
-          </p>
-        </div>
-        <div data-rise="" className="tk-actions">
-          <Magnetic strength={0.3}>
-            <button type="submit" disabled={status === "sending"} className="cta cta-ink tk-submit">
-              <span className="cta-label">{buttonInner}</span>
-              <span className="cta-line" aria-hidden="true" />
-            </button>
-          </Magnetic>
-        </div>
-      </form>
+      <div className="wl" data-tone={ticket ? "ticket" : "night"} data-status={status}>
+        <p className="wl-done" role="status" tabIndex={-1} ref={doneRef}>
+          <span className="wl-done-mark" aria-hidden="true">
+            <Icon name="check" size={16} />
+          </span>
+          <span>{text}</span>
+        </p>
+      </div>
     );
   }
 
+  const button = (
+    <button type="submit" disabled={sending} className="wl-btn" data-sending={sending ? "" : undefined}>
+      <span className="wl-btn-label">{sending ? copy.sending : copy.cta}</span>
+      {sending ? <span className="wl-spin" aria-hidden="true" /> : <Icon name="arrow-right" size={16} />}
+    </button>
+  );
+
   return (
-    <div className="w-full max-w-[460px]">
-      <AnimatePresence mode="wait" initial={false}>
-        {status === "done" ? (
-          <motion.div
-            key="done"
-            role="status"
-            initial={{ opacity: 0, scale: 0.96, y: 6 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 22 }}
-            className={`flex items-center gap-3 rounded-pill py-2 pl-2 pr-5 text-sm ${
-              glass
-                ? "border border-on-night/30 bg-on-night/15 text-on-night backdrop-blur-xl"
-                : "border border-accent-line bg-accent-soft text-accent"
-            }`}
-          >
-            <span className={`inline-flex size-9 items-center justify-center rounded-pill ${glass ? "bg-on-night text-accent" : "bg-accent text-accent-ink"}`}>
-              <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={2.2} aria-hidden>
-                <motion.path
-                  d="M5 12.5l4.5 4.5L19 7.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
-                  transition={{ duration: 0.5, delay: 0.15 }}
-                />
-              </svg>
-            </span>
-            {storyCopy.common.success}
-          </motion.div>
-        ) : (
-          <motion.form
-            key="form"
-            onSubmit={onSubmit}
-            noValidate
-            exit={{ opacity: 0, scale: 0.97 }}
-            animate={status === "error" ? { x: [0, -8, 7, -5, 3, 0] } : { x: 0 }}
-            transition={{ duration: 0.45 }}
-            className={`flex items-center gap-2 rounded-pill py-1.5 pl-5 pr-1.5 transition-colors ${
-              glass
-                ? "border border-on-night/35 bg-night/35 backdrop-blur-xl focus-within:border-on-night/70"
-                : "border border-rule bg-surface shadow-field focus-within:border-ink/40"
-            }`}
-          >
-            <label htmlFor={id} className="sr-only">
-              {pkg3Copy.ticket.emailLabel}
-            </label>
-            <input
-              id={id}
-              type="email"
-              autoComplete="email"
-              placeholder={storyCopy.common.emailPlaceholder}
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (status === "error") setStatus("idle");
-              }}
-              aria-invalid={status === "error"}
-              aria-describedby={`${id}-msg`}
-              className={`h-11 min-w-0 flex-1 bg-transparent text-base outline-none ${
-                glass ? "text-on-night placeholder:text-on-night/70" : "text-ink placeholder:text-ink-2/70"
-              }`}
-            />
-            <Magnetic strength={0.25}>
-              <motion.button
-                type="submit"
-                disabled={status === "sending"}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className={`group relative inline-flex h-11 shrink-0 items-center gap-2 overflow-hidden rounded-pill px-5 text-sm font-medium transition-colors disabled:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 ${
-                  glass ? "bg-on-night text-ink focus-visible:outline-on-night" : "bg-ink text-on-night focus-visible:outline-focus"
-                }`}
-              >
-                {buttonInner}
-                {/* The Line motif in miniature: a gold rule draws along the bottom on hover. */}
-                <span
-                  aria-hidden
-                  className="absolute inset-x-4 bottom-0 h-[2px] origin-left scale-x-0 rounded-pill bg-line transition-transform duration-[400ms] ease-out group-hover:scale-x-100 group-hover:duration-[250ms] group-focus-visible:scale-x-100"
-                />
-              </motion.button>
-            </Magnetic>
-          </motion.form>
-        )}
-      </AnimatePresence>
-      <p
-        id={`${id}-msg`}
-        role={status === "error" ? "alert" : undefined}
-        className={`mt-2 min-h-5 pl-5 text-left text-sm ${glass ? "text-on-night" : "text-danger"}`}
-      >
-        {status === "error" ? error : ""}
+    <form onSubmit={onSubmit} noValidate className="wl" data-tone={ticket ? "ticket" : "night"} data-status={status}>
+      <label htmlFor={id} className={ticket ? "wl-label" : "sr-only"}>
+        {copy.label}
+      </label>
+      <div className="wl-row">
+        <input
+          ref={inputRef}
+          id={id}
+          type="email"
+          autoComplete="email"
+          inputMode="email"
+          placeholder={copy.placeholder}
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (invalid) setStatus("idle");
+          }}
+          aria-invalid={invalid}
+          aria-describedby={`${id}-msg`}
+          className="wl-input"
+        />
+        {ticket ? button : <Magnetic strength={0.25}>{button}</Magnetic>}
+      </div>
+      <p id={`${id}-msg`} role={invalid ? "alert" : undefined} className="wl-msg" data-error={invalid ? "" : undefined}>
+        {invalid ? error : ticket ? copy.helper : ""}
       </p>
-    </div>
+      <span className="sr-only" aria-live="polite">
+        {live}
+      </span>
+    </form>
   );
 }

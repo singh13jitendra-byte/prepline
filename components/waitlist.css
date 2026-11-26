@@ -1,0 +1,219 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   WAITLIST FORM — Night Desk. Two tones:
+   - night (hero, on the pine wall): pill field on --art-deep with a sage keyline,
+     lamp button with deep text. No glass.
+   - ticket (on paper): the product field: label, pine-keyline pill, pine button.
+   Tokens only.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.wl {
+  --wl-h: 46px;
+  width: 100%;
+  max-width: 460px;
+  font-family: var(--font-text);
+}
+.wl[data-tone="night"] {
+  --wl-fg: var(--c-on-night);
+  --wl-fg-2: var(--c-on-night-2);
+  --wl-field: var(--art-deep);
+  --wl-keyline: var(--c-on-night-2);
+  --wl-btn: var(--art-lamp);
+  --wl-btn-fg: var(--art-deep);
+  --wl-danger: var(--c-danger);
+  --wl-focus: var(--art-lamp);
+}
+/* The form owns its look: the field and the button carry it, never the form box, so a host's
+   wrapper styles (a well, a keyline, a blur) cannot draw a second frame around them. */
+form.wl[data-tone] {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.wl[data-tone="ticket"] {
+  --wl-h: 42px;
+  --wl-fg: var(--c-ink);
+  --wl-fg-2: var(--c-ink-2);
+  --wl-field: var(--c-paper-2);
+  --wl-keyline: var(--c-ink);
+  --wl-btn: var(--c-ink);
+  --wl-btn-fg: var(--c-paper);
+  --wl-danger: var(--c-danger);
+  --wl-focus: var(--c-ink);
+  max-width: none;
+}
+.wl-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: var(--weight-strong);
+  color: var(--wl-fg);
+}
+.wl-row {
+  display: flex;
+  gap: 8px;
+}
+.wl-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--wl-h);
+  padding: 0 18px;
+  font: inherit;
+  /* 16px or more: phones do not zoom into the field */
+  font-size: 16px;
+  color: var(--wl-fg);
+  background: var(--wl-field);
+  border: var(--hairline) solid var(--wl-keyline);
+  border-radius: var(--r-pill);
+  transition: border-color var(--dur-2) var(--ease-out);
+}
+.wl[data-tone="ticket"] .wl-input {
+  font-size: 15px;
+}
+.wl-input::placeholder {
+  color: var(--wl-fg-2);
+}
+.wl-input:focus-visible {
+  outline: 2px solid var(--wl-focus);
+  outline-offset: 2px;
+}
+.wl-input[aria-invalid="true"] {
+  border-color: var(--wl-danger);
+}
+.wl-btn {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--wl-h);
+  padding: 0 20px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: var(--weight-strong);
+  white-space: nowrap;
+  color: var(--wl-btn-fg);
+  background: var(--wl-btn);
+  border: 0;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out);
+}
+.wl[data-tone="ticket"] .wl-btn {
+  font-size: 14px;
+}
+@media (hover: hover) {
+  /* the print slips off register under the button: depth is print, not shadow */
+  .wl-btn:hover {
+    box-shadow: 3px 3px 0 0 var(--art-lamp);
+  }
+  .wl[data-tone="night"] .wl-btn:hover {
+    box-shadow: 3px 3px 0 0 var(--c-on-night);
+  }
+}
+.wl-btn:active {
+  transform: scale(0.97);
+}
+.wl-btn:focus-visible {
+  outline: 2px solid var(--wl-focus);
+  outline-offset: 2px;
+}
+.wl-btn:disabled {
+  cursor: default;
+}
+.wl-spin {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: var(--r-pill);
+  animation: wl-spin 0.8s linear infinite;
+}
+@keyframes wl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.wl-msg {
+  min-height: 18px;
+  margin: 8px 0 0 18px;
+  font-size: var(--fs-micro);
+  line-height: 18px;
+  color: var(--wl-fg-2);
+}
+.wl-msg[data-error] {
+  color: var(--wl-danger);
+  font-weight: var(--weight-strong);
+}
+.wl[data-tone="ticket"] .wl-msg {
+  margin-left: 2px;
+  margin-top: 6px;
+}
+.wl-done {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--wl-fg);
+  outline: none;
+  animation: wl-in var(--dur-3) var(--ease-out);
+}
+.wl[data-tone="night"] .wl-done {
+  padding: 12px 18px 12px 12px;
+  background: var(--art-deep);
+  border: var(--hairline) solid var(--c-on-night-2);
+  border-radius: var(--r-pill);
+}
+.wl-done-mark {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-pill);
+  color: var(--wl-btn-fg);
+  background: var(--wl-btn);
+}
+.wl-link {
+  padding: 0;
+  font: inherit;
+  font-weight: var(--weight-strong);
+  color: inherit;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-decoration-thickness: var(--hairline);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.wl-link:focus-visible {
+  outline: 2px solid var(--wl-focus);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+@keyframes wl-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (max-width: 420px) {
+  .wl[data-tone="night"] .wl-row {
+    flex-direction: column;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wl-done {
+    animation: none;
+  }
+  .wl-spin {
+    animation-duration: 2.4s;
+  }
+}

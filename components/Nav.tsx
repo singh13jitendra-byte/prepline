@@ -15,10 +15,10 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { pkg3Copy, storyCopy } from "@/lib/content";
+import { storyCopy } from "@/lib/content";
+import { landmarks } from "@/components/acts/after/copy";
 import { BEATS, story, type ActId, type BeatId } from "@/lib/story";
 import { Magnetic } from "./Magnetic";
-import "./cta.css";
 import "./chrome.css";
 
 const HIDE_IN: readonly BeatId[] = ["hinge", "nightfall", "unfold", "q1", "q2", "q3", "votes"];
@@ -33,18 +33,51 @@ function Arrow() {
   );
 }
 
-function PillContent({ live, open, onMenu }: { live: boolean; open?: boolean; onMenu?: () => void }) {
-  const t = live ? undefined : -1;
+/**
+ * The B mark (brand/direction-b.html): a one-stroke p whose descender runs on as the line,
+ * here underlining the Young Serif wordmark. Lamp on night, pine on day.
+ */
+export function Lockup() {
   return (
     <>
-      <a href="#read" className="nav-brand" tabIndex={t} onClick={(e) => {
-        e.preventDefault();
-        story.scrollToBeat("hero", 0);
-      }}>
-        <span className="nav-logo" aria-hidden="true" />
+      <svg className="nav-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <path d="M19 37C41 37 50 33 50 25.5C50 17 41 13 30 13L24.5 13C20.5 13 19 15 19 18.5L19 53C19 57 22 59 27 59L60 59" />
+      </svg>
+      <span className="nav-word">
         {storyCopy.nav.brand}
+        <svg className="nav-tail" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+          <path d="M0 4C30 5.5 64 2.4 100 4.6" vectorEffect="non-scaling-stroke" />
+        </svg>
+      </span>
+    </>
+  );
+}
+
+function PillContent({ live, open, onMenu }: { live: boolean; open?: boolean; onMenu?: () => void }) {
+  const t = live ? undefined : -1;
+  const cta = (
+    <a href="#join" className="cta nav-cta" tabIndex={t}>
+      <span className="cta-label">
+        {storyCopy.nav.cta}
+        <Arrow />
+      </span>
+    </a>
+  );
+  return (
+    <>
+      <a
+        href="#read"
+        className="nav-brand"
+        tabIndex={t}
+        aria-label={live ? storyCopy.nav.brand : undefined}
+        onClick={(e) => {
+          e.preventDefault();
+          story.scrollToBeat("hero", 0);
+        }}
+      >
+        <Lockup />
       </a>
-      <nav aria-label={live ? pkg3Copy.landmarks.sections : undefined}>
+      <nav aria-label={live ? landmarks.sections : undefined}>
         <ul className="nav-links">
           {storyCopy.nav.links.map((l) => (
             <li key={l.label}>
@@ -56,27 +89,7 @@ function PillContent({ live, open, onMenu }: { live: boolean; open?: boolean; on
         </ul>
       </nav>
       <div className="nav-right">
-        {live ? (
-          <Magnetic strength={0.3}>
-            <a href="#join" className="cta cta-ink">
-              <span className="cta-label">
-                {storyCopy.nav.cta}
-                <Arrow />
-              </span>
-              <span className="cta-line" aria-hidden="true" />
-            </a>
-          </Magnetic>
-        ) : (
-          <span className="inline-flex">
-            <a href="#join" className="cta cta-ink" tabIndex={-1}>
-              <span className="cta-label">
-                {storyCopy.nav.cta}
-                <Arrow />
-              </span>
-              <span className="cta-line" aria-hidden="true" />
-            </a>
-          </span>
-        )}
+        {live ? <Magnetic strength={0.3}>{cta}</Magnetic> : <span className="inline-flex">{cta}</span>}
         <button
           type="button"
           className="nav-menu-btn"
@@ -118,7 +131,7 @@ export function Nav() {
         hidden = want;
         el.toggleAttribute("data-hidden", hidden);
       }
-      // The current act's link carries a short line.
+      // The current act's link carries a dot.
       const i = idx(s.beat);
       const current = i >= idx("seat") || s.beat === "dawn" ? "seat" : i >= idx("unfold") || s.beat === "nightfall" ? "prep" : i >= idx("saved") ? "board" : "read";
       if (current !== act) {

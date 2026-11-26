@@ -1,0 +1,183 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   AFTER THE STAGE — day skin, natural scroll: the quote slot and the founder note.
+   Tokens only.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.af {
+  position: relative;
+  z-index: var(--z-acts, 2);
+  display: flex;
+  flex-direction: column;
+  gap: 96px;
+  padding: 120px 32px 128px;
+  color: var(--c-ink);
+  font-family: var(--font-text);
+  background: var(--tex-paper), var(--c-paper);
+}
+
+/* ── founder note ── */
+.af-founder {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 560px);
+  justify-content: center;
+  align-items: start;
+  gap: 56px;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+.af-crop {
+  width: 320px;
+  height: 192px;
+  margin-top: 8px;
+  overflow: hidden;
+  border: 2px solid var(--c-ink);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+  background-size: cover;
+  background-position: 70% 80%;
+  /* Stays beside the story while it is read, instead of leaving a gap under it. */
+  position: sticky;
+  top: 112px;
+  align-self: start;
+}
+/* A close crop on the lamp, the laptop and the mug (about x 46–88%, y 44–89% of the scene). */
+.af-crop img {
+  position: absolute;
+  left: -110%;
+  top: -100%;
+  width: 240%;
+  height: auto;
+  max-width: none;
+}
+.af-h {
+  margin: 0 0 18px;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  line-height: 1.04;
+  letter-spacing: var(--tracking-display);
+  font-weight: var(--weight-display);
+}
+.af-founder-text p {
+  margin: 0 0 14px;
+  font-size: var(--fs-lead);
+  line-height: 1.55;
+  color: var(--c-ink);
+  text-wrap: pretty;
+}
+.af-founder-text .af-sign {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 26px 0 0;
+  padding-top: 14px;
+  border-top: var(--hairline) solid var(--c-rule);
+  font-size: var(--fs-small);
+  line-height: 1.4;
+}
+.af-sign b {
+  font-weight: var(--weight-strong);
+}
+.af-sign span {
+  color: var(--c-ink-2);
+}
+.af-founder-text .af-links {
+  display: flex;
+  gap: 20px;
+  font-size: var(--fs-small);
+}
+.af-links a {
+  color: var(--c-ink);
+  text-decoration: underline;
+  text-decoration-thickness: var(--hairline);
+  text-underline-offset: 4px;
+}
+.af-links a:focus-visible {
+  outline: 2px solid var(--c-focus);
+  outline-offset: 3px;
+  border-radius: var(--r-xs);
+}
+
+/* A plain fade, once, as a note from a person. */
+html.motion .af-founder {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.6s var(--ease-out),
+    transform 0.8s var(--ease-out);
+}
+html.motion .af-founder[data-seen] {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── quote slot (hidden unless real quotes exist; ?slots=1 shows the labelled placeholder) ── */
+.af-quote {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.af-quote[data-sample] {
+  padding: 24px 28px;
+  border: 2px dashed var(--c-ink-2);
+  border-radius: var(--r-lg);
+}
+.af-quote-label {
+  margin: 0 0 16px;
+  font-size: var(--fs-micro);
+  font-weight: var(--weight-strong);
+  color: var(--c-ink-2);
+}
+.af-quote-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+.af-quote-frame {
+  flex: none;
+  width: 72px;
+  height: 72px;
+}
+.af-quote blockquote {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  line-height: 1.25;
+  font-weight: var(--weight-display);
+  letter-spacing: -0.01em;
+}
+.af-quote figcaption {
+  margin-top: 12px;
+  font-size: var(--fs-small);
+  color: var(--c-ink-2);
+}
+.af-quote figcaption b {
+  font-weight: var(--weight-strong);
+  color: var(--c-ink);
+}
+
+@media (max-width: 860px) {
+  .af {
+    gap: 64px;
+    padding: 80px 20px 96px;
+  }
+  .af-founder {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .af-crop {
+    position: relative;
+    top: auto;
+    width: 100%;
+    max-width: 420px;
+    height: auto;
+    aspect-ratio: 5 / 3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.motion .af-founder {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

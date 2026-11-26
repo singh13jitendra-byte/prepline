@@ -9,7 +9,7 @@
 
 import { useSyncExternalStore } from "react";
 
-export type SeatStatus = "idle" | "sending" | "done" | "error";
+export type SeatStatus = "idle" | "sending" | "done" | "duplicate" | "error";
 
 let snapshot: { status: SeatStatus; at: number } = { status: "idle", at: 0 };
 const listeners = new Set<() => void>();

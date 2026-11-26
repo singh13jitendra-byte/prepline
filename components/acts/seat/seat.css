@@ -1,9 +1,12 @@
 /* ══════════════════════════════════════════════════════════════════════════
-   ACT IV — SEAT (day, dawn light). Storyboard 2.7, 5.7, 5.8.
+   ACT IV — SEAT (day: the sunlit wall of desk-dawn, painted by the World).
+   Night Desk: ink headline in Young Serif, Hanken text, hand-drawn seat rings,
+   the product ticket. Tokens only.
    ══════════════════════════════════════════════════════════════════════════ */
 
 .seat-panel {
   color: var(--c-ink);
+  font-family: var(--font-text);
 }
 .seat-grid {
   position: relative;
@@ -14,30 +17,31 @@
   max-width: 1240px;
   height: 100%;
   margin: 0 auto;
-  padding: 92px 32px 40px;
+  padding: 96px 32px 40px;
 }
 .seat-left {
   grid-column: 1 / span 6;
   align-self: center;
 }
 .seat-right {
-  grid-column: 7 / span 6;
+  grid-column: 8 / span 5;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 30px;
+  gap: 28px;
   align-self: center;
-  padding-top: 40px;
-  padding-left: 18px;
+  padding-top: 24px;
 }
 
-/* ── headline: "Walk in / ready." with the Line docked under ready. ── */
+/* ── "Walk in / ready." — one face; the Line under "ready." is the accent ── */
 .seat-h {
-  font-size: min(clamp(72px, 10.5vw, 168px), 18svh);
-  line-height: 0.88;
-  letter-spacing: -0.055em;
-  font-weight: 500;
   margin: 0;
+  font-family: var(--font-display);
+  font-size: min(var(--fs-display-xl), 17svh);
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-display);
+  font-weight: var(--weight-display);
+  color: var(--c-ink);
 }
 .seat-h-line {
   display: block;
@@ -45,72 +49,81 @@
 .seat-accent {
   position: relative;
   display: inline-block;
-  font-family: var(--font-accent);
-  font-style: italic;
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  color: var(--c-accent);
 }
-/* The Line rests here, at the same share of the word as the hero underline (left .05em,
-   right .02em of "ready."). Static page: a quiet amber rule. */
+/* The Line rests here at the hero underline's size (fitted in JS). Static page: a pine rule. */
 .seat-underline {
   position: absolute;
   left: 0.05em;
   right: 0.02em;
   bottom: 0.02em;
-  height: 3px;
-  border-radius: var(--r-2xs);
+  height: var(--art-stroke);
+  border-radius: var(--r-pill);
   transform-origin: 0 50%;
   pointer-events: none;
 }
 html:not(.motion) .seat-underline {
-  background: var(--c-accent);
+  background: var(--c-ink);
+}
+/* It rides just under the rising dawn line (written per frame from scroll). */
+html.motion .seat-ride {
+  --ride-d: 46svh;
+  will-change: transform;
 }
 
 .seat-body {
-  margin-top: 40px;
+  margin: 30px 0 0;
   max-width: 44ch;
+  text-wrap: pretty;
+  font-size: var(--fs-lead);
+  line-height: var(--leading-text);
+  color: var(--c-ink);
+}
+.seat-signoff {
+  margin: 14px 0 0;
+  max-width: 62ch;
+  text-wrap: pretty;
+  font-size: var(--fs-small);
+  line-height: 1.5;
   color: var(--c-ink-2);
+}
+.seat-signoff span {
+  display: block;
+}
+.seat-signoff b {
+  font-weight: var(--weight-strong);
+  color: var(--c-ink);
 }
 .seat-promises {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px 28px;
-  margin: 30px 0 0;
+  gap: 0 28px;
+  margin: 24px 0 0;
   padding: 0;
   list-style: none;
   max-width: 560px;
 }
 .seat-promise {
-  display: grid;
-  grid-template-columns: 18px 1fr;
-  column-gap: 10px;
-  padding-top: 14px;
-  border-top: 1px solid color-mix(in oklab, var(--c-ink) 10%, transparent);
-}
-.seat-promise svg {
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
-  color: var(--c-accent);
+  padding: 12px 0;
+  border-top: var(--hairline) solid var(--c-rule);
 }
 .seat-promise-t {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  display: block;
+  font-size: var(--fs-small);
   line-height: 1.35;
+  font-weight: var(--weight-strong);
+  color: var(--c-ink);
 }
 .seat-promise-b {
-  grid-column: 2;
-  margin-top: 3px;
-  font-size: 14px;
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-micro);
   line-height: 1.45;
   color: var(--c-ink-2);
 }
 .seat-note {
-  margin-top: 22px;
+  margin: 14px 0 0;
   max-width: 60ch;
-  font-size: 13px;
+  font-size: var(--fs-micro);
   line-height: 1.5;
   color: var(--c-ink-2);
 }
@@ -127,91 +140,52 @@ html:not(.motion) .seat-underline {
   position: absolute;
   inset: 0;
   transform-origin: 50% 50%;
-  transform: translate3d(0, calc(var(--lift, 0) * -10px), 0) rotate(var(--rest, 0deg)) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg));
+  transform: translate3d(0, calc(var(--lift, 0) * -10px), 0) rotate(var(--rest, -2deg)) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg));
   will-change: transform;
 }
 
-/* ── 25 hollow seat rings: the dust, gathered ── */
+/* ── 25 hand-drawn seat rings: the fireflies settle into them ── */
 .seat-rings {
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 18px;
+  padding-left: 4px;
 }
 .seat-ring-grid {
   display: grid;
-  grid-template-columns: repeat(5, 12px);
-  gap: 11px;
-  padding: 6px;
-  margin: -6px;
+  grid-template-columns: repeat(5, 28px);
+  gap: 6px;
+  margin: 0;
+  padding: 0;
   list-style: none;
 }
 .seat-ring {
   --g: clamp(0, calc((var(--gather, 1) - var(--d, 0)) / 0.45), 1);
-  position: relative;
-  width: 12px;
-  height: 12px;
-  border-radius: var(--r-pill);
-  /* hollow: the World's speck settles inside it */
-  box-shadow: inset 0 0 0 1.25px color-mix(in oklab, var(--c-ink) 42%, transparent);
+  width: 28px;
+  height: 28px;
   opacity: var(--g);
-  transform: scale(calc(0.35 + 0.65 * var(--g)));
-  transition: box-shadow 0.4s ease, background-color 0.4s ease;
+  transform: scale(calc(0.4 + 0.6 * var(--g)));
 }
-.seat-ring[data-near] {
-  box-shadow: inset 0 0 0 1.5px var(--c-accent);
-  background: color-mix(in oklab, var(--c-accent) 12%, transparent);
-  transition-duration: 0.15s;
-}
-/* Claimed. With the WebGL World running it fills the ring gold, so the DOM mark stays subtle;
-   without it (CSS field, no WebGL) the DOM fills the ring itself. */
-.seat-ring[data-filled] {
-  background: var(--c-accent);
-  box-shadow: inset 0 0 0 1.5px var(--c-accent);
-}
-.seat-ring[data-filled][data-world] {
-  background: color-mix(in oklab, var(--c-accent) 12%, transparent);
-  box-shadow: inset 0 0 0 1.75px var(--c-accent);
+.seat-ring-art {
+  display: block;
+  width: 28px;
+  height: 28px;
+  transform: rotate(var(--turn, 0deg));
 }
 .seat-ring[data-fresh] {
-  animation: seat-fill 0.7s var(--ease-spring) both;
-}
-.seat-ring[data-fresh]::after {
-  content: "";
-  position: absolute;
-  inset: -6px;
-  border-radius: var(--r-pill);
-  box-shadow: 0 0 0 1.5px var(--c-accent);
-  animation: seat-ripple 0.9s var(--ease-out) both;
+  animation: seat-fill var(--dur-3) var(--ease-spring) both;
 }
 @keyframes seat-fill {
-  0% {
-    transform: scale(0.4);
-  }
-}
-@keyframes seat-ripple {
   from {
-    opacity: 1;
-    transform: scale(0.5);
+    transform: scale(0.6);
   }
-  to {
-    opacity: 0;
-    transform: scale(1.6);
-  }
-}
-.seat-rings {
-  padding-left: 4px;
 }
 .seat-rings-caption {
+  font-size: var(--fs-small);
   color: var(--c-ink-2);
   white-space: nowrap;
   /* only once the first ring exists */
   opacity: clamp(0, calc((var(--gather, 1) - 0.03) * 8), 1);
-}
-/* The headline rides just under the dawn line, so the rising line reveals it bottom-up. */
-html.motion .seat-ride {
-  --ride-d: 46svh;
-  transform: translate3d(0, calc((1 - var(--rise, 1)) * var(--ride-d)), 0);
-  will-change: transform;
 }
 
 /* ── static page ── */
@@ -224,28 +198,20 @@ html:not(.motion) .seat-grid {
   row-gap: 48px;
 }
 
-/* ── mobile ── */
+/* ── phones ── */
 @media (max-width: 767px) {
   .seat-grid {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    justify-content: flex-start;
-    padding: 78px 20px 20px;
+    padding: 76px 20px 20px;
   }
   .seat-h {
-    font-size: min(18.5vw, 9.4svh);
+    font-size: min(17vw, 9svh);
   }
   .seat-body {
-    margin-top: 14px;
+    margin-top: 12px;
     font-size: 15px;
-  }
-  .seat-right {
-    order: 2;
-    gap: 14px;
-    padding-top: 18px;
-    padding-left: 0;
-    align-items: stretch;
   }
   .seat-left {
     display: contents;
@@ -253,69 +219,62 @@ html:not(.motion) .seat-grid {
   .seat-left > .seat-ride {
     order: 1;
   }
-  /* On a phone the headline does not ride up through the ticket's place: it waits at rest at the
-     top of the stack and the rising line uncovers it there, clear of the arriving ticket. */
+  .seat-right {
+    order: 2;
+    gap: 12px;
+    padding-top: 16px;
+    align-items: stretch;
+  }
+  .seat-left > div:not(.seat-ride) {
+    order: 3;
+  }
   html.motion .seat-ride {
-    --ride-d: 0svh;
+    --ride-d: 66svh;
+  }
+  .seat-signoff {
+    display: none;
   }
   .seat-promises {
-    order: 3;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px 16px;
-    margin-top: 18px;
+    gap: 0 14px;
+    margin-top: 12px;
   }
   .seat-promise {
-    padding-top: 9px;
-    grid-template-columns: 14px 1fr;
-    column-gap: 7px;
-  }
-  .seat-promise svg {
-    width: 13px;
-    height: 13px;
-  }
-  .seat-promise-t {
-    font-size: 13px;
+    padding: 8px 0;
   }
   .seat-promise-b {
     display: none;
   }
   .seat-note {
-    order: 4;
-    margin-top: 14px;
-    font-size: 12px;
+    margin-top: 10px;
   }
   .seat-ticket-wrap {
     width: 100%;
   }
   .seat-rings {
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
   }
   .seat-ring-grid {
-    grid-template-columns: repeat(25, 7px);
-    gap: 3.5px;
+    grid-template-columns: repeat(13, 18px);
+    gap: 3px 6px;
   }
-  .seat-ring {
-    width: 7px;
-    height: 7px;
-    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c-ink) 45%, transparent);
+  .seat-ring,
+  .seat-ring-art {
+    width: 18px;
+    height: 18px;
   }
+  html:not(.motion) .seat-signoff,
   html:not(.motion) .seat-promise-b {
     display: block;
   }
 }
 @media (max-width: 767px) and (max-height: 740px) {
-  .seat-note {
+  html.motion .seat-note {
     display: none;
   }
-  html:not(.motion) .seat-note {
-    display: block;
-  }
 }
-
 @media (prefers-reduced-motion: reduce) {
-  .seat-ring[data-fresh],
-  .seat-ring[data-fresh]::after {
+  .seat-ring[data-fresh] {
     animation: none;
   }
 }

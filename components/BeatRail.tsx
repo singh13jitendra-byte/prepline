@@ -2,7 +2,7 @@
 
 /**
  * BEAT RAIL — five ticks on the right edge (desktop, motion only). Storyboard 3 "Nav".
- * A <nav aria-label="Story"> of real links; the active tick is 16px long, a mono
+ * A <nav aria-label="Story"> of real links; the active tick is 16px long, a small
  * label shows on hover and focus, and a click scrolls to that beat. Like the nav,
  * it is drawn in both skins during a wipe and split at the line.
  */
