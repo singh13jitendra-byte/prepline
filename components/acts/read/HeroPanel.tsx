@@ -3,12 +3,14 @@
 /**
  * Beat 1, `hero` (storyboard 2.3 load, 2.4 beat 1).
  *
- * Load (time only, about 1.4s, never blocks scroll): headline lines rise from
- * their masks (expo.out 0.9s, 60ms apart), "ready." clears a 6px blur, then the
- * underline (the `hero-underline` anchor, drawn by the Line) grows left to right
- * (power3.inOut 0.7s). Pill, sub, form and privacy line rise 16px (0.7s, 80ms
- * apart). The readout counts 0 → 2,340. Any scroll during the load snaps it to
- * its end state.
+ * Night Desk (round 4). The copy sits over the painted room's left wall and
+ * leaves the window and the laptop (the World's scene) clear.
+ *
+ * Load (time only, never blocks scroll): headline lines rise from their masks
+ * (expo.out 0.9s, 60ms apart); "ready." arrives in lamp ink; the underline (the
+ * `hero-underline` anchor, drawn by the hand-drawn Line) grows left to right;
+ * then the rest rises (subline, form, privacy note), and the scroll cue fades in.
+ * Any scroll during the load snaps it to its end state.
  *
  * Scroll (scrubbed, linear): 0 → 22% the copy around the headline drops 24px and
  * fades while the Line stretches to full width; 22 → 100% the Line rises and the
@@ -27,7 +29,6 @@ import { span, useScrub } from "./runtime";
 import { ease } from "@/lib/theme";
 
 const copy = storyCopy.hero;
-const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 const HERO_INDEX = BEATS.findIndex((b) => b.id === "hero");
 
 export function HeroPanel() {
@@ -43,9 +44,7 @@ export function HeroPanel() {
     const ready = q("[data-ready]");
     const under = q("[data-underline]");
     const rises = q("[data-rise]");
-    const count = root.querySelector<HTMLElement>("[data-count]");
     const chrome = q("[data-fade-in]");
-    const n = { v: 0 };
     // Hand over from the CSS initial state before GSAP reads any transform.
     root.setAttribute("data-loaded", "");
     gsap.set(lines, { y: 0 });
@@ -53,23 +52,12 @@ export function HeroPanel() {
     const tl = gsap.timeline({ defaults: { ease: ease.out } });
     tl.fromTo(rises[0], { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 }, 0.04)
       .fromTo(lines, { yPercent: 108 }, { yPercent: 0, duration: 0.9, stagger: 0.06 }, 0.1)
-      .fromTo(ready, { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.7, ease: ease.outSoft, clearProps: "filter" }, 0.36)
+      // "ready." arrives in lamp ink (no blur in this theme), then the pen draws the Line under it.
+      .fromTo(ready, { opacity: 0, yPercent: 14 }, { opacity: 1, yPercent: 0, duration: 0.7, ease: ease.outSoft }, 0.36)
       .fromTo(under, { scaleX: 0 }, { scaleX: 1, duration: 0.7, ease: ease.inOutFirm }, 0.62)
-      .fromTo(rises.slice(1), { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, stagger: 0.08 }, 0.5)
-      .fromTo(chrome, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: ease.outSoft }, 0.2)
-      .fromTo(
-        n,
-        { v: 0 },
-        {
-          v: copy.readoutCount,
-          duration: 1.3,
-          ease: ease.outFirm,
-          onUpdate: () => {
-            if (count) count.textContent = fmt(n.v);
-          },
-        },
-        0.05,
-      );
+      // Then the rest: subline, form, privacy note, scroll cue.
+      .fromTo(rises.slice(1), { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, stagger: 0.08 }, 0.9)
+      .fromTo(chrome, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: ease.outSoft }, 1.2);
 
     // Scrolling during the load snaps it to the end.
     const off = story.subscribe((s) => {
@@ -156,6 +144,7 @@ export function HeroPanel() {
                   {copy.sub}
                 </p>
                 <div className="rd-form" data-rise>
+                  {/* No glass: read.css restyles this tone to the Night Desk field (deep well, sage keyline, lamp button). */}
                   <WaitlistForm tone="glass" />
                 </div>
                 <p className="rd-privacy" data-rise>
@@ -166,20 +155,9 @@ export function HeroPanel() {
           </div>
         </div>
 
-        <p className="rd-readout only-motion" aria-hidden="true">
-          <span className="rd-readout-in" data-fade-in>
-            <span className="rd-readout-dot" />
-            {copy.readout}
-            <span className="rd-readout-sep">·</span>
-            <span className="rd-readout-n" data-count>
-              {fmt(copy.readoutCount)}
-            </span>
-          </span>
-        </p>
         <p className="rd-cue only-motion" aria-hidden="true">
           <span className="rd-cue-in" data-fade-in>
             {copy.scrollCue}
-            <span className="rd-cue-tick" />
           </span>
         </p>
       </div>

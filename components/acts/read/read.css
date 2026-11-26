@@ -1,5 +1,7 @@
 /* ══════════════════════════════════════════════════════════════════════════
-   ACT I — READ (night). Package 2.
+   ACT I — READ (night). Package 2, round 4: the Night Desk.
+   Young Serif display, Hanken Grotesk text, lamp for the accent and the kept.
+   No glass, no glow, no mono labels; theme tokens only.
    Static (reduced motion / no JS) is the default; html.motion adds the story.
    Every scrubbed value arrives as a custom property written by the store
    subscriber (--drop, --hero-clip, --reveal-*, --k*, --j, --in, ...).
@@ -7,8 +9,9 @@
 
 .rd-stage {
   color: var(--c-on-night);
+  font-family: var(--font-text);
   --rd-muted: var(--c-on-night-2);
-  --rd-quiet: color-mix(in oklab, var(--c-on-night) 58%, transparent);
+  --rd-quiet: var(--c-on-night-2);
 }
 
 /* ── the 12-column grid (1240 max, storyboard 2.4) ── */
@@ -25,27 +28,31 @@
 
 /* ── type ── */
 .rd-h1 {
-  font-size: clamp(54px, 7.2vw, 118px);
-  line-height: 0.9;
-  letter-spacing: -0.055em;
-  /* Light on dark reads heavier: a touch under 500 restores the intended colour. */
-  font-weight: 480;
+  font-family: var(--font-display);
+  /* Generous and tight, like the references: about 100px on a laptop, leading under 1. */
+  font-size: clamp(56px, 6.6vw, 108px);
+  line-height: 0.95;
+  letter-spacing: var(--tracking-display);
+  font-weight: var(--weight-display);
   font-kerning: normal;
+  font-optical-sizing: auto;
   text-rendering: optimizeLegibility;
+  color: var(--c-on-night);
 }
 .rd-h2 {
-  font-size: clamp(34px, 4vw, 60px);
-  line-height: 1.02;
-  letter-spacing: -0.04em;
-  font-weight: 480;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  line-height: 1.04;
+  letter-spacing: var(--tracking-display);
+  font-weight: var(--weight-display);
   text-wrap: balance;
   hanging-punctuation: first allow-end;
 }
 .rd-body {
-  margin-top: 22px;
+  margin-top: 20px;
   max-width: 30em;
-  font-size: clamp(15px, 1.2vw, 17px);
-  line-height: 1.55;
+  font-size: var(--fs-body);
+  line-height: var(--leading-text);
   color: var(--rd-muted);
   text-wrap: pretty;
 }
@@ -55,34 +62,29 @@
 .rd-hero-root {
   position: relative;
 }
+/* The copy keeps to the painted room's left wall: the window and the laptop stay clear. */
 .rd-hero-copy {
-  grid-column: 1 / span 8;
+  grid-column: 1 / span 6;
+  max-width: 640px;
 }
+/* The eyebrow: plain text with a lamp dot. Sentence case, no pill, no glass. */
 .rd-pill {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  height: 32px;
-  padding: 0 14px 0 11px;
-  border-radius: var(--r-pill);
-  border: 1px solid color-mix(in oklab, var(--c-on-night) 16%, transparent);
-  background: color-mix(in oklab, var(--c-on-night) 6%, transparent);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: -0.004em;
-  color: color-mix(in oklab, var(--c-on-night) 86%, transparent);
+  gap: 10px;
+  font-size: var(--fs-small);
+  line-height: 1.3;
+  font-weight: var(--weight-strong);
+  color: var(--c-on-night-2);
 }
 .rd-pill-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: var(--r-round);
-  background: var(--c-on-night);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--c-on-night) 14%, transparent);
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--art-lamp, var(--c-line));
 }
 .rd-h1 {
-  margin-top: 30px;
+  margin-top: 22px;
 }
 .rd-h1-vis {
   display: block;
@@ -109,89 +111,83 @@
 .rd-mask-inline .rd-line {
   display: inline-block;
 }
+/* The accent word: lamp ink, italic. --font-display-italic lets the theme supply a true italic;
+   until it does, Young Serif (one roman cut) is slanted by the browser. */
 .rd-ready {
   position: relative;
   display: inline-block;
-  font-family: var(--font-accent);
+  font-family: var(--font-display-italic, var(--font-display));
   font-style: italic;
-  font-weight: 400;
-  font-size: 1.06em;
-  line-height: 0.85;
-  letter-spacing: -0.012em;
-  padding-right: 0.04em;
-  color: var(--c-accent-night);
+  font-weight: var(--weight-display);
+  line-height: 0.95;
+  padding-right: 0.06em;
+  color: var(--c-line);
 }
-/* The Line's first position. In motion the Line itself draws here; static shows a rule. */
+/* The Line's first position. In motion the hand-drawn Line draws here; static shows a rule. */
 .rd-underline {
   position: absolute;
-  left: 0.05em;
-  right: 0.02em;
-  bottom: -0.2em;
+  left: 0.04em;
+  right: 0.06em;
+  bottom: -0.16em;
   height: 3px;
-  border-radius: calc(var(--r-2xs) * 3 / 2);
+  border-radius: var(--r-pill);
   transform-origin: 0 50%;
-  background: var(--c-accent-night);
+  background: var(--c-line);
 }
 html.motion .rd-underline {
   background: transparent;
 }
 .rd-sub {
-  margin-top: 34px;
-  max-width: 480px;
-  font-size: 20px;
-  line-height: 1.45;
-  letter-spacing: -0.01em;
-  color: color-mix(in oklab, var(--c-on-night) 80%, transparent);
+  margin-top: 30px;
+  max-width: 30em;
+  font-size: var(--fs-lead);
+  line-height: 1.5;
+  color: var(--c-on-night);
   text-wrap: pretty;
 }
 .rd-form {
-  margin-top: 30px;
+  margin-top: 28px;
 }
 .rd-privacy {
   margin-top: 2px;
-  padding-left: 20px;
-  font-size: 13px;
+  padding-left: 22px;
+  font-size: var(--fs-small);
   line-height: 1.4;
-  color: var(--rd-quiet);
+  color: var(--c-on-night-2);
 }
-.rd-readout,
-.rd-cue {
-  font-family: var(--font-mono);
-  font-variant-numeric: var(--mono-numeric);
-  font-size: 11px;
-  line-height: 1.2;
-  font-weight: 500;
-  letter-spacing: calc(0.08em * var(--mono-tracking));
-  text-transform: var(--mono-case);
-  font-feature-settings: "case";
-  color: var(--rd-quiet);
+/* The hero form, Night Desk: a deep well with a sage keyline and a lamp button. No glass. */
+.rd-form form {
+  background: var(--art-deep, var(--c-night));
+  border: var(--hairline) solid var(--c-on-night-2);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
-.rd-readout-in {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
+.rd-form form:focus-within {
+  border-color: var(--c-on-night);
 }
-.rd-readout-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: var(--r-round);
-  background: currentColor;
-}
-.rd-readout-n {
-  min-width: 5ch;
+.rd-form input {
+  font-family: var(--font-text);
   color: var(--c-on-night);
-  font-variant-numeric: tabular-nums;
 }
-.rd-cue-in {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
+.rd-form input::placeholder {
+  color: var(--c-on-night-2);
 }
-.rd-cue-tick {
-  width: 1px;
-  height: 28px;
-  background: linear-gradient(color-mix(in oklab, var(--c-on-night) 50%, transparent), color-mix(in oklab, var(--c-on-night) 0%, transparent));
+.rd-form button[type="submit"] {
+  background: var(--art-lamp, var(--c-line));
+  color: var(--art-deep, var(--c-night));
+  font-family: var(--font-text);
+  font-weight: var(--weight-strong);
+}
+.rd-form [role="status"] {
+  background: var(--art-deep, var(--c-night));
+  border: var(--hairline) solid var(--c-on-night-2);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.rd-cue {
+  font-size: var(--fs-small);
+  line-height: 1.3;
+  color: var(--c-on-night-2);
 }
 
 html.motion .rd-hero-root {
@@ -219,12 +215,6 @@ html.motion .rd-hero-grid {
 }
 html.motion .rd-drop {
   transform: translate3d(0, calc(var(--drop) * 24px), 0);
-  opacity: calc(1 - var(--drop));
-}
-html.motion .rd-readout {
-  position: absolute;
-  top: clamp(76px, 10svh, 96px);
-  right: max(clamp(24px, 3.4vw, 48px), calc((100% - 1240px) / 2));
   opacity: calc(1 - var(--drop));
 }
 html.motion .rd-cue {
@@ -262,71 +252,31 @@ html.motion .rd-hero-root:not([data-loaded]) :is([data-line], [data-ready], [dat
 .rd-pass-col {
   grid-column: 1 / span 7;
 }
-.rd-pass-marks {
-  display: flex;
-  gap: 28px;
-  font-family: var(--font-mono);
-  font-variant-numeric: var(--mono-numeric);
-  font-size: 11px;
-  line-height: 1.2;
-  font-weight: 500;
-  letter-spacing: calc(0.08em * var(--mono-tracking));
-  text-transform: var(--mono-case);
-  font-feature-settings: "case";
-}
-.rd-mark {
-  position: relative;
-  display: inline-flex;
-  flex-direction: column;
-  gap: 9px;
-  color: var(--rd-quiet);
-  transition: color 0.4s var(--ease-out);
-}
-.rd-pass[data-pass="1"] .rd-mark[data-mark="1"],
-.rd-pass[data-pass="2"] .rd-mark[data-mark="2"] {
-  color: var(--c-on-night);
-}
-.rd-mark-track {
-  position: relative;
-  display: block;
-  height: 1px;
-  background: color-mix(in oklab, var(--c-on-night) 18%, transparent);
-}
-.rd-mark-fill {
-  position: absolute;
-  inset: 0;
-  background: var(--c-accent-night);
-  transform-origin: 0 50%;
-  transform: scaleX(var(--p1, 0));
-}
-.rd-mark[data-mark="2"] .rd-mark-fill {
-  transform: scaleX(var(--p2, 0));
-}
 .rd-counter {
-  /* The comma descends ~0.16em: the statement clears it. */
-  margin: 30px 0 calc(18px + 0.12em);
-  font-size: clamp(96px, 15vw, 240px);
-  line-height: 0.85;
-  letter-spacing: -0.06em;
-  font-weight: 460;
-  font-variant-numeric: tabular-nums;
+  /* Young Serif figures, cream, the size of a poster. The comma descends: the statement clears it. */
+  margin: 0 0 calc(14px + 0.1em);
+  font-family: var(--font-display);
+  font-size: clamp(96px, 13.5vw, 212px);
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  font-weight: var(--weight-display);
+  font-variant-numeric: tabular-nums lining-nums;
   white-space: nowrap;
-  /* Optical left edge: the 2 and 1 carry a wide side bearing at this size. */
-  margin-left: -0.055em;
+  margin-left: -0.04em;
 }
 .rd-digits {
   display: inline-block;
   transform-origin: 0 0;
-  transition: color 0.5s var(--ease-out);
+  transition: color var(--dur-3) var(--ease-out);
 }
+/* Twelve kept: lamp. */
 .rd-digits[data-gold] {
-  color: var(--c-accent-night);
+  color: var(--c-match);
 }
 .rd-stmt {
-  font-size: 20px;
+  font-size: var(--fs-lead);
   line-height: 1.3;
-  letter-spacing: -0.012em;
-  font-weight: 460;
+  font-weight: var(--weight-strong);
 }
 .rd-stmt-fly {
   display: inline-grid;
@@ -343,8 +293,8 @@ html.motion .rd-hero-root:not([data-loaded]) :is([data-line], [data-ready], [dat
 }
 .rd-detail {
   display: grid;
-  margin-top: 8px;
-  font-size: 15px;
+  margin-top: 6px;
+  font-size: var(--fs-body);
   line-height: 1.45;
   color: var(--rd-muted);
 }
@@ -373,10 +323,6 @@ html.motion .rd-stmt-fly {
 html.motion .rd-detail {
   opacity: calc(1 - min(1, var(--k, 0) * 2.2));
 }
-/* The pass markers wait until the first pass has begun (they would sit on the headline otherwise). */
-html.motion .rd-pass-marks {
-  opacity: calc(var(--marks, 0) * (1 - min(1, var(--k, 0) * 2.2)));
-}
 
 /* static figures: 2,340 / 186 / 12 side by side */
 .rd-figures-list {
@@ -384,7 +330,7 @@ html.motion .rd-pass-marks {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
-  border-top: 1px solid color-mix(in oklab, var(--c-on-night) 16%, transparent);
+  border-top: var(--hairline) solid var(--c-rule-night);
   padding-top: 28px;
 }
 .rd-figure {
@@ -393,23 +339,24 @@ html.motion .rd-pass-marks {
   gap: 10px;
 }
 .rd-figure-n {
-  font-size: clamp(56px, 8vw, 120px);
-  line-height: 0.88;
-  letter-spacing: -0.06em;
-  font-weight: 460;
-  font-variant-numeric: tabular-nums;
-  margin-left: -0.05em;
+  font-family: var(--font-display);
+  font-size: clamp(56px, 7.5vw, 112px);
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  font-weight: var(--weight-display);
+  font-variant-numeric: tabular-nums lining-nums;
+  margin-left: -0.04em;
 }
 .rd-figure[data-gold] .rd-figure-n {
-  color: var(--c-accent-night);
+  color: var(--c-match);
 }
 .rd-figure-l {
-  font-size: 18px;
+  font-size: var(--fs-lead);
   line-height: 1.3;
-  letter-spacing: -0.01em;
+  font-weight: var(--weight-strong);
 }
 .rd-figure-d {
-  font-size: 15px;
+  font-size: var(--fs-body);
   line-height: 1.45;
   color: var(--rd-muted);
 }
@@ -438,31 +385,46 @@ html.motion .rd-pass-marks {
   display: inline-block;
 }
 .rd-list-wrap {
-  width: min(100%, 440px);
+  width: min(100%, 460px);
   transform-origin: 50% 40%;
 }
+/* The header sits on night above the panel; the Line docks as the rule under it (lamp on pine). */
 .rd-list-head {
-  font-size: 15px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--fs-body);
   line-height: 1.2;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--rd-muted);
+  font-weight: var(--weight-strong);
+  color: var(--c-on-night);
 }
 .rd-list-n {
-  color: var(--c-accent-night);
-  font-variant-numeric: tabular-nums;
-  font-weight: 560;
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1;
+  font-weight: var(--weight-display);
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--c-match);
 }
 .rd-rule {
-  height: 1px;
-  margin: 12px 0 14px;
+  height: var(--hairline);
+  margin: 10px 0 18px;
   background: var(--c-rule-night);
+}
+/* The matches panel: the product's paper card (keyline, radius, hard lamp print offset). */
+.pp.rd-panel {
+  height: auto;
+  padding: 6px 8px;
+  overflow: visible;
 }
 .rd-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
   --row-s: 1;
+}
+/* Rows, not cards: hairlines between them. */
+.rd-list > .rd-row + .rd-row {
+  border-top: var(--hairline) solid var(--c-rule);
 }
 .rd-row {
   position: relative;
@@ -476,15 +438,8 @@ html.motion .rd-pass-marks {
   position: relative;
   width: 100%;
   aspect-ratio: 440 / 44;
-  transition: translate 0.45s var(--ease-out);
-}
-.pl-row-chrome {
-  position: absolute;
-  inset: 0;
-  border-radius: calc(12px * var(--row-s));
-  background: var(--face-bg);
-  border: 1px solid var(--face-border);
-  transition: background-color 0.45s var(--ease-out);
+  border-radius: var(--r-sm);
+  transition: background-color var(--dur-3) var(--ease-out);
 }
 .pl-row-scale {
   position: absolute;
@@ -497,12 +452,8 @@ html.motion .rd-pass-marks {
 }
 @media (hover: hover) {
   .rd-row:hover .pl-row-box {
-    translate: 0 -2px;
-    transition-duration: 0.2s;
-  }
-  .rd-row:hover .pl-row-chrome {
-    background: color-mix(in oklab, var(--c-on-night) 12%, transparent);
-    transition-duration: 0.2s;
+    background: color-mix(in oklab, var(--art-glow, var(--c-paper-2)) 45%, transparent);
+    transition-duration: var(--dur-1);
   }
 }
 
@@ -513,17 +464,17 @@ html.motion .rd-pass-marks {
   margin-top: 28px;
   max-width: 26em;
   padding-top: 18px;
-  border-top: 1px solid var(--c-rule-night);
-  font-size: 14px;
+  border-top: var(--hairline) solid var(--c-rule-night);
+  font-size: var(--fs-small);
   line-height: 1.45;
-  color: color-mix(in oklab, var(--c-on-night) 84%, transparent);
+  color: var(--c-on-night);
 }
 .rd-privacy-line svg {
   flex: none;
   margin-top: 2px;
   fill: none;
-  stroke: var(--c-accent-night);
-  stroke-width: 1.3;
+  stroke: var(--c-line);
+  stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -631,8 +582,8 @@ html:not(.motion) .rd-card-obj {
     grid-column: 1 / -1;
   }
   .rd-h1 {
-    font-size: min(13.4vw, 64px);
-    margin-top: 22px;
+    font-size: min(13vw, 64px);
+    margin-top: 16px;
   }
   .rd-sub {
     margin-top: 22px;
@@ -652,10 +603,6 @@ html:not(.motion) .rd-card-obj {
   .rd-stmt {
     font-size: 18px;
   }
-  .rd-pass-marks {
-    gap: 16px;
-    font-size: 10px;
-  }
   .rd-h2 {
     font-size: clamp(30px, 8.6vw, 38px);
   }
@@ -668,13 +615,11 @@ html:not(.motion) .rd-card-obj {
   }
   .rd-more {
     display: block;
-    padding: 6px 0 0 14px;
-    font-family: var(--font-mono);
-  font-variant-numeric: var(--mono-numeric);
-    font-size: 11px;
-    letter-spacing: calc(0.08em * var(--mono-tracking));
-    text-transform: var(--mono-case);
-    color: var(--rd-quiet);
+    padding: 10px 14px 6px;
+    border-top: var(--hairline) solid var(--c-rule);
+    font-size: var(--fs-small);
+    font-weight: var(--weight-strong);
+    color: var(--c-ink-2);
   }
   .rd-figures-list {
     grid-template-columns: 1fr;
@@ -683,9 +628,6 @@ html:not(.motion) .rd-card-obj {
     margin-top: 16px;
     padding-top: 12px;
     font-size: 13px;
-  }
-  .rd-readout {
-    display: none;
   }
 
   /* Copy in the top 40%, the object in the bottom 60%. */
@@ -711,13 +653,8 @@ html:not(.motion) .rd-card-obj {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pl-row-meta,
-  .pl-row-reason,
   .pl-row-box,
-  .pl-row-chrome,
-  .pl-card-chip,
-  .rd-digits,
-  .rd-mark {
+  .rd-digits {
     transition: none;
   }
 }

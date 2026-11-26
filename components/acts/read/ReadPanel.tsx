@@ -6,16 +6,17 @@
  *
  *   pass layer    the counter. Revealed below the rising Line at the end of `hero`
  *                 (the Line swaps the headline for the count). Scrub-exact:
- *                 2,340 → 186 over pass1, 186 → 12 over pass2, gold at 12.
+ *                 2,340 → 186 over pass1, 186 → 12 over pass2, lamp at 12.
  *                 The statement swaps when the Line reaches the end of each pass.
- *   ranked layer  H2 left; list header, `ranked-rule` and the <ol> of 12 rows right.
- *                 In the first 20% of `ranked` the counter flies into the list
- *                 header ("12 fit your portfolio"). On entry the rows land in rank
- *                 order (40ms apart), each growing from its gold dot to a bar.
+ *   ranked layer  H2 left; right, the list header on night, `ranked-rule` under it, and
+ *                 the matches panel: cream paper (the product's MatchesList skin) with
+ *                 the <ol> of 12 MatchRows. In the first 15% of `ranked` the counter
+ *                 flies into the header ("12 fit your portfolio"). The rows fade in over
+ *                 the World's landed bars in rank order.
  *   reason layer  H2 left; the `card` slot centred over the list. Row 1 (the Actor)
- *                 lifts out and becomes the card in the first 35%; when it lands the
- *                 card counts to 9, the Line fills the meter to 90%, the chips type,
- *                 then the privacy line arrives. The card tilts toward the pointer.
+ *                 lifts out and becomes the RoleDetail card in the first 35%; when it
+ *                 lands the numeral counts to 9, the Line fills the rule, the rows of
+ *                 working resolve 120ms apart, then the privacy line arrives.
  *
  * Static (reduced motion): the three figures side by side, then the ranked list,
  * then the reason card with its chips. No counting, no typing.
@@ -27,11 +28,12 @@
 import { useEffect, useRef, type CSSProperties } from "react";
 import { FaceSlot } from "@/components/story/FaceSlot";
 import { Panel } from "@/components/story/Stage";
-import { rankedRoles, storyCopy, type RankedRole } from "@/lib/content";
+import { rankedRoles, storyCopy } from "@/lib/content";
 import { registerAnchor, useAnchor, type AnchorId } from "@/lib/anchors";
 import { usePerformance } from "@/lib/perform";
 import { ACTOR_TRACK, BEATS, story, type BeatId, type StoryState } from "@/lib/story";
-import { getRow1Hover, RowView, setRow1Hover } from "./RowView";
+import { MatchRow, productData } from "@/components/product";
+import { getRow1Hover, setRow1Hover } from "./RowView";
 import { cardShow, offsetIn, setMask, softAbove, span, useActorExtra, usePerformanceAt, useScrub } from "./runtime";
 import { ease } from "@/lib/theme";
 
@@ -62,7 +64,6 @@ function through(s: Readonly<StoryState>, id: keyof typeof I) {
 const headerMatch = storyCopy.ranked.listHeader.match(/^(\d+)\s+(.*)$/);
 const HEADER_N = headerMatch?.[1] ?? "12";
 const HEADER_T = headerMatch?.[2] ?? storyCopy.ranked.listHeader;
-const passLabels = [storyCopy.pass1.lineLabel, storyCopy.pass2.lineLabel];
 
 /* ─────────────────────────────────────────────────────────── pieces ── */
 
@@ -86,12 +87,12 @@ function Lines({ text, className }: { text: string; className?: string }) {
   );
 }
 
-function DomRow({ role }: { role: RankedRole }) {
+/** Rows 2 to 12: the product's own MatchRow, laid out at 440 × 44 and scaled with the list. */
+function DomRow({ rank }: { rank: number }) {
   return (
-    <div className="pl-row-box" data-skin="night">
-      <div className="pl-row-chrome" />
+    <div className="pl-row-box">
       <div className="pl-row-scale">
-        <RowView role={role} />
+        <MatchRow role={productData.roles[rank - 1]} skin="day" />
       </div>
     </div>
   );
@@ -196,7 +197,7 @@ export function ReadPanel() {
     // Per-frame custom properties go to the few elements that read them (see read.css), never to
     // the panel root, where every node of the act would inherit and be restyled.
     const tg = (targets.current ??= {
-      k: root.querySelectorAll<HTMLElement>(".rd-detail, .rd-pass-marks"),
+      k: root.querySelectorAll<HTMLElement>(".rd-detail"),
       fly: root.querySelectorAll<HTMLElement>(".rd-digits, .rd-stmt-fly"),
       head: root.querySelectorAll<HTMLElement>(".rd-list-head, .rd-rule"),
       digits: root.querySelectorAll<HTMLElement>(".rd-digits"),
@@ -290,8 +291,9 @@ export function ReadPanel() {
       const op = (1 - (s.flags.small ? 1 : 0.8) * j).toFixed(4);
       if (tg.list.style.opacity !== op) tg.list.style.opacity = op;
     }
-    // Reason breath: after the card lands, its chips are read one by one.
-    cardShow.focus = i === I.reason && q >= REASON_AT ? span(q, REASON_AT + 0.08, 0.98) * 3 : i > I.reason ? 3 : -1;
+    // Reason breath: after the card lands, its rows of working are read one by one.
+    const nRows = productData.kestrelDetail.why.length + productData.kestrelDetail.watchOuts.length;
+    cardShow.focus = i === I.reason && q >= REASON_AT ? span(q, REASON_AT + 0.08, 0.98) * nRows : i > I.reason ? nRows : -1;
     setAll(tg.ranked, "--out", span(q, 0, 0.12).toFixed(4));
     setAll(tg.reason, "--in", span(q, 0.08, 0.22).toFixed(4));
     setAll(tg.reason, "--in2", span(q, 0.13, 0.27).toFixed(4));
@@ -338,12 +340,11 @@ export function ReadPanel() {
   usePerformanceAt("reason", REASON_AT, (tl) => {
     const root = rootRef.current;
     const privacy = root?.querySelector("[data-privacy]");
-    const lens = storyCopy.reason.chips.map((c) => c.length);
+    // The rule fills and the numeral counts; the four rows of working resolve 120ms apart.
+    const rows = productData.kestrelDetail.why.length + productData.kestrelDetail.watchOuts.length;
     tl.fromTo(cardShow, { score: 0 }, { score: storyCopy.reason.card.score, duration: 0.9, ease: ease.outSoft }, 0)
-      .fromTo(cardShow, { meter: 0 }, { meter: 0.9, duration: 0.95, ease: ease.out }, 0.02)
-      .fromTo(cardShow, { c0: 0 }, { c0: lens[0], duration: lens[0] * 0.022, ease: "none" }, 0.2)
-      .fromTo(cardShow, { c1: 0 }, { c1: lens[1], duration: lens[1] * 0.022, ease: "none" }, 0.32)
-      .fromTo(cardShow, { c2: 0 }, { c2: lens[2], duration: lens[2] * 0.022, ease: "none" }, 0.44);
+      .fromTo(cardShow, { meter: 0 }, { meter: storyCopy.reason.card.score / 10, duration: 0.95, ease: ease.out }, 0.02)
+      .fromTo(cardShow, { rows: 0 }, { rows: rows, duration: rows * 0.12, ease: "none" }, 0.24);
     if (privacy) tl.fromTo(privacy, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.6, ease: ease.out }, 0.9);
   });
 
@@ -351,9 +352,9 @@ export function ReadPanel() {
   useActorExtra((s) => {
     if (s.beat === "ranked") return getRow1Hover() ? { ty: -2 } : null;
     if (s.beat !== "reason" || s.beatProgress < REASON_AT || !s.actor.present) return null;
-    // Breath: a slow dolly (rotateY −3° → 3°) with a specular band sweeping across the glass.
+    // Breath: a slow dolly (rotateY −2.5° → 2.5°). No highlight: this is paper and print, not glass.
     const b = story.breathOf("reason", REASON_AT, 1);
-    const dolly = { rx: 0, ry: -3 + 6 * b, spec: 0.75, specX: -15 + 130 * b, specY: 20 + 30 * b };
+    const dolly = { rx: 0, ry: -2.5 + 5 * b };
     const { x, y, w, h } = s.actor;
     if (!s.pointer.fine || !s.pointer.inside || w < 1) return dolly;
     const nx = (s.pointer.x - (x + w / 2)) / (w / 2);
@@ -363,13 +364,8 @@ export function ReadPanel() {
     const cx = Math.max(-1, Math.min(1, nx));
     const cy = Math.max(-1, Math.min(1, ny));
     if (falloff <= 0) return dolly;
-    return {
-      rx: -cy * 7 * falloff,
-      ry: dolly.ry * (1 - falloff) + cx * 9 * falloff,
-      spec: reach <= 1 ? 1 : dolly.spec,
-      specX: reach <= 1 ? 50 + cx * 50 : dolly.specX,
-      specY: reach <= 1 ? 50 + cy * 50 : dolly.specY,
-    };
+    // Pointer tilt, at most 3° (paper is stiffer than glass).
+    return { rx: -cy * 3 * falloff, ry: dolly.ry * (1 - falloff) + cx * 3 * falloff };
   });
 
   const style = { "--reveal-a": 0 } as CSSProperties;
@@ -381,16 +377,6 @@ export function ReadPanel() {
           <div className="rd-grid rd-pass-grid">
             <div className="rd-pass-col">
               <p className="sr-only">{storyCopy.common.figuresForScreenReaders}</p>
-              <div className="rd-pass-marks" aria-hidden="true">
-                {passLabels.map((label, n) => (
-                  <span key={label} className="rd-mark" data-mark={n + 1}>
-                    {label}
-                    <i className="rd-mark-track">
-                      <i className="rd-mark-fill" />
-                    </i>
-                  </span>
-                ))}
-              </div>
               <p className="rd-counter" aria-hidden="true">
                 <span ref={digitsRef} className="rd-digits" data-n={fig.read}>
                   {fmt(fig.read)}
@@ -460,6 +446,8 @@ export function ReadPanel() {
                   <span ref={headTRef}>{HEADER_T}</span>
                 </p>
                 <div ref={rule} className="rd-rule" />
+                {/* The list is the product's matches panel: cream paper, keyline, a hard print offset. */}
+                <div className="pp rd-panel" data-skin="day">
                 <ol ref={listRef} className="rd-list">
                   {rankedRoles.map((role) =>
                     role.rank === 1 ? (
@@ -478,7 +466,7 @@ export function ReadPanel() {
                     ) : (
                       <li key={role.rank} className="rd-row" data-row={role.rank}>
                         <div data-row-in>
-                          <DomRow role={role} />
+                          <DomRow rank={role.rank} />
                         </div>
                       </li>
                     ),
@@ -487,6 +475,7 @@ export function ReadPanel() {
                     <div data-row-in>{storyCopy.ranked.more}</div>
                   </li>
                 </ol>
+                </div>
               </div>
             </div>
           </div>

@@ -1,73 +1,55 @@
 "use client";
 
 /**
- * The `tile` face: the Role as a card on the board (storyboard 2.5, beats 6 to 9).
- * Natural size 154 x 92. Day skin is paper on the board; night skin is glass
- * (worn while nightfall cuts it in two on its way to becoming the sheet).
+ * The `tile` face: the Role as a card on the board (storyboard 2.5, beats 6 to 9),
+ * drawn by the product Board's own `Tile` (components/product). Natural size
+ * 154 × 92 (the tile is laid out at 200 × 120 and scaled as one picture, so it
+ * matches the board's tiles at any size). Paper in both skins.
  *
- * The chip at the foot flips with the story: "Fits your case studies" (saved),
- * "Applied Tue" (applied), "Thu 11:40" with a drawn calendar tick (interview).
- * It reads `tileShow` (components/acts/read/runtime.ts) every frame; the board
+ * The chip flips with the story: saved → applied → interview (with a calendar
+ * mark and a drawn tick). It reads `tileShow` every frame; the board
  * performances own those values. Server and reduced-motion markup show the end
  * state (the tile rests in Interview).
+ *
+ * Acts III–IV render this same component as the folded sheet's cover
+ * (SheetFace, `TileFace skin="day" host="actor"`), so nightfall's tile → sheet
+ * hand-over shows one picture.
  */
 
 import { useEffect, useRef } from "react";
 import "@/components/acts/read/faces.css";
-import { tileShow, titleHandOver } from "@/components/acts/read/runtime";
+import { tileShow } from "@/components/acts/read/runtime";
 import { registerFace, type FaceProps } from "@/components/story/faces";
-import { rankedRoles, storyCopy } from "@/lib/content";
+import { Showcase, Tile, productData } from "@/components/product";
+import { storyCopy } from "@/lib/content";
 import { story } from "@/lib/story";
 
-const role = rankedRoles[0];
+const role = productData.roles[0];
 const labels = [storyCopy.saved.chip, storyCopy.applied.chip, storyCopy.interview.chip] as const;
 const TICK = 14;
-
-function ChipBody({ index }: { index: number }) {
-  return (
-    <>
-      {index === 2 ? (
-        <svg className="pl-tile-cal" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
-          <rect x="1.25" y="2.25" width="9.5" height="8.5" rx="2" />
-          <path d="M1.25 5h9.5M4 1v2.4M8 1v2.4" />
-        </svg>
-      ) : index === 0 ? (
-        <span className="pl-tile-spark" aria-hidden="true" />
-      ) : null}
-      <span className="pl-tile-chip-t">{labels[index]}</span>
-    </>
-  );
-}
+/** The tile's layout size before it is scaled to the 154 × 92 face. */
+export const TILE_LAYOUT = { w: 200, h: 120 } as const;
 
 export function TileFace({ host }: FaceProps) {
-  const idRef = useRef<HTMLDivElement>(null);
-  const chipRef = useRef<HTMLDivElement>(null);
-  const bodyRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const rootRef = useRef<HTMLDivElement>(null);
   const tickRef = useRef<SVGPathElement>(null);
 
   useEffect(() => {
     if (story.reduced()) return;
-    const last = { c: -1, tick: -1, id: "" };
+    const root = rootRef.current;
+    const tag = root?.querySelector<HTMLElement>(".pp-tag");
+    const last = { c: -1, tick: -1 };
     const write = () => {
-      // Arriving from the card: the title block comes in from where the card's title was heading.
-      if (host === "actor" && idRef.current) {
-        const tf = titleHandOver(story.get(), "tile");
-        if (tf !== last.id) idRef.current.style.transform = last.id = tf;
-      }
       const c = tileShow.applied + tileShow.interview;
-      if (c !== last.c) {
+      if (c !== last.c && tag) {
         last.c = c;
         const index = Math.min(2, Math.round(c));
         const f = c - Math.floor(c);
-        // Flip on the X axis: out to 90deg on the old label, in from -90deg on the new one.
+        // Flip on the X axis: out to 90° on the old label, in from −90° on the new one.
         const angle = f === 0 ? 0 : f < 0.5 ? f * 180 : -(1 - f) * 180;
-        bodyRefs.current.forEach((el, i) => {
-          if (el) el.style.display = i === index ? "" : "none";
-        });
-        if (chipRef.current) {
-          chipRef.current.style.transform = angle ? `rotateX(${angle.toFixed(2)}deg)` : "";
-          chipRef.current.dataset.state = String(index);
-        }
+        if (tag.textContent !== labels[index]) tag.textContent = labels[index];
+        tag.style.transform = angle ? `rotateX(${angle.toFixed(2)}deg)` : "";
+        root?.setAttribute("data-state", String(index));
       }
       if (tileShow.tick !== last.tick) {
         last.tick = tileShow.tick;
@@ -76,47 +58,25 @@ export function TileFace({ host }: FaceProps) {
     };
     write();
     return story.frame("actor", write);
-  }, [host]);
+  }, []);
 
   return (
-    <div className="pl-tile">
-      <div className="pl-tile-top">
-        <span className="pl-tile-ini" aria-hidden="true">
-          {role.initials}
-        </span>
-        <span className="pl-tile-score">
-          <span className="sr-only">Scored </span>
-          <b>{role.score}</b>
-          <span className="pl-tile-of">{storyCopy.ranked.scoreSuffix}</span>
-        </span>
-      </div>
-      <div ref={idRef} className="pl-tile-id">
-        <p className="pl-tile-title">{role.title}</p>
-        <p className="pl-tile-meta">{role.company}</p>
-      </div>
-      <div className="pl-tile-foot">
-        <div ref={chipRef} className="pl-tile-chip" data-state="2">
-          {labels.map((_, i) => (
-            <span
-              key={i}
-              className="pl-tile-chip-b"
-              style={i === 2 ? undefined : { display: "none" }}
-              ref={(el) => {
-                bodyRefs.current[i] = el;
-              }}
-            >
-              <ChipBody index={i} />
-            </span>
-          ))}
+    <div ref={rootRef} className="pl-tile-face" data-state="2">
+      {host === "dock" ? (
+        <p className="sr-only">
+          {role.title}, {role.company}. {storyCopy.interview.chip}. {role.score} out of 10 fit.
+        </p>
+      ) : null}
+      <Showcase size={TILE_LAYOUT} scale={154 / TILE_LAYOUT.w} decorative>
+        <div className="pp" data-skin="day" data-bare="">
+          <Tile item={{ role, stage: "saved", date: labels[2] }} />
         </div>
-        <svg className="pl-tile-tick" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-          <path ref={tickRef} d="M3.5 8.4l3 3 6-6.6" strokeDasharray={TICK} style={{ strokeDashoffset: 0 }} />
-        </svg>
-      </div>
+      </Showcase>
+      <svg className="pl-tile-tick" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+        <path ref={tickRef} d="M3.5 8.4l3 3 6-6.6" strokeDasharray={TICK} style={{ strokeDashoffset: 0 }} />
+      </svg>
     </div>
   );
 }
 
-// Height-fit: the tile keeps its type size relative to its height and lets the layout take the
-// box's width, so it can grow into the folded prep sheet (a wider rectangle) without distortion.
-registerFace("tile", TileFace, { fit: "height" });
+registerFace("tile", TileFace);
