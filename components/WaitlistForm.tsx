@@ -15,10 +15,21 @@ type Tone = "light" | "glass" | "night" | "ticket";
  * States, from the copy deck: empty, invalid, sending, success ("Requested for {email}.
  * Wrong address? Edit it."), duplicate (the API answers { ok: true, duplicate: true }),
  * server error (the typed email stays), offline. Only /api/waitlist is ever called.
- * `onStatusChange` reports the status out: the ticket stamps itself and claims a seat ring.
+ * `onStatusChange` reports the status (and the typed address) out: the ticket stamps itself and
+ * claims a seat ring. `doneLive` is announced in the live region after a successful request (the
+ * ticket says what its stamp printed). The live region stays mounted across every state, so the
+ * announcement is reliable when the form swaps for the success line.
  * Tone "glass" is kept as an alias of "night" for callers that still pass it.
  */
-export function WaitlistForm({ tone = "night", onStatusChange }: { tone?: Tone; onStatusChange?: (status: WaitlistStatus) => void }) {
+export function WaitlistForm({
+  tone = "night",
+  onStatusChange,
+  doneLive,
+}: {
+  tone?: Tone;
+  onStatusChange?: (status: WaitlistStatus, email: string) => void;
+  doneLive?: string;
+}) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
@@ -29,9 +40,10 @@ export function WaitlistForm({ tone = "night", onStatusChange }: { tone?: Tone; 
   const ticket = tone === "ticket";
 
   useEffect(() => {
-    onStatusChange?.(status);
+    onStatusChange?.(status, email.trim());
     // Keyboard focus was on the button that just went away: hand it to the message, once.
     if (status === "done" || status === "duplicate") doneRef.current?.focus({ preventScroll: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the address is read when the status changes
   }, [status, onStatusChange]);
 
   async function onSubmit(e: FormEvent) {
@@ -73,7 +85,7 @@ export function WaitlistForm({ tone = "night", onStatusChange }: { tone?: Tone; 
     try {
       if (!res.ok) throw new Error();
       const data = (await res.json().catch(() => ({}))) as { duplicate?: boolean };
-      setLive("");
+      setLive(!data.duplicate && doneLive ? doneLive : "");
       setStatus(data.duplicate ? "duplicate" : "done");
     } catch {
       setLive("");
@@ -83,11 +95,18 @@ export function WaitlistForm({ tone = "night", onStatusChange }: { tone?: Tone; 
   }
 
   const edit = () => {
+    setLive("");
     setStatus("idle");
     requestAnimationFrame(() => inputRef.current?.focus());
   };
   const sending = status === "sending";
   const invalid = status === "error";
+
+  const liveRegion = (
+    <span className="sr-only" aria-live="polite">
+      {live}
+    </span>
+  );
 
   /* ── finished states ── */
   if (status === "done" || status === "duplicate") {
@@ -105,14 +124,17 @@ export function WaitlistForm({ tone = "night", onStatusChange }: { tone?: Tone; 
         copy.heroSuccess
       );
     return (
-      <div className="wl" data-tone={ticket ? "ticket" : "night"} data-status={status}>
-        <p className="wl-done" role="status" tabIndex={-1} ref={doneRef}>
-          <span className="wl-done-mark" aria-hidden="true">
-            <Icon name="check" size={16} />
-          </span>
-          <span>{text}</span>
-        </p>
-      </div>
+      <>
+        <div className="wl" data-tone={ticket ? "ticket" : "night"} data-status={status}>
+          <p className="wl-done" role="status" tabIndex={-1} ref={doneRef}>
+            <span className="wl-done-mark" aria-hidden="true">
+              <Icon name="check" size={16} />
+            </span>
+            <span>{text}</span>
+          </p>
+        </div>
+        {liveRegion}
+      </>
     );
   }
 
@@ -124,6 +146,7 @@ export function WaitlistForm({ tone = "night", onStatusChange }: { tone?: Tone; 
   );
 
   return (
+    <>
     <form onSubmit={onSubmit} noValidate className="wl" data-tone={ticket ? "ticket" : "night"} data-status={status}>
       <label htmlFor={id} className={ticket ? "wl-label" : "sr-only"}>
         {copy.label}
@@ -150,18 +173,33 @@ export function WaitlistForm({ tone = "night", onStatusChange }: { tone?: Tone; 
       <p id={`${id}-msg`} role={invalid ? "alert" : undefined} className="wl-msg" data-error={invalid ? "" : undefined}>
         {invalid ? error : ticket ? copy.helper : ""}
       </p>
-      <span className="sr-only" aria-live="polite">
-        {live}
-      </span>
     </form>
+    {liveRegion}
+    </>
   );
 }
 
 /**
  * The ticket-tone form as a still print: the same classes and text, no input, no state.
  * For decorative copies (the Actor's flying ticket), so a flight carries no live form.
+ * `doneFor`: after a successful request, print the success line for that address instead,
+ * so the flying copy shows what the real ticket shows.
  */
-export function WaitlistPrint() {
+export function WaitlistPrint({ doneFor }: { doneFor?: string } = {}) {
+  if (doneFor) {
+    return (
+      <div className="wl" data-tone="ticket" data-status="done" aria-hidden="true">
+        <p className="wl-done wl-done-print">
+          <span className="wl-done-mark">
+            <Icon name="check" size={16} />
+          </span>
+          <span>
+            {copy.requestedFor.replace("{email}", doneFor)} {copy.wrongAddress} <span className="wl-link">{copy.edit}</span>
+          </span>
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="wl" data-tone="ticket" data-status="idle" aria-hidden="true">
       <span className="wl-label">{copy.label}</span>

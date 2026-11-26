@@ -386,6 +386,17 @@ export const story = {
     stubLabel: "Seat",
     stubOf: "One of 25",
     stamp: "Seat requested",
+    /**
+     * NEW (delight 8). The rubber stamp's ink impression on the ticket after a request, and the
+     * seated nav. `{n}` is the seat filled on the stub (the centre ring), `{total}` the 25 seats.
+     * The number names the ring on this ticket, never a count of other sign-ups.
+     */
+    stampSaved: "Seat saved",
+    stampSeat: "Nº {n} of {total}",
+    /** A gentler stamp when the API says the address is already on the list. */
+    stampAlready: "Already saved",
+    /** Live region, after the success line: what the stamp says, for screen readers. */
+    stampLive: "Stamped: seat saved, number {n} of {total}.",
     rings: "25 seats",
     /** NEW. The filled ring is the visitor's own request, never a live count of other sign-ups. */
     ringsLabel: "25 beta seats. The filled ring marks your request.",
