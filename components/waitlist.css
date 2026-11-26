@@ -203,6 +203,10 @@ form.wl[data-tone] {
   outline-offset: 2px;
   border-radius: var(--r-xs);
 }
+/* The still print of the success line (the flying copy): no entrance. */
+.wl-done-print {
+  animation: none;
+}
 @keyframes wl-in {
   from {
     opacity: 0;

@@ -1,0 +1,190 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   THE STAMP FINALE (Delight 8) — the rubber stamp, its ink, the torn stub and
+   its arrival in the nav. Paper is the ticket's own; ink is pine (a duplicate:
+   moss); the stamp's depth is the theme's lamp print, never a blur. Motion is
+   WAAPI (components/acts/seat/finale.ts, TicketFace): nothing here animates.
+   Tokens only.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── where the stamp lands: the open paper under the success line, left of the stub ── */
+.tkx {
+  --tkx-stub: 126px;
+  --tkx-stamp-r: 30px;
+  --tkx-stamp-b: 80px;
+  --tkx-stamp-k: 1;
+}
+.tkx-stampbox {
+  position: absolute;
+  right: calc(var(--tkx-stub) + var(--tkx-stamp-r));
+  bottom: var(--tkx-stamp-b);
+  width: 184px;
+  height: 70px;
+  transform: rotate(-5deg) scale(var(--tkx-stamp-k));
+  transform-origin: 100% 100%;
+  pointer-events: none;
+}
+.tkx-stampbox[data-kind="already"] {
+  transform: rotate(-3deg) scale(var(--tkx-stamp-k));
+}
+@media (max-width: 767px) {
+  .tkx {
+    --tkx-stub: 101px;
+    --tkx-stamp-r: 12px;
+    --tkx-stamp-b: 86px;
+    --tkx-stamp-k: 0.86;
+  }
+}
+.tkx-stamp-layer {
+  position: absolute;
+  inset: 0;
+}
+.tkx-stamp-moving {
+  inset: -6px;
+  opacity: 0;
+}
+.tkx-stamp-layer > svg {
+  display: block;
+  overflow: visible;
+}
+
+/* ── the ink ── */
+.tkx-stamp-ink {
+  --tkx-ink: var(--c-ink);
+}
+.tkx-stamp-ink[data-kind="already"] {
+  --tkx-ink: var(--c-ink-2);
+}
+.tkx-ink-line {
+  fill: none;
+  stroke: var(--tkx-ink);
+}
+.tkx-ink-big {
+  fill: var(--tkx-ink);
+  font-family: var(--font-display);
+  font-size: 21px;
+  letter-spacing: 0.07em;
+}
+.tkx-ink-big-s {
+  font-size: 15.5px;
+  letter-spacing: 0.05em;
+}
+.tkx-ink-small {
+  fill: var(--tkx-ink);
+  font-family: var(--font-text);
+  font-size: 12.5px;
+  font-weight: var(--weight-strong);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── the stamp: pine block, turned knob, lamp cap; its lamp print below ── */
+.tkx-stamp-print rect {
+  fill: var(--art-lamp);
+}
+.tkx-head-block {
+  fill: var(--c-ink);
+}
+.tkx-head-bevel {
+  fill: none;
+  stroke: var(--c-ink-hover);
+  stroke-width: 2;
+}
+.tkx-head-shadow {
+  fill: var(--art-deep);
+}
+.tkx-head-knob {
+  fill: var(--c-ink-hover);
+  stroke: var(--art-deep);
+  stroke-width: 1.5;
+}
+.tkx-head-turn {
+  fill: none;
+  stroke: var(--c-ink-2);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.tkx-head-cap {
+  fill: var(--art-lamp);
+  stroke: var(--art-deep);
+  stroke-width: 1.5;
+}
+
+/* ── the tear: the ticket body keeps everything left of the ragged line ── */
+.tkx[data-stub] > .tkx-inner > .pp-ticket {
+  clip-path: var(--tkx-tear);
+}
+/* (--tkx-tear is declared on the ticket itself, where --pp-stub and --pp-keyline-w resolve.) */
+/* The stub, cut free (finale.ts builds it from the real stub and perforation). */
+.tkx.tkx-piece {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+.tkx.tkx-piece-fly {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: calc(var(--z-nav, 5) + 1);
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.tkx.tkx-piece-settled {
+  top: 0;
+  transform: translate(7px, 3px) rotate(3deg);
+}
+.tkx-piece .tkx-piece-paper {
+  container-type: normal;
+  border-left: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.tkx-piece .pp-ticket-perf {
+  display: block;
+}
+.tkx-piece .pp-ticket-stub {
+  display: flex;
+}
+.tkx-probe {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* ── arrival in the nav (the fallback, when Nav does not take `prepline:seat-docked`) ── */
+.tkx-dock-ring {
+  position: fixed;
+  z-index: calc(var(--z-nav, 5) + 1);
+  box-sizing: border-box;
+  border: 2px solid var(--c-ink);
+  border-radius: var(--r-pill);
+  pointer-events: none;
+}
+html[data-chapter="night"] .tkx-dock-ring {
+  border-color: var(--art-lamp);
+}
+.tkx-dock-badge {
+  position: fixed;
+  z-index: calc(var(--z-nav, 5) + 1);
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  font-family: var(--font-text);
+  font-weight: var(--weight-strong);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--art-deep);
+  background: var(--art-lamp);
+  border-radius: var(--r-pill);
+  pointer-events: none;
+}
+@media (max-width: 767px) {
+  .tkx-dock-badge {
+    padding: 0 14px;
+    gap: 6px;
+  }
+}

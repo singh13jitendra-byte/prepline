@@ -43,9 +43,6 @@
     gap: 6px;
     padding: 0 14px;
   }
-  .tkx .pp-stamp {
-    right: calc(var(--pp-stub) + 12px);
-  }
   /* The field takes the main column's full width, the button under it: the address stays legible. */
   .tkx .wl-row {
     flex-direction: column;
@@ -108,24 +105,7 @@
   }
 }
 
-.tkx[data-fresh] .pp-stamp {
-  animation: tkx-stamp 0.42s 0.3s var(--ease-spring) both;
-}
-@keyframes tkx-stamp {
-  0% {
-    opacity: 0;
-    transform: rotate(-10deg) scale(1.5);
-  }
-  60% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: rotate(-4deg) scale(1);
-  }
-}
 @media (prefers-reduced-motion: reduce) {
-  .tkx[data-fresh] .pp-stamp,
   .tkx-seat[data-fresh] {
     animation: none;
   }
