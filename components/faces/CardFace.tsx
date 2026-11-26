@@ -70,7 +70,7 @@ export function CardFace({ skin, host }: FaceProps) {
         rows.forEach((r, i) => r.toggleAttribute("data-pending", i >= shown));
       }
       // Breath: each reason row is read in turn once the card has landed.
-      const f = cardShow.focus < 0 ? "-1" : String(Math.min(rows.length - 1, Math.floor(cardShow.focus)));
+      const f = cardShow.focus < 0 || cardShow.focus >= rows.length ? "-1" : String(Math.floor(cardShow.focus));
       if (f !== last.focus) {
         last.focus = f;
         rows.forEach((r, i) => r.toggleAttribute("data-reading", String(i) === f));

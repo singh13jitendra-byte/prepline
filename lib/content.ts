@@ -502,5 +502,7 @@ export const storyActs12 = {
     booked: "Booked",
     /** The flag on the strip at the booked slot, where the Line's right end comes to rest. */
     slot: "Thu 11:40",
+    /** Short role names for the small tiles on the board (rank → title), so a tile never cuts a word. */
+    ghostTitles: { 2: "Design Systems Designer", 3: "UX Designer, Patient App", 4: "Growth Designer", 5: "Senior UX Designer" } as Record<number, string>,
   },
 } as const;

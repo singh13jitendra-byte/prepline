@@ -288,7 +288,7 @@ export function ReadPanel() {
       const tf = `translate3d(0,${y.toFixed(2)}px,0) scale(${(1 - 0.04 * j).toFixed(4)})`;
       if (tg.list.style.transform !== tf) tg.list.style.transform = tf;
       // Behind the card the list falls well back; on small screens the card covers it, so it goes entirely.
-      const op = (1 - (s.flags.small ? 1 : 0.8) * j).toFixed(4);
+      const op = (1 - (s.flags.small ? 1 : 0.88) * j).toFixed(4);
       if (tg.list.style.opacity !== op) tg.list.style.opacity = op;
     }
     // Reason breath: after the card lands, its rows of working are read one by one.
@@ -330,6 +330,9 @@ export function ReadPanel() {
     const list = listRef.current;
     if (!list) return;
     const rows = Array.from(list.querySelectorAll<HTMLElement>("[data-row-in]"));
+    // The paper panel is laid down first, so the World's bars land on paper.
+    const panel = list.closest<HTMLElement>(".rd-panel");
+    if (panel) tl.fromTo(panel, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.45, ease: ease.out }, 0.1);
     rows.forEach((el, n) => {
       const at = RANK_LAND_START + n * RANK_STAGGER;
       tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: RANK_FADE, ease: ease.outGentle }, at);

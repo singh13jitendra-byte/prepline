@@ -30,7 +30,7 @@
 .rd-h1 {
   font-family: var(--font-display);
   /* Generous and tight, like the references: about 100px on a laptop, leading under 1. */
-  font-size: clamp(56px, 6.6vw, 108px);
+  font-size: clamp(52px, 5.4vw, 88px);
   line-height: 0.95;
   letter-spacing: var(--tracking-display);
   font-weight: var(--weight-display);
@@ -65,7 +65,7 @@
 /* The copy keeps to the painted room's left wall: the window and the laptop stay clear. */
 .rd-hero-copy {
   grid-column: 1 / span 6;
-  max-width: 640px;
+  max-width: 560px;
 }
 /* The eyebrow: plain text with a lamp dot. Sentence case, no pill, no glass. */
 .rd-pill {
@@ -139,7 +139,7 @@ html.motion .rd-underline {
 }
 .rd-sub {
   margin-top: 30px;
-  max-width: 30em;
+  max-width: 26em;
   font-size: var(--fs-lead);
   line-height: 1.5;
   color: var(--c-on-night);
@@ -533,7 +533,8 @@ html.motion .rd-list-wrap {
      transform and opacity written by ReadPanel: no custom property for twelve rows to inherit. */
   transform: translate3d(0, 10px, 0);
 }
-html.motion [data-row-in] {
+html.motion [data-row-in],
+html.motion .rd-panel {
   opacity: 0;
 }
 /* Row 1 before the Actor is born: the real row lands with the others, then hands over. */

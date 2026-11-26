@@ -7,8 +7,8 @@ Package 2 (Acts I and II) regression checks. Run against a started server:
 What it asserts
 - Jumping (immediate scroll) straight into reason, daybreak, applied, interview
   and hinge at 0.9 leaves every visible copy of the Role's face (each Actor skin)
-  showing its full end state: title visible, card counted to 9 with all three
-  chips typed, the tile chip on the right label.
+  showing its full end state: the product screen visible, the RoleDetail card
+  counted to 9 with its four rows of working resolved, the Tile chip on the right label.
 - The same after a fast scripted fling through the act (no immediate jumps).
 - Split headings never lose their spaces, at any point of their animation.
 - No class collisions: every face root renders with non-zero opacity.
@@ -32,12 +32,13 @@ FACES = """() => {
     if (getComputedStyle(f).display === 'none') return;
     f.querySelectorAll(':scope > .actor-skin').forEach((k) => {
       if (getComputedStyle(k).display === 'none') return;
-      const root = k.querySelector('.pl-card, .pl-tile, .pl-row');
-      const title = k.querySelector('.pl-card-title, .pl-tile-title, .pl-row-title');
+      const root = k.querySelector('.pl-card-face, .pl-tile-face, .pl-row-face');
+      const title = k.querySelector('.pp-role .pp-title, .pp-tile-title, .pp-matchrow-id b');
+      const n = k.querySelector('.pp-role-rule .pp-rule-n');
       out.push({ face: f.dataset.face, skin: k.dataset.skin, root: vis(root), title: vis(title),
-        num: (k.querySelector('.pl-card-num') || {}).textContent || null,
-        chips: [...k.querySelectorAll('.pl-card-chip')].map((c) => [c.querySelector('[aria-hidden]').textContent, vis(c)]),
-        chip: (k.querySelector('.pl-tile-chip-b:not([style*="none"])') || {}).textContent || null });
+        num: n && n.firstChild ? n.firstChild.nodeValue : null,
+        rows: [...k.querySelectorAll('.pp-reason')].map((r) => vis(r)),
+        chip: (k.querySelector('.pp-tag') || {}).textContent || null });
     });
   });
   const s = window.__story.get();
@@ -51,7 +52,6 @@ EXPECT = {
     "interview": ("tile", "Thu 11:40"),
     "hinge": ("tile", "Thu 11:40"),
 }
-CHIPS = ["Design-system team", "HealthTech", "Matches your case studies"]
 
 passed = failed = 0
 
@@ -75,7 +75,7 @@ def assert_faces(info, beat, how):
         check(f["root"] > 0.99 and f["title"] > 0.99, f"{tag}: content visible (root {f['root']:.2f}, title {f['title']:.2f})")
         if face == "card":
             check(f["num"] == "9", f"{tag}: counted to 9, got {f['num']}")
-            check([c[0] for c in f["chips"]] == CHIPS and all(c[1] > 0.99 for c in f["chips"]), f"{tag}: all chips typed and visible {f['chips']}")
+            check(len(f["rows"]) == 4 and all(v > 0.99 for v in f["rows"]), f"{tag}: all four rows of working resolved and visible {f['rows']}")
         else:
             check(f["chip"] == chip, f"{tag}: chip reads {chip!r}, got {f['chip']!r}")
 
@@ -126,14 +126,15 @@ with sync_playwright() as p:
         pg.evaluate("([b, a]) => window.__story.scrollToBeat(b, a, { immediate: true })", [beat, at])
         pg.evaluate(FR, 4)
         texts = pg.evaluate("""() => [...document.querySelectorAll('.rd-h2-vis, .bd-sentence-vis')].map((el) => {
-            const r = document.createRange(); r.selectNodeContents(el); return r.toString().replace(/\\s+/g, ' ').trim(); })""")
+            const r = document.createRange(); r.selectNodeContents(el);
+            const sr = el.parentElement.querySelector(':scope > .sr-only');
+            return [r.toString().replace(/\\s+/g, ' ').trim(), sr ? sr.textContent.replace(/\\s+/g, ' ').trim() : null]; })""")
         widths = pg.evaluate("""() => [...document.querySelectorAll('.rd-h2-vis')].map((el) => {
             const w = [...el.querySelectorAll('.rd-wmask')].map((m) => m.getBoundingClientRect());
             let gaps = 0; for (let i = 1; i < w.length; i++) if (Math.abs(w[i].top - w[i-1].top) < 4 && w[i].left - w[i-1].right < 4) gaps++;
             return gaps; })""")
-        expected = {"Twelve worth your time.", "Every score comes with a reason.", "The moment an interview is booked, your prep sheet is written."}
-        for t in texts:
-            check(t in expected, f"{beat}@{at}: spaced text {t!r}")
+        for t, sr in texts:
+            check(sr is not None and t == sr, f"{beat}@{at}: split text matches its full string ({t!r} vs {sr!r})")
         check(all(g == 0 for g in widths), f"{beat}@{at}: visible gaps between heading words {widths}")
     pg.close()
     b.close()
