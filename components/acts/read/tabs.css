@@ -1,0 +1,445 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   DELIGHT 1 — the tabs actually close (HeroTabs.tsx). Decorative, motion only.
+   A browser tab strip under the nav pill: real tab shapes (rounded tops, flared feet), 1px keylines,
+   Hanken at 11.5px. The active Prepline tab is paper and its feet run into the strip's baseline, the
+   page edge; the rest are muted night. Every scrubbed value is a transform or an opacity written by
+   the story subscriber; the geometry below is read once by measure() (keep the two in step).
+   Tokens only. Text sits on each tab's own opaque fill (sage on night-2, pine on paper: both AA).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.tb {
+  /* geometry (desktop) */
+  --tb-h: 30px;
+  --tb-foot: 6px;
+  --tb-corner: 8px;
+  --tb-pad: 10px;
+  --tb-fav-size: 11px;
+  --tb-title-x: 29px; /* side line to the title: pad + favicon + gap */
+  --tb-ell: 14px; /* the fade and the "…" before the × */
+  --tb-xzone: 20px;
+  --tb-gap: 6px;
+  --tb-wmax: 232px;
+  --tb-count-gap: 12px;
+  --tb-fs: 11.5px;
+  /* skin: muted night */
+  --tb-fill: var(--c-night-2);
+  --tb-key: var(--c-rule-night);
+  --tb-ink: var(--c-on-night-2);
+
+  display: none;
+  position: absolute;
+  z-index: 1;
+  left: 12px;
+  right: 12px;
+  /* just under the nav pill: its top (12px) + its height (56px) + a 10px gap */
+  top: 78px;
+  pointer-events: none;
+  user-select: none;
+  contain: layout style;
+  font-family: var(--font-text);
+}
+html.motion .tb {
+  display: block;
+}
+.tb-row {
+  position: relative;
+  max-width: calc(1240px - 20px);
+  width: calc(100% - 20px);
+  height: calc(var(--tb-h) + 1px);
+  margin: 0 auto;
+}
+
+/* the page edge the tabs stand on (the active tab's feet join it) */
+.tb-base-pop,
+.tb-base {
+  position: absolute;
+  left: calc(-1 * var(--tb-foot));
+  right: 0;
+  bottom: 0;
+  height: 1px;
+}
+.tb-base {
+  left: 0;
+  right: 0;
+  transform-origin: 0 50%;
+  background: color-mix(in oklab, var(--c-paper-2) 38%, transparent);
+}
+
+/* ── one tab ── */
+.tb-tab {
+  position: absolute;
+  left: 0;
+  bottom: 1px;
+  width: 0;
+  height: var(--tb-h);
+  transform-origin: 0 50%;
+}
+.tb-tab[data-off] {
+  display: none;
+}
+.tb-tab[data-active] {
+  --tb-fill: var(--c-paper-2);
+  --tb-key: var(--c-ink);
+  --tb-ink: var(--c-ink);
+  /* stands on the page: one pixel lower, over the baseline */
+  bottom: 0;
+  height: calc(var(--tb-h) + 1px);
+}
+.tb-pop {
+  position: absolute;
+  inset: 0;
+  transform-origin: 30% 100%;
+}
+.tb:not([data-loaded]) :is(.tb-pop, .tb-plus-pop, .tb-count-pop, .tb-base-pop) {
+  opacity: 0;
+}
+/* the clip: natural width wmax (+ the left foot), scaled to the tab's width; inner counter-scaled */
+.tb-clip {
+  position: absolute;
+  left: calc(-1 * var(--tb-foot));
+  bottom: 0;
+  width: calc(var(--tb-wmax) + var(--tb-foot));
+  height: 100%;
+  overflow: hidden;
+  transform-origin: 0 0;
+}
+.tb-inner {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+}
+.tb-l,
+.tb-r {
+  position: absolute;
+  bottom: 0;
+  height: 100%;
+  overflow: visible;
+  shape-rendering: geometricPrecision;
+}
+.tb-l {
+  left: 0;
+  width: calc(var(--tb-foot) + var(--tb-corner) + 1px);
+}
+.tb-fill {
+  fill: var(--tb-fill);
+}
+.tb-key {
+  fill: none;
+  stroke: var(--tb-key);
+  stroke-width: 1px;
+}
+.tb-mid {
+  position: absolute;
+  left: calc(var(--tb-foot) + var(--tb-corner));
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--tb-fill);
+  border-top: 1px solid var(--tb-key);
+}
+
+/* favicon and title */
+.tb-fav {
+  position: absolute;
+  left: calc(var(--tb-foot) + var(--tb-pad));
+  top: 50%;
+  width: var(--tb-fav-size);
+  height: var(--tb-fav-size);
+  margin-top: calc(var(--tb-fav-size) / -2);
+}
+.tb-title {
+  position: absolute;
+  left: calc(var(--tb-foot) + var(--tb-title-x));
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  font-size: var(--tb-fs);
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  color: var(--tb-ink);
+  white-space: nowrap;
+}
+.tb-tab[data-active] .tb-title {
+  font-weight: var(--weight-label);
+}
+.tb-t-short {
+  display: none;
+}
+/* measures the word "Prepline" for the active tab's minimum width (never seen) */
+.tb-t-word {
+  position: absolute;
+  left: 0;
+  visibility: hidden;
+}
+
+/* the right cap: fade + "…", the ×, the right corner and foot; it rides the tab's right edge */
+.tb-cap {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 100%;
+  width: calc(var(--tb-ell) + var(--tb-xzone) + var(--tb-corner) + var(--tb-foot) + 1px);
+}
+.tb-cut {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--tb-ell) + 1px);
+  opacity: 0;
+}
+.tb-fade {
+  position: absolute;
+  inset: 0;
+  border-top: 1px solid var(--tb-key);
+  background: linear-gradient(to right, color-mix(in oklab, var(--tb-fill) 0%, transparent), var(--tb-fill) 4px);
+}
+.tb-ell {
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  font-size: var(--tb-fs);
+  line-height: 1;
+  font-weight: 500;
+  color: var(--tb-ink);
+}
+.tb-x {
+  position: absolute;
+  left: var(--tb-ell);
+  top: 0;
+  bottom: 0;
+  width: calc(var(--tb-xzone) + 1px);
+  display: grid;
+  place-items: center;
+  color: var(--tb-ink);
+  background: var(--tb-fill);
+  border-top: 1px solid var(--tb-key);
+}
+.tb-xs {
+  display: grid;
+  place-items: center;
+  margin-right: 1px;
+}
+.tb-xs > * {
+  grid-area: 1 / 1;
+}
+.tb-press {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--r-round);
+  background: color-mix(in oklab, var(--tb-ink) 22%, transparent);
+  opacity: 0;
+}
+.tb-x-glyph {
+  width: 7px;
+  height: 7px;
+  overflow: visible;
+}
+.tb-x-glyph path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3px;
+  stroke-linecap: round;
+}
+.tb-r {
+  left: calc(var(--tb-ell) + var(--tb-xzone));
+  width: calc(var(--tb-corner) + var(--tb-foot) + 1px);
+}
+
+/* the firefly and the dust a closed tab lets go (flat lamp and cream: no glow) */
+.tb-spark,
+.tb-dust {
+  position: absolute;
+  left: 0;
+  top: calc(var(--tb-h) / 2);
+  border-radius: var(--r-round);
+  opacity: 0;
+}
+.tb-spark {
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  background: var(--art-lamp);
+}
+.tb-dust {
+  width: 2px;
+  height: 2px;
+  margin: -1px 0 0 -1px;
+  background: var(--art-speck);
+}
+
+/* ── the + after the last tab, and the count ── */
+.tb-plus {
+  position: absolute;
+  left: 0;
+  bottom: calc(1px + (var(--tb-h) - 20px) / 2);
+}
+.tb-plus-pop {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-round);
+  color: var(--c-on-night-2);
+  background: var(--c-night-2);
+  box-shadow: inset 0 0 0 1px var(--c-rule-night);
+}
+.tb-plus svg {
+  width: 8px;
+  height: 8px;
+  overflow: visible;
+}
+.tb-plus path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3px;
+  stroke-linecap: round;
+}
+.tb-count {
+  position: absolute;
+  right: 0;
+  bottom: calc(1px + (var(--tb-h) - 20px) / 2);
+}
+.tb-count-pop {
+  display: flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 9px;
+  border-radius: var(--r-pill);
+  background: var(--c-night-2);
+  box-shadow: inset 0 0 0 1px var(--c-rule-night);
+  color: var(--c-on-night-2);
+  font-size: var(--tb-fs);
+  font-weight: var(--weight-label);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.tb-odo-win {
+  display: block;
+  height: 14px;
+  overflow: hidden;
+  /* a figure mid-roll fades at the window's edges, like a counter wheel */
+  mask-image: linear-gradient(transparent, black 4px, black 10px, transparent);
+}
+.tb-odo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.tb-odo > span {
+  display: block;
+  height: 14px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+/* ── favicons: generic glyphs drawn with tokens, no marks ── */
+.tb-fav-mark {
+  overflow: visible;
+}
+.tb-fav-mark path {
+  fill: none;
+  stroke: var(--c-ink);
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tb-f-dot {
+  border-radius: var(--r-round);
+  background: var(--art-lamp);
+  transform: scale(0.8);
+}
+.tb-f-sq {
+  border-radius: 3px;
+  background: var(--c-on-night-2);
+  transform: scale(0.86);
+}
+.tb-f-ring {
+  border-radius: var(--r-round);
+  box-shadow: inset 0 0 0 1.5px var(--c-on-night);
+}
+.tb-f-dia {
+  border-radius: 2px;
+  background: var(--art-glow);
+  transform: rotate(45deg) scale(0.68);
+}
+.tb-f-bars {
+  background:
+    linear-gradient(var(--c-on-night-2), var(--c-on-night-2)) 0 1px / 100% 2px no-repeat,
+    linear-gradient(var(--c-on-night-2), var(--c-on-night-2)) 0 5px / 72% 2px no-repeat,
+    linear-gradient(var(--c-on-night-2), var(--c-on-night-2)) 0 9px / 86% 2px no-repeat;
+}
+.tb-f-doc {
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1.5px var(--c-on-night);
+  transform: scaleX(0.8);
+}
+.tb-f-tri {
+  background: var(--c-danger);
+  clip-path: polygon(50% 6%, 96% 92%, 4% 92%);
+}
+.tb-f-half {
+  border-radius: var(--r-round);
+  background: linear-gradient(90deg, var(--art-lamp) 50%, transparent 50%);
+  box-shadow: inset 0 0 0 1.5px var(--art-lamp);
+}
+.tb-f-grid {
+  background:
+    radial-gradient(circle, var(--c-success) 1.6px, transparent 1.9px) 0 0 / 50% 50%;
+}
+.tb-f-note {
+  border-radius: 2px;
+  background: var(--art-lamp);
+  transform: rotate(-9deg) scale(0.82);
+}
+.tb-f-blank {
+  border-radius: var(--r-round);
+  border: 1.5px dashed var(--c-on-night-2);
+}
+.tb-f-gap {
+  border-radius: var(--r-round);
+  border: 1.5px solid var(--c-success);
+  border-right-color: transparent;
+  transform: rotate(-30deg);
+}
+
+/* ── phones: five tabs, tighter titles ── */
+@media (max-width: 767px) {
+  .tb {
+    --tb-h: 28px;
+    --tb-foot: 5px;
+    --tb-corner: 7px;
+    --tb-pad: 5px;
+    --tb-fav-size: 9px;
+    --tb-title-x: 19px;
+    --tb-ell: 9px;
+    --tb-xzone: 16px;
+    --tb-gap: 2px;
+    --tb-wmax: 150px;
+    --tb-count-gap: 8px;
+    --tb-fs: 11px;
+    left: 10px;
+    right: 10px;
+    /* nav top 10 + nav height 52 + 8 */
+    top: 70px;
+  }
+  .tb-row {
+    width: 100%;
+  }
+  .tb-t-long {
+    display: none;
+  }
+  .tb-t-short {
+    display: inline;
+  }
+  .tb-plus {
+    display: none;
+  }
+  .tb-count-pop {
+    padding: 0 7px;
+  }
+}

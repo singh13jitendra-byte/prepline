@@ -26,6 +26,7 @@ import { storyCopy } from "@/lib/content";
 import { useAnchor } from "@/lib/anchors";
 import { gsap } from "@/lib/gsap";
 import { BEATS, story } from "@/lib/story";
+import { HeroTabs } from "./HeroTabs";
 import { span, useScrub } from "./runtime";
 import { ease } from "@/lib/theme";
 
@@ -162,6 +163,9 @@ export function HeroPanel() {
             </div>
           </div>
         </div>
+
+        {/* Delight 1: the other tabs, closing on the first scroll (decorative, gone by 0.16). */}
+        <HeroTabs />
 
         <p className="rd-cue only-motion" aria-hidden="true">
           <span className="rd-cue-in" data-fade-in>
