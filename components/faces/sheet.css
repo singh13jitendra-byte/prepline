@@ -140,23 +140,25 @@
   right: 0;
 }
 
-/* ── typing (motion only; the static page shows every question written) ── */
-html.motion .shx:is([data-q1="blank"], [data-q1="typing"]) .pp-q:nth-child(1) .pp-q-text,
-html.motion .shx:is([data-q2="blank"], [data-q2="typing"]) .pp-q:nth-child(2) .pp-q-text,
-html.motion .shx:is([data-q3="blank"], [data-q3="typing"]) .pp-q:nth-child(3) .pp-q-text {
+/* ── writing (motion only; the static page shows every question written) ──
+   Delight 6: blank -> typing (the pen writes, scrubbed) -> settle (the Line becomes the row's rule,
+   the nib sinks back into it) -> done (the real text). */
+html.motion .shx:is([data-q1="blank"], [data-q1="typing"], [data-q1="settle"]) .pp-q:nth-child(1) .pp-q-text,
+html.motion .shx:is([data-q2="blank"], [data-q2="typing"], [data-q2="settle"]) .pp-q:nth-child(2) .pp-q-text,
+html.motion .shx:is([data-q3="blank"], [data-q3="typing"], [data-q3="settle"]) .pp-q:nth-child(3) .pp-q-text {
   color: transparent;
 }
 /* Before its question is written, a row shows only its number and ruled lines. The Tell column,
-   the sources and the buttons arrive with a spring when the typing ends; keyboard focus reveals them. */
+   the sources and the buttons arrive with a spring once the pen has left the row; keyboard focus reveals them. */
 .shx .pp-q-tell,
 .shx .pp-q-foot {
   transition:
     opacity var(--dur-2) var(--ease-out),
     transform var(--dur-3) var(--ease-spring);
 }
-html.motion .shx:is([data-q1="blank"], [data-q1="typing"]) .pp-q:nth-child(1) :is(.pp-q-tell, .pp-q-foot),
-html.motion .shx:is([data-q2="blank"], [data-q2="typing"]) .pp-q:nth-child(2) :is(.pp-q-tell, .pp-q-foot),
-html.motion .shx:is([data-q3="blank"], [data-q3="typing"]) .pp-q:nth-child(3) :is(.pp-q-tell, .pp-q-foot) {
+html.motion .shx:is([data-q1="blank"], [data-q1="typing"], [data-q1="settle"]) .pp-q:nth-child(1) :is(.pp-q-tell, .pp-q-foot),
+html.motion .shx:is([data-q2="blank"], [data-q2="typing"], [data-q2="settle"]) .pp-q:nth-child(2) :is(.pp-q-tell, .pp-q-foot),
+html.motion .shx:is([data-q3="blank"], [data-q3="typing"], [data-q3="settle"]) .pp-q:nth-child(3) :is(.pp-q-tell, .pp-q-foot) {
   opacity: 0;
   transform: translateY(4px) scale(0.97);
   pointer-events: none;
@@ -172,14 +174,13 @@ html.motion .shx:focus-within .pp-q :is(.pp-q-tell, .pp-q-foot) {
 html.motion .shx:focus-within .pp-q .pp-q-text {
   color: var(--pp-fg);
 }
-html.motion .shx:focus-within .shx-typed,
-html.motion .shx:focus-within .shx-caret {
+html.motion .shx:focus-within .shx-typed {
   visibility: hidden;
 }
-/* A blank row is ruled paper waiting to be written on. */
-html.motion .shx[data-q1="blank"] .pp-q:nth-child(1) .pp-q-text,
-html.motion .shx[data-q2="blank"] .pp-q:nth-child(2) .pp-q-text,
-html.motion .shx[data-q3="blank"] .pp-q:nth-child(3) .pp-q-text {
+/* A blank row is ruled paper waiting to be written on; the pen writes on the rules. */
+html.motion .shx:is([data-q1="blank"], [data-q1="typing"]) .pp-q:nth-child(1) .pp-q-text,
+html.motion .shx:is([data-q2="blank"], [data-q2="typing"]) .pp-q:nth-child(2) .pp-q-text,
+html.motion .shx:is([data-q3="blank"], [data-q3="typing"]) .pp-q:nth-child(3) .pp-q-text {
   background: repeating-linear-gradient(
     180deg,
     transparent 0,
@@ -202,18 +203,86 @@ html.motion .shx[data-q3="blank"] .pp-q:nth-child(3) .pp-q-text {
 .shx-typed {
   position: absolute;
   margin: 0;
+  /* the ink: the question's own colour (the real text is transparent while it is written) */
+  color: var(--pp-fg);
 }
 .shx-word {
   white-space: nowrap;
 }
-.shx-caret {
-  position: absolute;
-  width: 1.5px;
-  background: var(--c-ink);
+html:not(.motion) .shx-typed {
+  visibility: hidden;
+}
+/* Fresh ink: each glyph's deep-pine copy is switched on as the nib passes and dries away over
+   about 400ms (an opacity animation, on the compositor), leaving the ink below it. */
+.shx-wet {
+  color: var(--art-deep);
+  /* wet ink sits a hair heavier on the paper than dry ink */
+  -webkit-text-stroke: 0.3px var(--art-deep);
+}
+.shx-wet > span > span > span,
+.shx-wet > span > span:not(.shx-word) {
   opacity: 0;
 }
-.shx-caret[data-on] {
-  opacity: 0.8;
+.shx-wet span[data-w] {
+  animation: shx-dry 420ms cubic-bezier(0.3, 0, 0.4, 1) both;
+}
+@keyframes shx-dry {
+  from {
+    opacity: 0.95;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* The pen's nib (SheetPen.tsx): a fixed layer at the Line's level, placed at its leading point. */
+.shx-nib {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: var(--z-line);
+  pointer-events: none;
+  overflow: visible;
+  will-change: transform;
+}
+.shx-nib-section {
+  fill: var(--art-deep);
+}
+.shx-nib-lit {
+  fill: var(--art-lamp);
+}
+.shx-nib-shade {
+  fill: var(--art-ochre);
+}
+.shx-nib-edge {
+  fill: none;
+  stroke: var(--art-deep);
+  stroke-width: 0.6;
+  stroke-linejoin: round;
+}
+.shx-nib-cut,
+.shx-nib-slit {
+  fill: none;
+  stroke: var(--art-deep);
+  stroke-linecap: round;
+}
+.shx-nib-cut {
+  stroke-width: 0.45;
+}
+.shx-nib-slit {
+  stroke-width: 0.7;
+}
+.shx-nib-hole {
+  fill: var(--art-deep);
+}
+.shx-nib-glint path {
+  fill: none;
+  stroke: var(--art-highlight);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+}
+.shx-nib-glint circle {
+  fill: var(--art-highlight);
 }
 .shx-anchor {
   position: absolute;
