@@ -466,7 +466,11 @@ function SheetDock({ skin }: { skin: FaceProps["skin"] }) {
   faceH.current = H;
 
   useLayoutEffect(() => {
-    setBody(rootRef.current?.querySelector<HTMLElement>(".pp-prep-body") ?? null);
+    const b = rootRef.current?.querySelector<HTMLElement>(".pp-prep-body") ?? null;
+    // In the story the body is scrolled by the beats, never by the wheel: without this the
+    // product's data-lenis-prevent traps the page scroll while the pointer is over the sheet.
+    b?.removeAttribute("data-lenis-prevent");
+    setBody(b);
   }, []);
 
   // The Line ends on PrepSheet's own count.

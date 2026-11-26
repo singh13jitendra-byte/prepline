@@ -88,6 +88,9 @@
 .shx .pp-prep-body {
   position: relative;
   scroll-behavior: auto;
+  /* Scrolled by the story only; the wheel always moves the page. */
+  overflow: hidden;
+  overscroll-behavior: auto;
   /* Rows slide under the header rather than being cut mid-line. */
   mask-image: linear-gradient(to bottom, transparent 0, var(--c-ink) 18px);
 }
