@@ -322,7 +322,7 @@ export function Line() {
         <path ref={under} className="world-line-under" fill="none" stroke={DAY} strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0 }} />
         <path ref={body} data-line-core fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      <div ref={label} aria-hidden="true" data-line-label className="world-line-label only-motion" style={{ opacity: 0 }} />
+      <div ref={label} aria-hidden="true" data-line-label className="world-line-label type-note only-motion" style={{ opacity: 0 }} />
     </>
   );
 }

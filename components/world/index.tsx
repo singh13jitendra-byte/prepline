@@ -26,12 +26,12 @@ import { WorldCanvas } from "./WorldCanvas";
 
 const CSS = `
 .world-night,.world-day,.world-grain{position:fixed;inset:0;z-index:var(--z-backdrop);pointer-events:none}
-.world-night{background:var(--c-night)}
-.world-day{background:var(--c-paper);visibility:hidden}
+.world-night{background-color:var(--c-night);background-image:var(--tex-night);background-size:128px 128px}
+.world-day{background-color:var(--c-paper);background-image:var(--tex-paper);background-size:128px 128px;visibility:hidden}
 .world-day[data-mode="day"]{visibility:visible}
 .world-day[data-mode="split"]{visibility:visible;clip-path:inset(var(--day-top) 0 0 0)}
-.world-grain{background-size:128px 128px;background-image:var(--tex-night)}
-html[data-chapter="day"] .world-grain{background-image:var(--tex-paper)}
+/* The texture belongs to the flat grounds (pine, paper), under the paintings: never over them. */
+.world-grain{display:none}
 ${SCENE_CSS}
 .world-canvas{position:fixed;top:0;left:0;width:100%;height:100vh;height:100lvh;z-index:var(--z-world);pointer-events:none;opacity:0;transition:opacity .4s linear}
 html.world-on .world-canvas{opacity:1}

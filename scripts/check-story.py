@@ -417,7 +417,7 @@ def main():
         print(f"document height: {total:.2f} viewports")
         check(11.5 < total < 12.3, f"desktop: the document is about 12.2 viewports tall, got {total:.2f}")
         ends = page.evaluate("() => [...document.querySelectorAll('.story-act')].map((e) => Math.round(e.getBoundingClientRect().bottom + scrollY))")
-        foot = page.evaluate("() => Math.round(document.querySelector('footer').getBoundingClientRect().top + scrollY)")
+        foot = page.evaluate("() => Math.round((document.querySelector('footer.ft') || document.querySelector('body > footer') || document.querySelector('footer')).getBoundingClientRect().top + scrollY)")
         check(max(ends) == ends[-1] and abs(foot - ends[-1]) <= 1, f"desktop: no act section ends below the last one, and the footer follows it directly (ends {ends}, footer {foot})")
         if args.shots:
             page.screenshot(path=str(args.shots / "hero.png"))

@@ -203,7 +203,7 @@ export const SCENE_CSS = `
 .sc-wash-night{background:linear-gradient(94deg,var(--c-night) 0%,color-mix(in oklab,var(--c-night) 92%,transparent) 18%,color-mix(in oklab,var(--c-night) 55%,transparent) 34%,transparent 47%)}
 .sc-wash-day{background:linear-gradient(94deg,color-mix(in oklab,var(--c-paper) 70%,transparent) 0%,color-mix(in oklab,var(--c-paper) 45%,transparent) 30%,transparent 48%)}
 @media (max-width:767px){
-.sc-wash-night{background:linear-gradient(180deg,var(--c-night) 0%,color-mix(in oklab,var(--c-night) 90%,transparent) 34%,color-mix(in oklab,var(--c-night) 30%,transparent) 58%,transparent 74%)}
+.sc-wash-night{background:linear-gradient(180deg,var(--c-night) 0%,var(--c-night) 40%,color-mix(in oklab,var(--c-night) 70%,transparent) 56%,transparent 72%)}
 .sc-wash-day{background:linear-gradient(180deg,var(--c-paper) 0%,color-mix(in oklab,var(--c-paper) 88%,transparent) 36%,color-mix(in oklab,var(--c-paper) 24%,transparent) 60%,transparent 76%)}
 }
 /* Sunrise: a flat rectangle of light that crosses the wall. A shape, not a glow. */

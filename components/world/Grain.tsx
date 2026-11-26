@@ -25,7 +25,9 @@ export function Grain() {
       const ctx = c.getContext("2d");
       if (!ctx) return;
       const img = ctx.createImageData(size, size);
-      const alpha = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tex-grain-alpha")) || 10;
+      const raw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tex-grain-alpha"));
+      const alpha = Number.isFinite(raw) ? raw : 10;
+      if (alpha <= 0) return; // the theme prints flat: no baked grain
       let seed = 1234567;
       const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
       for (let i = 0; i < size * size; i++) {

@@ -87,8 +87,15 @@ export const FOCUS: Record<"room" | "meadow" | "dawn", { wide: [number, number];
  */
 export const DESK_CLOSE = {
   wide: { at: [0.585, 0.56], to: [0.44, 0.4], scale: 1.36 },
-  small: { at: [0.6, 0.56], to: [0.5, 0.3], scale: 1.3 },
+  small: { at: [0.6, 0.56], to: [0.5, 0.42], scale: 1.5 },
 } as const;
+
+/**
+ * The hero on small (portrait) screens: the copy takes the top of the screen, so the room is
+ * drawn smaller than cover and stood on the bottom edge, with the laptop (image x 0.70) at
+ * `laptopAt` of the viewport width. Above it the wall is the pine wash.
+ */
+export const HERO_SMALL = { scale: 0.64, laptopAt: 0.6 };
 
 /** Layout of a cover box in CSS px, for a viewport. Pure maths: no layout is read. */
 export function coverBox(vw: number, vh: number, ar: number, fx: number, fy: number) {
