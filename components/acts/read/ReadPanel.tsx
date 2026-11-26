@@ -217,14 +217,15 @@ export function ReadPanel() {
     // The ink edge trails the Line by a tenth of the screen, so the outgoing "right roles." (erased
     // at the Line) and the incoming 2,340 never touch: there is always clear night between them.
     const gap = 0.1 * s.viewport.h;
-    const mask = !revealing ? "none" : h > 0.22 ? `linear-gradient(to bottom, transparent ${(ly + gap).toFixed(1)}px, black ${(ly + gap + 40).toFixed(1)}px)` : "linear-gradient(transparent, transparent)";
+    const mask = !revealing ? "none" : h > 0.5 ? `linear-gradient(to bottom, transparent ${(ly + gap).toFixed(1)}px, black ${(ly + gap + 40).toFixed(1)}px)` : "linear-gradient(transparent, transparent)";
     if (pass.dataset.mask !== mask) {
       pass.dataset.mask = mask;
       pass.style.setProperty("-webkit-mask-image", mask);
       pass.style.setProperty("mask-image", mask);
     }
-    set(pass, "--reveal-a", revealing ? span(h, 0.22, 0.4).toFixed(4) : "1");
-    set(pass, "--reveal-y", `${(revealing ? (1 - span(h, 0.3, 1)) * 0.12 * s.viewport.h : 0).toFixed(2)}px`);
+    // 85-unit hero: the count is revealed only once the Line rises (0.5–1).
+    set(pass, "--reveal-a", revealing ? span(h, 0.5, 0.66).toFixed(4) : "1");
+    set(pass, "--reveal-y", `${(revealing ? (1 - span(h, 0.55, 1)) * 0.12 * s.viewport.h : 0).toFixed(2)}px`);
 
     // The count, exact to the Line.
     const p1 = through(s, "pass1");

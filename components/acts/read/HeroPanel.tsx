@@ -79,21 +79,27 @@ export function HeroPanel() {
     if (!root) return;
     const i = BEATS.findIndex((b) => b.id === s.beat);
     const h = i < HERO_INDEX ? 0 : i > HERO_INDEX ? 1 : s.beatProgress;
-    const k = span(h, 0, 0.22);
+    // The 85-unit hero (Foundation round 4): the Line stretches over 0–0.16 while the copy around
+    // the headline drops; it holds on the underline through the push (0.16–0.5), so the headline
+    // stays exactly still; then it rises over 0.5–1 and erases the headline.
+    const k = span(h, 0, 0.16);
     // Only when a value changes: an unchanged write still marks the whole hero for restyle.
     const set = (prop: string, v: string) => {
       if (root.style.getPropertyValue(prop) !== v) root.style.setProperty(prop, v);
     };
     set("--drop", k.toFixed(4));
-    set("--cue", (1 - span(h, 0, 0.145)).toFixed(4));
+    set("--cue", (1 - span(h, 0, 0.1)).toFixed(4));
+    // The hold (0.16–0.5): the headline stays exactly still (the Line rests on its underline), but
+    // "Close the / other tabs." quietly dims, so the scroll is never dead and "Walk in ready." is left lit.
+    set("--hold", span(h, 0.16, 0.5).toFixed(4));
     // The Line erases the headline from the bottom up through a 24px soft edge (it inks out,
     // it is not guillotined), while the headline steps back: scale 1 → 0.96, 40% dimmer.
-    const e = span(h, 0.22, 1);
+    const e = span(h, 0.5, 1);
     set("--recede", e.toFixed(4));
     const y = s.line.y;
     // Past the hero the headline is fully erased: one constant mask, so the line moving through the
     // rest of the page never touches (and restyles) the hero again.
-    const mask = i > HERO_INDEX ? "linear-gradient(transparent, transparent)" : h > 0.22 ? `linear-gradient(to bottom, black ${(y - 24).toFixed(1)}px, transparent ${y.toFixed(1)}px)` : "none";
+    const mask = i > HERO_INDEX ? "linear-gradient(transparent, transparent)" : h > 0.5 ? `linear-gradient(to bottom, black ${(y - 24).toFixed(1)}px, transparent ${y.toFixed(1)}px)` : "none";
     if (root.dataset.mask !== mask) {
       root.dataset.mask = mask;
       root.style.setProperty("--hero-mask", mask);
