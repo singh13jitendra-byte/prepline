@@ -611,10 +611,10 @@ function swing(p: number): number {
 
 /**
  * The folded sheet's cover, drawn exactly as the Actor draws the tile at the end of nightfall: the
- * registered tile face in its own chrome, scaled to the panel's width the way the engine scales a
- * face to its box and clipped to the panel, with the chrome's 2px keyline kept at 2 screen px. So
- * the cut from the travelling tile to this sheet changes nothing on screen (no white card, no new
- * tick, no jump in type size). The print under it is the plate's (SheetFlying), not the chrome's.
+ * registered tile face in its own chrome, scaled to the panel the way the engine scales a face to
+ * its box (fit and size from the tile's registration) and clipped to it, its keyline box kept at 2
+ * screen px but bare (the travelling tile eases keyline and print away by then). So the cut from the
+ * travelling tile to this sheet changes nothing on screen (no white card, no jump in type size).
  */
 function Cover({ skin, w, p }: { skin: FaceProps["skin"]; w: number; p: number }) {
   const { meta } = getFace("tile");
@@ -682,10 +682,8 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
       const face = rootRef.current?.closest<HTMLElement>(".actor-face");
       if (face && face.hasAttribute("data-warm") !== warm) face.toggleAttribute("data-warm", warm);
       const f = warm ? 1 : a.fold;
-      const { W, P } = size.current;
-      // The screen scale of this face: the cover's print matches the tile's, in screen px.
-      const k = a.w > 0 ? a.w / W : 1;
-      const key = `${f.toFixed(4)}|${k.toFixed(3)}|${P}`;
+      const { P } = size.current;
+      const key = `${f.toFixed(4)}|${P}`;
       if (key === last) return;
       last = key;
       // Panel 2 swings down over the first 55% of the fold, panel 3 follows from 35% (storyboard 2.6).
@@ -709,15 +707,15 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
       set("b2", a2 >= 90 ? 0.6 * s2 : 0);
       set("f3", a3 < 90 ? s3 : 0);
       set("b3", a3 >= 90 ? 0.6 * s3 : 0);
-      // The print under the sheet follows its visible extent. Folded it is the tile's print exactly
-      // (12/14 screen px, as the Actor's chrome draws it in flight); open it is the docked sheet's
-      // (--shadow-1, 6/7 of the face's px), so neither hand-over shows a step.
+      // The print under the sheet follows its visible extent. Folded there is none: the travelling
+      // tile has eased its print away by the end of nightfall (TileFace). It comes up with the fold
+      // to the docked sheet's (--shadow-1, 6/7 of the face's px), so neither hand-over shows a step.
       const r2 = (a2 * Math.PI) / 180;
       const vis = P + Math.max(0, P * Math.cos(r2)) + (a2 < 90 ? Math.max(0, P * Math.cos(r2 + (a3 * Math.PI) / 180)) : 0);
       const plate = plateRef.current;
       if (plate) {
         plate.style.height = `${Math.max(P, Math.min(3 * P, vis)).toFixed(1)}px`;
-        plate.style.boxShadow = `${(12 / k + (6 - 12 / k) * f).toFixed(2)}px ${(14 / k + (7 - 14 / k) * f).toFixed(2)}px 0 0 var(--art-lamp)`;
+        plate.style.boxShadow = f >= 0.999 ? "" : `6px 7px 0 0 color-mix(in oklab, var(--art-lamp) ${(f * 100).toFixed(1)}%, transparent)`;
       }
     });
   }, []);

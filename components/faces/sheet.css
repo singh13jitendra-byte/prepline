@@ -106,7 +106,7 @@
 }
 /* The flying copy's plate: height and print are written per fold step (SheetFlying). */
 .shx[data-host="actor"] .shx-plate {
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--shadow-1);
 }
 
 /* The paper remembers its folds at 240 and 480: a faint valley across the sheet and a
@@ -276,7 +276,7 @@ html.motion .shx[data-q3="blank"] .pp-q:nth-child(3) .pp-q-text {
 }
 /* The cover: the tile face in its own chrome, as the Actor draws it at the end of nightfall.
    --shx-k is this face's screen scale (the Actor's --face-k on the sheet's content box), so the
-   keyline stays 2 screen px like the travelling tile's. The print is the plate's. */
+   keyline box stays 2 screen px like the travelling tile's. The print is the plate's. */
 .shx-cover {
   position: absolute;
   inset: 0;
@@ -285,8 +285,11 @@ html.motion .shx[data-q3="blank"] .pp-q:nth-child(3) .pp-q-text {
 .shx-cover .face-content {
   width: var(--cover-cw) !important;
 }
+/* Bare paper: the travelling tile eases its keyline and print away over nightfall's last quarter
+   (TileFace, faces.css --tile-cover), so the cover keeps the keyline's 2 screen px as paper. */
 .shx-cover .face > .face-chrome {
   border-width: calc(2px / var(--shx-k));
+  border-color: var(--face-bg);
   border-radius: var(--r-face-sheet);
   box-shadow: none;
 }

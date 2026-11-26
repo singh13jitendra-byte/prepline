@@ -247,6 +247,9 @@ export const SCENE_CSS = `
 /* The grass is painted in daylight: at night it is in shadow. */
 .sc-grasswrap[data-night] .sc-grass{filter:brightness(.42) saturate(.7) hue-rotate(28deg)}
 .sc-dawnwrap{visibility:hidden}
+/* Off: its layers keep the inline visibility:visible SceneDirector gave them in the seat, which beat
+   the wrapper's hidden and left desk-dawn over blue hour and the votes when scrolling back up. */
+.sc-dawnwrap[data-mode="off"]>*{visibility:hidden!important}
 .sc-grasswrap{display:none}
 .sc-dawnwrap[data-mode="day"]{visibility:visible}
 .sc-dawnwrap[data-mode="split"]{visibility:visible;clip-path:inset(var(--day-top) 0 0 0)}
