@@ -451,7 +451,8 @@ export function SceneDirector() {
         put(blue, false, 0, 0, 0, 1, nearBlue);
         put(meadow, true, 1, tx(meadowBox, cx - meadowBox.x, cx, mk), ty(meadowBox, cy - meadowBox.y, cy, mk), mk);
         put(washN, true, i >= ORDER.ranked ? mix(0.5, 0.78, i === ORDER.ranked ? ss(0, 0.5, bp) : 1) : 0.5);
-        scene.field = 1;
+        // Delight 5: as the night is folded away at daybreak (PaperFold), its fireflies settle out.
+        scene.field = i === ORDER.daybreak ? 1 - ss(0.2, 0.6, bp) : 1;
         scene.push = 1;
         const g = i === ORDER.pass1 ? mix(0.8, 1, ss(0, 0.3, bp)) : i === ORDER.daybreak ? 1 - ss(0, 0.2, bp) : 1;
         shown(grassWrap, g > 0, nearGrass);

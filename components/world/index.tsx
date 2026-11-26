@@ -6,6 +6,7 @@
  *   CssField          no-WebGL stand-in for the fireflies, in the meadow beats only
  *   WorldCanvas       the fireflies (WebGL, one draw call, lazy)
  *   Line              the hand-drawn Line and its margin note
+ *   PaperFold         daybreak: the night peels up along the rising Line like a sheet of paper (delight 5)
  *   Lantern           the cursor's warm pool in the night scenes, and the tag that names a firefly
  *
  * Mounted once by <StoryRoot world={<World />}>. It returns a fragment of fixed elements
@@ -21,6 +22,7 @@ import { ChapterBackdrop } from "./ChapterBackdrop";
 import { CssField } from "./CssField";
 import { Lantern } from "./Lantern";
 import { Line } from "./Line";
+import { PaperFold } from "./PaperFold";
 import { SCENE_CSS, ScenesDay, ScenesNight, sceneStillCss } from "./Scenes";
 import { WorldCanvas } from "./WorldCanvas";
 
@@ -108,6 +110,8 @@ export function World() {
       <Lantern />
       <WorldCanvas />
       <Line />
+      {/* Over the acts, under the Actor (same z-index, later in the DOM) and the Line. */}
+      <PaperFold />
     </>
   );
 }

@@ -574,6 +574,7 @@ function SheetDock({ skin }: { skin: FaceProps["skin"] }) {
       data-q3="blank"
       suppressHydrationWarning
     >
+      <div className="shx-cast" aria-hidden="true" />
       <div className="shx-plate" aria-hidden="true" />
       <Sheet live votes={votes} />
       <div className="shx-crease" style={{ top: P }} aria-hidden="true" />
@@ -656,6 +657,7 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
   const p1Ref = useRef<HTMLDivElement>(null);
   const back2Ref = useRef<HTMLDivElement>(null);
   const plateRef = useRef<HTMLDivElement>(null);
+  const castRef = useRef<HTMLDivElement>(null);
   const tints = useRef<Record<string, HTMLDivElement | null>>({});
 
   const small = useSmall();
@@ -707,6 +709,18 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
       set("b2", a2 >= 90 ? 0.6 * s2 : 0);
       set("f3", a3 < 90 ? s3 : 0);
       set("b3", a3 >= 90 ? 0.6 * s3 : 0);
+      // Delight 5, paper cues (only while a panel turns; nothing at rest, open or folded):
+      //   the crease catches the light along the hinge of the panel that is turning, on whichever
+      //   side of it faces us; the bottom panel's free edge curls a little against the air.
+      const turning = (v: number) => Math.max(0, (v - 0.08) / 0.92);
+      const g2 = turning(s2);
+      const g3 = turning(s3);
+      set("g2f", a2 < 90 ? g2 : 0);
+      set("g2b", a2 >= 90 ? g2 : 0);
+      set("g3f", a3 < 90 ? g3 : 0);
+      set("g3b", a3 >= 90 ? g3 : 0);
+      set("c3f", a3 < 90 ? g3 : 0);
+      set("c3b", a3 >= 90 ? g3 : 0);
       // The print under the sheet follows its visible extent. Folded there is none: the travelling
       // tile has eased its print away by the end of nightfall (TileFace). It comes up with the fold
       // to the docked sheet's (--shadow-1, 6/7 of the face's px), so neither hand-over shows a step.
@@ -717,10 +731,22 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
         plate.style.height = `${Math.max(P, Math.min(3 * P, vis)).toFixed(1)}px`;
         plate.style.boxShadow = f >= 0.999 ? "" : `6px 7px 0 0 color-mix(in oklab, var(--art-lamp) ${(f * 100).toFixed(1)}%, transparent)`;
       }
+      // Delight 5: the soft shadow the sheet casts on the desk grows with what is open, and with the
+      // fold (the docked sheet has the same one, at f = 1, so the hand-over shows no step). A
+      // pre-blurred layer, scaled: a transform and an opacity, never a repaint.
+      const cast = castRef.current;
+      if (cast) {
+        const k = Math.max(P, Math.min(3 * P, vis)) / (3 * P);
+        cast.style.transform = `scaleY(${k.toFixed(4)})`;
+        cast.style.opacity = (f * f * (3 - 2 * f)).toFixed(3);
+      }
     });
   }, []);
 
   const tint = (n: string) => <div ref={(el) => void (tints.current[n] = el)} className="shx-tint" />;
+  // The back of a panel is rotateX(180deg): its hinge edge is its bottom, its free edge its top.
+  const glint = (n: string, at: "top" | "bottom") => <div ref={(el) => void (tints.current[n] = el)} className="shx-glint" data-at={at} />;
+  const curl = (n: string, at: "top" | "bottom") => <div ref={(el) => void (tints.current[n] = el)} className="shx-curl" data-at={at} />;
   const slice = (i: number) => (
     <div className="shx-slice" style={{ top: -P * i }}>
       <SheetPrint
@@ -737,6 +763,7 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
 
   return (
     <div ref={rootRef} className="shx" data-host="actor" data-skin={skin} data-focus={focus} data-q1={q(0)} data-q2={q(1)} data-q3={q(2)}>
+      <div ref={castRef} className="shx-cast" style={{ opacity: 0 }} />
       <div ref={plateRef} className="shx-plate" style={{ height: P }} />
       <div className="shx-3d">
         <div ref={p1Ref} className="shx-panel shx-p1">
@@ -747,22 +774,28 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
             {slice(1)}
             <div className="shx-crease" style={{ top: 0 }} />
             {tint("f2")}
+            {glint("g2f", "top")}
           </div>
           <div ref={back2Ref} className="shx-back">
             {/* The folded sheet's cover is the board tile itself, drawn as the Actor draws it, so
                 nightfall grows the tile into this exact picture and the hand-over has nothing to dissolve. */}
             <Cover skin={skin} w={W} p={P} />
             {tint("b2")}
+            {glint("g2b", "bottom")}
           </div>
           <div ref={h3Ref} className="shx-hinge shx-h3" style={{ transform: "rotateX(177deg)" }}>
             <div ref={front3Ref} className="shx-front">
               {slice(2)}
               <div className="shx-crease" style={{ top: 0 }} />
               {tint("f3")}
+              {glint("g3f", "top")}
+              {curl("c3f", "bottom")}
             </div>
             <div className="shx-back shx-back-plain">
               <Verso />
               {tint("b3")}
+              {glint("g3b", "bottom")}
+              {curl("c3b", "top")}
             </div>
           </div>
         </div>

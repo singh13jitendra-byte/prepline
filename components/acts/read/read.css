@@ -570,7 +570,8 @@ html.motion .rd-list-wrap {
 /* The panel is laid down by a scrubbed wipe (ReadPanel writes clip-path, only while it changes):
    closed until the script runs, never translucent. */
 html.motion .rd-panel {
-  clip-path: inset(-4px -14px 100% -4px);
+  /* Closed: 100% + 4px, so the 4px strip above the panel is shut too (a hairline in the hero's sky). */
+  clip-path: inset(-4px -14px calc(100% + 4px) -4px);
 }
 
 /* ── Delight 3: the fireflies become the jobs ──

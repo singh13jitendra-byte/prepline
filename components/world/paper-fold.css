@@ -1,0 +1,16 @@
+/* PAPER FOLD (delight 5): see PaperFold.tsx. Shade is pine at low alpha, light is paper (theme tokens). */
+.pf{position:fixed;top:0;left:0;width:100%;height:0;z-index:var(--z-actor);pointer-events:none;visibility:hidden}
+.pf-clip{position:absolute;left:0;top:-100lvh;width:100%;height:100lvh;overflow:hidden;will-change:transform;contain:strict}
+.pf-sheet{position:absolute;left:0;top:100%;width:100%;height:100lvh;will-change:transform;--pf-sag:10px;border-radius:50% 50% 0 0/var(--pf-sag) var(--pf-sag) 0 0;
+  box-shadow:inset 0 1.5px 0 0 color-mix(in oklab,var(--art-highlight) 85%,transparent);
+  background:linear-gradient(to bottom,color-mix(in oklab,var(--art-highlight) 60%,transparent) 0,color-mix(in oklab,var(--art-highlight) 20%,transparent) 30%,transparent 55%,color-mix(in oklab,var(--art-shade) 4%,transparent) 100%),var(--c-paper)}
+/* The stock's grain, a little quieter than the board's: this side faces the light. */
+.pf-sheet::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--tex-paper) 0 0/128px 128px;opacity:.55}
+.pf-crease{position:absolute;left:0;bottom:0;width:100%;height:64px;opacity:0;will-change:opacity;
+  background:linear-gradient(to bottom,transparent 0,color-mix(in oklab,var(--art-shade) 5%,transparent) 70%,color-mix(in oklab,var(--art-highlight) 90%,transparent) 83%,color-mix(in oklab,var(--art-highlight) 90%,transparent) 86%,color-mix(in oklab,var(--art-shade) 16%,transparent) 94%,color-mix(in oklab,var(--art-shade) 30%,transparent) 100%)}
+.pf-cast{position:absolute;left:0;top:0;width:100%;height:56px;opacity:0;will-change:transform,opacity;
+  background:linear-gradient(to bottom,color-mix(in oklab,var(--art-shade) 22%,transparent) 0,color-mix(in oklab,var(--art-shade) 9%,transparent) 32%,transparent 100%)}
+@media (max-width:767px){
+.pf-sheet{--pf-sag:6px}
+.pf-cast{height:38px}
+}

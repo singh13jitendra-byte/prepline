@@ -325,6 +325,64 @@ html.motion .shx[data-q3="blank"] .pp-q:nth-child(3) .pp-q-text {
 .shx-verso-h .pp-sep {
   margin: 0 6px;
 }
+/* Delight 5, paper cues on the turning panels (SheetFlying writes their opacity; 0 at rest).
+   The crease catches the light: a thin paper-light line along the hinge with the valley's shade
+   under it. The curl: the free edge of the bottom panel lifts against the air, a soft shade with
+   a lit lip at the very edge. */
+.shx-glint,
+.shx-curl {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+.shx-glint {
+  height: 12px;
+  background: linear-gradient(to bottom, color-mix(in oklab, var(--art-fold-shade) 26%, transparent) 0, color-mix(in oklab, var(--art-fold-shade) 26%, transparent) 1.5px, var(--art-fold-light) 1.5px, var(--art-fold-light) 4px, color-mix(in oklab, var(--art-fold-light) 50%, transparent) 7px, transparent 100%);
+}
+.shx-glint[data-at="top"] {
+  top: 0;
+}
+.shx-glint[data-at="bottom"] {
+  bottom: 0;
+  transform: scaleY(-1);
+}
+.shx-curl {
+  height: 34px;
+  background: linear-gradient(to top, var(--art-fold-light) 0, var(--art-fold-light) 1.5px, color-mix(in oklab, var(--art-fold-shade) 16%, transparent) 3px, color-mix(in oklab, var(--art-fold-shade) 7%, transparent) 35%, transparent 100%);
+}
+.shx-curl[data-at="bottom"] {
+  bottom: 0;
+}
+.shx-curl[data-at="top"] {
+  top: 0;
+  transform: scaleY(-1);
+}
+/* The cast shadow on the desk: soft, pine at low alpha, a little below and right of the sheet
+   (the lamp is up and to the left). Pre-blurred and scaled by the flying copy; static under the
+   docked sheet at its open value. */
+.shx-cast {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--shx-w);
+  height: var(--shx-h);
+  border-radius: var(--r-lg);
+  background: color-mix(in oklab, var(--art-shade) 60%, transparent);
+  translate: 14px 22px;
+  filter: blur(18px);
+  transform-origin: 50% 0;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+@media (max-width: 767px) {
+  .shx-cast {
+    translate: 8px 14px;
+    filter: blur(12px);
+  }
+}
+
 /* Flat shading: the panel that is turning takes up to 6% pine. */
 .shx-tint {
   position: absolute;

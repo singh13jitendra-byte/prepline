@@ -33,6 +33,7 @@ import { anchorRect } from "@/lib/anchors";
 import { clamp01, story, type StoryState } from "@/lib/story";
 import { labelWidth, onThemeChange } from "@/lib/theme";
 import { worldBus } from "./bus";
+import { foldEdge } from "./PaperFold";
 
 const NIGHT = "var(--c-line)";
 const DAY = "var(--c-accent)";
@@ -299,7 +300,9 @@ export function Line() {
         const ly = slotY(place.slot, wide, y);
         const lt = `translate3d(${f(lx)}px,${f(ly)}px,0) rotate(var(--art-note-rotate,-2deg))`;
         if (lt !== last.lt) tag.style.transform = last.lt = lt;
-        const lc = ly > s.dayTop || !night ? NOTE_DAY : NOTE_NIGHT;
+        // Delight 5: at daybreak the paper fold lays the sheet's cream back just above the crease.
+        const edge = foldEdge(s);
+        const lc = ly > s.dayTop || !night || (edge !== null && ly + NOTE_H / 2 > edge) ? NOTE_DAY : NOTE_NIGHT;
         if (lc !== last.lc) tag.style.color = last.lc = lc;
         if (last.on !== "1") {
           tag.setAttribute("data-on", "");

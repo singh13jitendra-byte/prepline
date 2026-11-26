@@ -290,7 +290,10 @@ export function ReadPanel() {
     // so the World's landing points, measured once, stay true.
     const pin = i > I.ranked ? 1 : i === I.ranked ? span(r, 0, PANEL_IN) : 0;
     const pe = 1 - (1 - pin) * (1 - pin);
-    const clip = pe >= 1 ? "none" : `inset(-4px -14px calc(${((1 - pe) * 100).toFixed(2)}% + ${(-14 * pe).toFixed(2)}px) -4px)`;
+    // Delight 5: closed is truly closed. The bottom inset used to stop at 100%, which left the 4px
+    // strip above the panel (top inset -4px) open: the panel's top keyline showed through it as a
+    // hairline across the hero's sky, between the casements. It now starts at 100% + 4px.
+    const clip = pe >= 1 ? "none" : `inset(-4px -14px calc(${((1 - pe) * 100).toFixed(2)}% + ${(4 - 18 * pe).toFixed(2)}px) -4px)`;
     if (tg.panel && panelClip.current !== clip) {
       panelClip.current = clip;
       tg.panel.style.clipPath = clip;
