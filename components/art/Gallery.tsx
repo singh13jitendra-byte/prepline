@@ -18,19 +18,12 @@ import { Arrow } from "./Arrow";
 import { Frame } from "./Frame";
 
 /*
- * Dev gallery only. The page has no theme file of its own on this branch, so the Night Desk
- * token values from brand/night-desk/theme.css are restated here, scoped to the gallery.
- * The drawings themselves never name a colour.
+ * Dev gallery only. Colours, strokes and textures come from app/theme.css (Night Desk, the
+ * default theme); only the gallery's own layout is styled here. The drawings never name a colour.
  */
 const TOKENS = `
-.ndg{--c-paper:#f4eada;--c-ink:#12312c;--c-ink-2:#56665f;--c-night:#12312c;--c-on-night:#f4eada;--c-on-night-2:#a9bdb3;
---c-rule:#dccfb8;--c-rule-night:#2c5049;--c-line:#f6c945;--art-lamp:#f6c945;
---art-stroke:3px;--art-stroke-fine:1.8px;--art-stroke-color:var(--c-ink);--art-fill:var(--art-lamp);--art-fill-opacity:1;
---art-register-x:6px;--art-register-y:5px;--art-wobble:url(#nd-hand);--art-wobble-small:url(#nd-hand-s);--art-ink:url(#nd-riso);
---tex-paper:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .07 0 0 0 0 .19 0 0 0 0 .17 0 0 0 -1.3 .74'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
---tex-night:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .96 0 0 0 0 .92 0 0 0 0 .85 0 0 0 -1.4 .78'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-background:var(--c-paper);color:var(--c-ink);min-height:100vh;padding:32px 40px 96px;font:14px/1.45 var(--font-sans),system-ui,sans-serif}
-.ndg [data-chapter="night"]{--art-stroke-color:var(--art-lamp);--art-fill-opacity:.2;background:var(--tex-night),var(--c-night);color:var(--c-on-night)}
+.ndg{background:var(--c-paper);color:var(--c-ink);min-height:100vh;padding:32px 40px 96px;font-family:var(--font-text);font-size:14px;line-height:1.45}
+.ndg [data-chapter="night"]{background:var(--tex-night),var(--c-night);color:var(--c-on-night)}
 .ndg [data-chapter="day"]{background:var(--tex-paper),var(--c-paper);color:var(--c-ink);box-shadow:inset 0 0 0 1.5px var(--c-rule)}
 .ndg h1{font-size:28px;letter-spacing:-.02em;margin:0 0 4px}
 .ndg .bar{position:sticky;top:0;z-index:5;display:flex;gap:24px;align-items:center;flex-wrap:wrap;padding:12px 0;background:var(--c-paper);border-bottom:1.5px solid var(--c-rule);margin-bottom:28px}

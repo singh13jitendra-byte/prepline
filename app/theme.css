@@ -1,261 +1,352 @@
-@property --r-face-row { syntax: "<length>"; inherits: true; initial-value: 12px; }
-@property --r-face-card { syntax: "<length>"; inherits: true; initial-value: 24px; }
+@property --r-face-row { syntax: "<length>"; inherits: true; initial-value: 8px; }
+@property --r-face-card { syntax: "<length>"; inherits: true; initial-value: 22px; }
 @property --r-face-tile { syntax: "<length>"; inherits: true; initial-value: 14px; }
-@property --r-face-sheet { syntax: "<length>"; inherits: true; initial-value: 20px; }
-@property --r-face-ticket { syntax: "<length>"; inherits: true; initial-value: 24px; }
+@property --r-face-sheet { syntax: "<length>"; inherits: true; initial-value: 22px; }
+@property --r-face-ticket { syntax: "<length>"; inherits: true; initial-value: 22px; }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   PREPLINE THEME: the default direction (today's look).
+   PREPLINE THEME: NIGHT DESK (the default).
+
+   Pine night, cream paper, lamp yellow. Young Serif for display, Hanken
+   Grotesk for text and figures, Shantell Sans for margin notes only.
+   Source: brand/night-desk/theme.css. The look the page had before lives in
+   app/themes/legacy.css (applyTheme("legacy")).
 
    The single source of truth for every colour, font, radius, shadow, texture
    and easing on the page. Components use these roles and never a literal
    (scripts/check-tokens.mjs enforces it). The WebGL world reads the same
-   properties at runtime through lib/theme.ts (readTheme), so one file
+   properties at runtime through lib/theme.ts (readTheme), so this file
    re-skins the DOM and the canvas together.
 
-   Contract: research/theme-tokens.md. Contract roles come first in each
-   group; the "extended" tokens after them are today's finer tints, kept so
-   the default stays pixel-identical. A new direction may set only the
-   contract roles and derive the extended ones (app/themes/_template.css
-   suggests a derivation for each).
+   Rules this theme enforces
+   1. Lamp (--art-lamp) is NEVER text or a thin line on cream or paper (1.3:1).
+      By day it is a flat fill under pine type, or the off-register print
+      behind an object. The only "yellow" text on day is ochre (--c-match).
+   2. The Line is lamp on night and pine on day: use --line-here.
+   3. --font-accent (Shantell Sans) is for margin notes on product objects and
+      the Line's label: twelve words at most, sentence case. Never headings,
+      never buttons, never the founder's signature.
+   4. No glow, no glass. --c-line-glow is transparent; nothing is blurred.
+   5. Depth is print, not shadow: every --shadow-* is a hard offset fill, 0 blur.
+   6. No mono face and no uppercase spaced micro-labels. --font-mono is Hanken
+      with tabular figures; --mono-case is none and --mono-tracking is 0.
 
-   Night and day: the chapters already swap skins (html[data-chapter],
-   [data-skin="night" | "day"] on faces). Those scopes pick night or day ROLES
-   (--c-on-night vs --c-ink, ...); this file never needs a chapter selector.
+   Scopes (this file needs them; the legacy theme did not)
+     :root                                   day values: "the print, dried"
+     [data-chapter="night"], [data-skin="night"]   what swaps under the lamp
+     [data-skin="day"], [data-paper]         paper objects keep day values, also
+                                             inside a night chapter. This block
+                                             comes AFTER the night block so it
+                                             wins on a lamp-lit sheet or ticket
+                                             (data-skin="night" + data-paper).
+   A role a component reads is resolved on that element, so a swap in a scope
+   reaches everything inside it. Tokens DERIVED at :root (var(--c-accent) ...)
+   resolve at :root: a scope that changes their source restates them.
 
-   New direction: copy app/themes/_template.css to app/themes/<name>.css,
+   Contrast (WCAG): Pine/Cream 11.7 · Moss/Cream 5.1 · Moss/Paper 5.6 ·
+   Ochre/Cream 5.6 · Ochre/Glow 5.3 · Pine/Lamp 8.9 · Deep/Lamp 10.7 ·
+   Cream/Pine 11.7 · Sage/Pine 7.1 · Lamp/Pine 8.9 · Cream/Night-2 9.7.
+
+   Another direction: copy app/themes/_template.css to app/themes/<name>.css,
    fill it in under :root[data-theme="<name>"], import it from globals.css
    after this file, and call applyTheme("<name>") from lib/theme.ts.
    ══════════════════════════════════════════════════════════════════════════ */
 
 :root {
   /* ── colour: day ── */
-  --c-paper: #f6f4ef; /* day background (canvas) */
-  --c-paper-2: #fffdf8; /* raised surface on day: cards, the sheet's paper */
-  --c-ink: #1b1916; /* primary text on day */
-  --c-ink-2: #5f5a53; /* secondary text on day */
-  --c-ink-3: #a8a097; /* tertiary text; the footer's quiet line */
-  --c-rule: #e4dfd5; /* hairline / border on day */
+  --c-paper: #f4eada; /* Cream. Day background, the stock. */
+  --c-paper-2: #fbf5ea; /* Paper. Raised surfaces: card, tile, sheet, ticket. */
+  --c-ink: #12312c; /* Pine. All primary text on day. */
+  --c-ink-2: #56665f; /* Moss. Secondary text on day (5.1:1). */
+  --c-ink-3: #6f7d76; /* Tertiary and disabled text; large or non-essential only (3.6:1). */
+  --c-rule: #dccfb8; /* Hairline between rows on day. */
 
   /* ── colour: night ── */
-  --c-night: #0a1e3c; /* night background */
-  --c-night-2: #061226; /* the deeper night: backdrop edge, dark glass under labels */
-  --c-on-night: #ffffff; /* primary text on night (and white on any dark ground) */
-  --c-on-night-2: color-mix(in oklab, var(--c-on-night) 72%, transparent); /* secondary text on night */
-  --c-rule-night: color-mix(in oklab, var(--c-on-night) 14%, transparent); /* hairline on night */
+  --c-night: #12312c; /* Pine. Night background. */
+  --c-night-2: #1b3f39; /* Raised surface on night (rows, wells that lift). */
+  --c-on-night: #f4eada; /* Cream text on night. */
+  --c-on-night-2: #a9bdb3; /* Sage. Secondary text on night (7.1:1). */
+  --c-rule-night: #2c5049; /* Hairline on night. Solid, not alpha white. */
 
-  /* ── colour: brand and signals ── */
-  --c-accent: #b45309; /* the brand colour: CTA focus, the Line on day and on paper */
-  --c-accent-ink: #ffffff; /* text / icon on top of accent */
-  --c-line: #ffd77a; /* the Line on night */
-  --c-line-glow: #ffb84a; /* the Line's halo (the SVG stand-in when WebGL is off). Alpha 0 (e.g.
-     `transparent`) turns the halo and the WebGL bloom off entirely: the World skips them. */
-  --c-match: var(--c-line); /* "kept / fits": the twelve, scores */
-  --c-dim: var(--art-speck); /* "filtered out" on night: the sunk dust */
-  --c-success: #34b36b;
-  --c-danger: #b42318;
-  --c-focus: var(--c-accent); /* focus ring on day */
+  /* ── colour: brand and signals (day values; the night block swaps some) ── */
+  --c-accent: #12312c; /* Day: the CTA fill and the Line are pine. Night: lamp. */
+  --c-accent-ink: #f4eada; /* Text on the CTA. */
+  --c-line: #f6c945; /* The Line on night: lamp. */
+  --c-line-glow: transparent; /* No bloom. Alpha 0 turns the halo and the WebGL bloom off entirely. */
+  --c-match: #7a5600; /* Ochre. "Kept / fits" as TEXT on day (5.6:1). Night: lamp. */
+  --c-dim: #3c5650; /* Filtered-out on night: a solid pine tint, visible and quiet. */
+  --c-success: #1e6b45; /* 5.4:1 on cream. */
+  --c-danger: #a8301f; /* 5.7:1 on cream. */
+  --c-focus: #12312c; /* 2px ring, 2px offset. */
 
-  /* ── colour: extended (today's finer tints) ── */
-  --c-surface: #ffffff; /* pure white surface (inputs, pressed-paper buttons) */
-  --c-paper-sunk: #efece5; /* sunk surface on day */
-  --c-accent-night: var(--c-line); /* the accent on night ground: nav dot, focus, labels */
-  --c-focus-night: var(--c-accent-night); /* focus ring on night */
-  --c-accent-soft: #fdf0dc;
-  --c-accent-line: #f1cf9c;
-  --c-accent-mid: #d99a1c; /* the CTA's underline on white */
-  --c-ink-hover: #2a2723; /* ink button, hovered */
-  --c-shadow: var(--c-ink); /* shadow colour on day */
-  --c-success-soft: #dcf5e6;
-  --c-success-line: #7ee2a8;
-  --c-success-ink: #0f6a3a;
-  --c-success-ink-2: #0f4a2a;
-  --c-night-glass: #07142a; /* nav and menu glass on night */
-  --c-nav-night-solid: #09162c; /* nav during a wipe (opaque, samples nothing) */
-  --c-nav-day-solid: #f4f1eb;
-  --c-footer: var(--c-ink);
-  --c-on-footer: var(--c-paper);
-  --c-on-footer-2: #d9d3c9;
+  /* ── colour: extended (finer roles the components use; all derived from the palette above) ── */
+  --c-surface: var(--c-paper-2); /* inputs, pressed-paper buttons. No pure white in this theme. */
+  --c-paper-sunk: #ebdfcc; /* sunk surface on day: wells, chips at rest */
+  --c-accent-night: var(--c-line); /* the accent on night ground: nav dot, focus, CTA */
+  --c-focus-night: var(--c-accent-night);
+  --c-accent-soft: var(--art-glow); /* the highlight box behind pine text */
+  --c-accent-line: #b9b9a4; /* a quiet keyline around an accent-soft box */
+  --c-accent-mid: var(--c-ink); /* the CTA's underline: pine, never lamp on paper */
+  --c-ink-hover: #26443e; /* pine button, hovered */
+  --c-shadow: var(--art-lamp); /* "shadow" is the second ink, printed off register */
+  --c-success-soft: #dceadb;
+  --c-success-line: #8fb89c;
+  --c-success-ink: #17543a;
+  --c-success-ink-2: #17543a;
+  --c-night-glass: var(--c-night-2); /* nothing is glass: the nav on night is a solid raised surface */
+  --c-nav-night-solid: var(--c-night-2);
+  --c-nav-day-solid: var(--c-paper-2);
+  --c-footer: #0b211d; /* Deep. */
+  --c-on-footer: var(--c-on-night);
+  --c-on-footer-2: var(--c-on-night-2);
   /* board */
-  --c-board-col: #f7f5f0;
-  --c-ghost: #e4ddd0;
-  --c-ghost-line-hover: #d9d1c3;
+  --c-board-col: #f6eee0;
+  --c-ghost: var(--c-rule);
+  --c-ghost-line-hover: #c5baa5;
   /* faces (row, card, tile) on day */
-  --c-tile: #f1ece3;
-  --c-chip: #f4efe6;
-  --c-chip-line: #e8e1d4;
+  --c-tile: var(--c-paper-sunk);
+  --c-chip: var(--c-paper-sunk);
+  --c-chip-line: var(--c-rule);
   /* the prep sheet */
-  --c-sheet-rule: #e7e1d6;
-  --c-paper-lamp: #f8f3e8; /* lamp-lit paper: the tile at nightfall, the sheet's cover */
-  --c-score: #fbefd9;
-  --c-score-ink: #8a3d06;
-  --c-tag: #f4eee3;
-  --c-tag-ink: #5e4320;
-  --c-tag-hover: #fbe7c3;
-  --c-tag-hover-ink: #4a3214;
-  --c-vote-line: #e0d9cc;
-  --c-vote-off: #efeae1;
-  --c-vote-off-line: #cfc6b7;
-  --c-ring-track: #ece6da;
+  --c-sheet-rule: var(--c-rule);
+  --c-paper-lamp: var(--c-paper-2); /* lamp-lit paper is still paper: the light is in the scene, not on the object */
+  --c-score: var(--art-glow);
+  --c-score-ink: var(--art-ochre);
+  --c-tag: var(--c-paper-sunk);
+  --c-tag-ink: var(--c-ink-2);
+  --c-tag-hover: var(--art-glow);
+  --c-tag-hover-ink: var(--c-ink);
+  --c-vote-line: var(--c-rule);
+  --c-vote-off: var(--c-paper-sunk);
+  --c-vote-off-line: var(--c-rule);
+  --c-ring-track: var(--c-rule);
   /* the ticket */
-  --c-ticket-rule: #e4ddd0;
-  --c-ticket-top: #fffefa;
-  --c-ticket-bottom: #fdf8ee;
+  --c-ticket-rule: var(--c-rule);
+  --c-ticket-top: var(--c-paper-2);
+  --c-ticket-bottom: var(--c-paper-2);
 
-  /* ── art direction: the world and its light ──
-     Exact floats where the shader had them, so the default is pixel-identical.
-     Any CSS colour works here: hex, rgb(), color(), oklch(), color-mix(). */
-  --art-night-glow: #0f2a4f; /* the backdrop's lit centre */
-  --art-speck: #fff6e3; /* CSS-field specks (the no-WebGL field) */
-  --art-speck-warm: color(srgb 1 0.94 0.82); /* WebGL specks, unread */
-  --art-speck-cool: color(srgb 0.8 0.89 1); /* a few cool specks among them */
-  --art-ember: color(srgb 1 0.74 0.38); /* a speck just read: the afterglow */
-  --art-seat: color(srgb 0.96 0.66 0.16); /* a claimed seat, by day */
+  /* ── art direction: the Night Desk illustration system (brand/night-desk/art-list.md) ── */
+  --art-lamp: #f6c945; /* the second ink. Fills, the night Line, the night CTA. */
+  --art-glow: #fbe49a; /* highlight box behind pine text (source chips, icebreaker) */
+  --art-ochre: #7a5600; /* the only "yellow" allowed as text on day */
+  --art-deep: #0b211d; /* wells and inputs on night; text on lamp */
+  --art-stroke: 3px; /* every one-line drawing, and the Line at rest */
+  --art-stroke-fine: 1.8px; /* rings, ticks, arrows under 64px */
+  --art-stroke-color: var(--c-ink); /* day: pine. Night: lamp. */
+  --art-fill: var(--art-lamp); /* off-register fill colour, both chapters */
+  --art-fill-opacity: 1; /* day: solid lamp. Night: 0.2 (light, not paint). */
+  --art-register-x: 6px; /* fill offset from its keyline */
+  --art-register-y: 5px;
+  --art-wobble: url(#nd-hand); /* SVG filter ids, defined once in <RisoFilters /> */
+  --art-wobble-small: url(#nd-hand-s);
+  --art-ink: url(#nd-riso); /* grain-broken fill filter for SVG shapes */
+  --art-note-rotate: -2deg; /* margin notes sit slightly off axis; alternate the sign per note */
+  --art-draw-dur: 900ms; /* a timed draw-on for a 300px drawing; scale by sqrt(length) */
+
+  /* ── art direction: the world (what the WebGL field and light pass read; lib/theme.ts WORLD_COLORS) ──
+     The painted scenes carry the light now. These are flat palette colours: no warm blurred values
+     survive from the legacy theme. */
+  --art-night-glow: #1b3f39; /* the backdrop's lit centre: night-2 */
+  --art-speck: #f4eada; /* a firefly at rest (also the no-WebGL field) */
+  --art-speck-warm: #f4eada; /* WebGL: unread */
+  --art-speck-cool: #a9bdb3; /* a few sage ones among them */
+  --art-ember: #f6c945; /* a firefly just read */
+  --art-seat: #12312c; /* a claimed seat, by day: pine */
   --art-dust-day: var(--c-ink); /* specks by day */
-  --art-lamp-dust: color(srgb 1 0.8 0.56); /* dust the lamp catches (Act III) */
-  --art-lamp-deep: color(srgb 0.8 0.42 0.16); /* the lamp pool's edge, at night */
-  --art-lamp-heart: color(srgb 1 0.74 0.44); /* the lamp pool's heart, at night */
-  --art-lamp-day: color(srgb 1 0.68 0.32); /* the same light on the board (the column glow) */
-  --art-dawn-1: color(srgb 1 0.9 0.66); /* dawn, palest */
-  --art-dawn-2: color(srgb 1 0.77 0.42);
-  --art-dawn-3: color(srgb 0.95 0.6 0.28); /* dawn, deepest */
-  --art-wake-day: color(srgb 1 0.7 0.34); /* the Line's wake by day, and day rising under it */
-  --art-wake-night: color(srgb 1 0.56 0.17); /* the Line's wake at night */
-  --art-line-bloom: color(srgb 1 0.62 0.2); /* the Line's tight bloom (WebGL) */
-  --art-line-heat: color(srgb 1 0.9 0.66); /* the Line's white-hot core (WebGL, added) */
-  --art-line-core: #fffaf0; /* the Line's white-hot core (SVG) */
-  --art-flash-night: color(srgb 1 0.95 0.86); /* the exposure at a day-break, night side */
-  --art-flash-day: color(srgb 1 0.99 0.95); /* ... day side */
-  --art-lens: color(srgb 0.86 0.92 1); /* the reading lens' glass */
-  --art-highlight: #ffffff; /* specular white: paper sheen, highlights */
-  --art-card-glass-a: #284068; /* the card on night (glass) */
-  --art-card-glass-b: #102444;
-  --art-card-solid-a: #243b61; /* the card on night (opaque, while moving or wiping) */
-  --art-card-solid-b: #122646;
-  --art-board-dusk: #24345c; /* the board's tint as night comes */
-  --art-lamp: #ffba66; /* warm lamp light: glows and pools */
-  --art-lamp-haze: #ffd296;
-  --art-lamp-wash: #ffd696;
-  --art-lamp-edge: #ffeece;
-  --art-lamp-clear: #fff6e2;
-  --art-lamp-shade: #4a3214;
-  --art-sun-haze: #ffd6a0;
-  --art-col-warm: #ffb05c; /* the Interview column's warmth */
-  --art-col-warm-2: #ffc480;
-  --art-col-breath: #ffaa54;
-  --art-board-glow: #ffa840;
-  --art-fold-light: #fff6e4; /* the sheet's folds */
-  --art-fold-shade: #281a0a;
-  --art-sheen: #fffaeb;
-  --art-shade: #503818; /* warm shadow on paper */
-  --art-shade-foot: #5c401e;
-  --art-plate-shadow: #3c2810; /* the ticket's cast shadow */
-  --art-placeholder: #808080;
+  --art-lamp-dust: #fbe49a; /* dust the lamp catches */
+  --art-lamp-deep: #f6c945; /* the lamp pool's edge */
+  --art-lamp-heart: #fbe49a; /* the lamp pool's heart */
+  --art-lamp-day: #f6c945; /* the same light on the board */
+  --art-dawn-1: #fbf5ea; /* dawn, palest */
+  --art-dawn-2: #fbe49a;
+  --art-dawn-3: #f6c945; /* dawn, deepest */
+  --art-wake-day: #f6c945; /* the Line's wake by day */
+  --art-wake-night: #f6c945; /* the Line's wake at night */
+  --art-line-bloom: transparent; /* no bloom */
+  --art-line-heat: #f6c945; /* the Line's core is the Line: lamp, not white-hot */
+  --art-line-core: transparent; /* no white core on the SVG line */
+  --art-flash-night: #f4eada; /* the exposure at a day-break, night side */
+  --art-flash-day: #fbf5ea; /* ... day side */
+  --art-lens: #f4eada; /* the reading lens */
+  --art-highlight: var(--c-paper-2); /* the lightest thing on the page is paper, not white */
+  --art-card-glass-a: var(--c-night-2); /* the card on night: a solid raised surface, both stops */
+  --art-card-glass-b: var(--c-night-2);
+  --art-card-solid-a: var(--c-night-2);
+  --art-card-solid-b: var(--c-night-2);
+  --art-board-dusk: var(--c-night);
+  --art-lamp-haze: var(--art-glow);
+  --art-lamp-wash: var(--art-glow);
+  --art-lamp-edge: var(--art-glow);
+  --art-lamp-clear: var(--c-paper-2);
+  --art-lamp-shade: var(--c-ink);
+  --art-sun-haze: var(--art-glow);
+  --art-col-warm: var(--art-glow); /* the Interview column's warmth: a flat highlight */
+  --art-col-warm-2: var(--art-glow);
+  --art-col-breath: var(--art-lamp);
+  --art-board-glow: var(--art-lamp);
+  --art-fold-light: var(--c-paper-2); /* the sheet's folds */
+  --art-fold-shade: var(--c-ink);
+  --art-sheen: var(--c-paper-2);
+  --art-shade: var(--c-ink); /* shadow on paper is pine at low alpha, never brown */
+  --art-shade-foot: var(--c-ink);
+  --art-plate-shadow: var(--art-lamp); /* the ticket's print */
+  --art-placeholder: var(--c-ink-3);
 
   /* ── type ── */
-  --font-text: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-text);
-  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
-  --font-accent: "Instrument Serif", ui-serif, Georgia, serif; /* the "ready." word */
-  /* Mono labels. Nothing measures --font-mono as monospaced (JS measures proportional faces), so a
-     direction may alias a proportional face with tabular figures and switch the label styling off. */
-  --mono-case: uppercase; /* text-transform of mono labels */
-  --mono-tracking: 1; /* multiplier on each label's letter-spacing (0 = none) */
+  --font-display: "Young Serif", "Iowan Old Style", Georgia, serif;
+  --font-text: "Hanken Grotesk Variable", "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  /* Mono: not loaded. Anything that asks for mono gets Hanken with tabular lining figures. */
+  --font-mono: "Hanken Grotesk Variable", "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-accent: "Shantell Sans Variable", "Shantell Sans", "Comic Neue", cursive; /* margin notes only */
+  --mono-case: none; /* no uppercase labels */
+  --mono-tracking: 0; /* no letter-spaced labels */
   --mono-numeric: tabular-nums;
-  --fs-display-xl: clamp(72px, 10.5vw, 168px);
-  --fs-display-l: clamp(54px, 7.2vw, 118px);
-  --fs-counter: clamp(96px, 15vw, 240px);
-  --fs-sentence: clamp(40px, 5vw, 76px);
-  --fs-h2: clamp(34px, 4vw, 60px);
-  --fs-h3: 20px;
-  --fs-lead: 20px;
-  --fs-body: clamp(15px, 1.2vw, 17px);
-  --fs-small: 15px;
-  --fs-micro: 11px;
-  --tracking-display: -0.055em;
-  --tracking-counter: -0.06em;
-  --tracking-sentence: -0.045em;
-  --tracking-h2: -0.04em;
-  --tracking-lead: -0.01em;
-  --tracking-text: 0;
-  --tracking-small: -0.005em;
-  --tracking-micro: 0.08em;
-  --leading-display: 0.88;
-  --leading-display-l: 0.9;
-  --leading-counter: 0.85;
-  --leading-tight: 1.02;
+  --fs-display-xl: clamp(4rem, 9.4vw, 9.25rem); /* 64 → 148. Closing "Walk in ready.", counters. */
+  --fs-display-l: clamp(3rem, 6.1vw, 5.75rem); /* 48 → 92. Hero H1. */
+  --fs-counter: clamp(5rem, 12.5vw, 12.5rem); /* 80 → 200. The 2,340 → 12 counter. */
+  --fs-sentence: clamp(2.5rem, 4.4vw, 4.0625rem); /* h2 × 1.25: the hinge sentence */
+  --fs-h2: clamp(2rem, 3.5vw, 3.25rem); /* 32 → 52 */
+  --fs-h3: clamp(1.375rem, 1.9vw, 1.75rem); /* 22 → 28. Card and sheet titles. */
+  --fs-lead: clamp(1.125rem, 1.35vw, 1.25rem); /* 18 → 20 */
+  --fs-body: 1.0625rem; /* 17. Product UI body is --fs-small (C density). */
+  --fs-small: 0.875rem; /* 14. Product rows, chips, meta. */
+  --fs-micro: 0.78125rem; /* 12.5. Sources, captions. Never below this. */
+  --tracking-display: -0.028em;
+  --tracking-counter: -0.035em;
+  --tracking-sentence: -0.022em;
+  --tracking-h2: -0.02em;
+  --tracking-lead: 0em;
+  --tracking-text: 0em;
+  --tracking-small: 0em;
+  --tracking-micro: 0em;
+  --leading-display: 0.96;
+  --leading-display-l: 0.98;
+  --leading-counter: 0.9;
+  --leading-tight: 1.06;
   --leading-lead: 1.45;
-  --leading-text: 1.55;
-  --leading-small: 1.35;
-  --leading-micro: 1.2;
-  --weight-display: 500;
+  --leading-text: 1.5;
+  --leading-small: 1.4;
+  --leading-micro: 1.35;
+  --weight-display: 400; /* Young Serif has one weight. Never synthesise bold. */
   --weight-text: 400;
-  --weight-strong: 600;
-  --weight-label: 500; /* mono labels */
+  --weight-strong: 650;
+  --weight-label: 550; /* small labels: weight does the work that uppercase and tracking used to */
 
   /* ── shape ── */
-  --r-2xs: 2px; /* ticks, carets, underlines (1-4px radii scale from this) */
-  --r-xs: 6px;
-  --r-sm: 10px;
-  --r-md: 16px;
-  --r-lg: 24px;
-  --r-xl: 28px; /* panels */
-  --r-pill: 999px;
-  --r-round: 50%; /* circles */
-  /* The story faces at natural size (registered below, so JS reads them as px). The Actor morphs
+  --r-2xs: 2px; /* ticks, carets, underlines */
+  --r-xs: 5px; /* chips, the highlight behind text */
+  --r-sm: 8px; /* inputs inside the sheet, kbd */
+  --r-md: 14px; /* tile, callout */
+  --r-lg: 22px; /* card, sheet, ticket, panels */
+  --r-xl: 22px; /* panels: the same as --r-lg in this theme */
+  --r-pill: 999px; /* buttons, vote pills, form */
+  --r-round: 50%;
+  /* The story faces at natural size (registered above, so JS reads them as px). The Actor morphs
      between them in flight; lib/theme.ts faceRadius() reads these, components/story/faces.ts
      FACE_DEFAULTS mirrors them. */
-  --r-face-row: calc(var(--r-sm) * 6 / 5);
+  --r-face-row: var(--r-sm);
   --r-face-card: var(--r-lg);
-  --r-face-tile: calc(var(--r-md) * 7 / 8);
-  --r-face-sheet: calc(var(--r-lg) * 5 / 6);
+  --r-face-tile: var(--r-md);
+  --r-face-sheet: var(--r-lg);
   --r-face-ticket: var(--r-lg);
-  --hairline: 1px;
+  --hairline: 1.5px; /* slightly heavy on purpose: reads as drawn. Keylines on objects are 2px. */
 
-  /* ── depth ──
-     --shadow-1 rests, --shadow-2 is the same shadow fully lifted. A moving object blends between
-     them with --lift (0..1), which the Actor writes on the element itself; since a custom property
-     resolves where it is declared, that blend is spelled in the component from the parts below. */
-  --shadow-y: 40px;
-  --shadow-dy: 16px; /* added at full lift */
-  --shadow-blur: 80px;
-  --shadow-spread: -50px;
-  --shadow-a: 45%;
-  --shadow-da: 20%; /* added at full lift */
-  --shadow-1: 0 var(--shadow-y) var(--shadow-blur) var(--shadow-spread) color-mix(in oklab, var(--c-shadow) var(--shadow-a), transparent);
-  --shadow-2: 0 calc(var(--shadow-y) + var(--shadow-dy)) var(--shadow-blur) var(--shadow-spread)
-    color-mix(in oklab, var(--c-shadow) calc(var(--shadow-a) + var(--shadow-da)), transparent);
-  --shadow-inset: inset 0 0 0 1px color-mix(in oklab, var(--c-shadow) 7%, transparent); /* paper edge */
-  --shadow-contact: 0 1px 0 color-mix(in oklab, var(--c-shadow) 4%, transparent);
-  --shadow-nav: 0 10px 30px -18px color-mix(in oklab, var(--c-shadow) 35%, transparent);
-  --shadow-menu: 0 30px 60px -30px color-mix(in oklab, var(--c-shadow) 45%, transparent);
-  --shadow-hover: 0 12px 24px -16px color-mix(in oklab, var(--c-shadow) 35%, transparent);
-  --shadow-field: 0 12px 30px -20px color-mix(in oklab, var(--c-shadow) 40%, transparent);
-  /* lamp-lit paper at night: the tile at nightfall and the sheet */
-  --shadow-lamp: 0 30px 120px -30px color-mix(in oklab, var(--art-lamp) 38%, transparent),
-    0 0 60px -10px color-mix(in oklab, var(--art-lamp-haze) 12%, transparent);
-  /* the ticket's cast shadow (warm), blended by --lift like the others */
-  --shadow-plate-geo: 0 30px 46px -26px;
-  --shadow-plate-a: 34%;
-  --shadow-plate-da: 12%;
-  --shadow-plate-contact: 0 2px 4px color-mix(in oklab, var(--c-shadow) 6%, transparent);
+  /* ── depth = print. A flat lamp "second colour" printed off register. No blur, ever. ──
+     --shadow-1 rests, --shadow-2 is lifted or moving: the register slips further. The parts
+     (--shadow-y ... --shadow-da) exist for rules that still build a shadow from them; they
+     describe the same hard print, straight down. */
+  --shadow-y: 7px;
+  --shadow-dy: 7px; /* added at full lift */
+  --shadow-blur: 0px;
+  --shadow-spread: 0px;
+  --shadow-a: 100%;
+  --shadow-da: 0%;
+  --shadow-1: 6px 7px 0 0 var(--art-lamp); /* resting card, sheet, ticket */
+  --shadow-2: 12px 14px 0 0 var(--art-lamp); /* lifted or moving */
+  --shadow-inset: inset 0 0 0 var(--hairline) var(--c-rule); /* wells, inputs */
+  --shadow-contact: 0 0 0 0 transparent; /* nothing: print has no contact shadow */
+  --shadow-nav: 0 0 0 var(--hairline) var(--c-rule); /* the nav is a keylined strip of paper */
+  --shadow-menu: 6px 7px 0 0 var(--art-lamp);
+  --shadow-hover: 3px 4px 0 0 var(--art-lamp); /* a small register slip on hover */
+  --shadow-field: inset 0 0 0 var(--hairline) var(--c-rule);
+  --shadow-lamp: 12px 14px 0 0 var(--art-lamp); /* paper under the lamp at night: the same print, lifted */
+  --shadow-plate-geo: 6px 7px 0 0; /* the ticket's print */
+  --shadow-plate-a: 100%;
+  --shadow-plate-da: 0%;
+  --shadow-plate-contact: 0 0 0 0 transparent;
 
-  /* ── texture ──
-     The grain is baked at runtime (components/world/Grain.tsx writes --grain on <html>);
-     a direction can replace either texture with any CSS background, or none. */
-  --tex-paper: var(--grain, none);
-  --tex-night: var(--grain, none);
-  --tex-grain-alpha: 10; /* the baked grain's strongest alpha, of 255 */
+  /* ── texture: tiled SVG noise, pre-coloured alpha, so no blend mode is needed. 260px tile. ──
+     Use as:  background: var(--tex-paper), var(--c-paper);   (same for --tex-night / --c-night)
+     On backdrops only, never on a moving element. */
+  --tex-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .07 0 0 0 0 .19 0 0 0 0 .17 0 0 0 -1.3 .74'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --tex-night: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .96 0 0 0 0 .92 0 0 0 0 .85 0 0 0 -1.4 .78'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* The same noise as a mask, for "ink broken by grain" on flat lamp fills:
+       mask-image: var(--tex-ink-mask); mask-size: 260px; */
+  --tex-ink-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.4 2.0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --tex-grain-alpha: 0; /* the runtime-baked grain is off: the two tiles above are the grain */
 
   /* ── motion ── */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* entrances (expo out) */
   --ease-in: cubic-bezier(0.5, 0, 0.75, 0); /* exits (quad in) */
-  --ease-in-out: cubic-bezier(0.65, 0, 0.15, 1); /* travel */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.15, 1); /* travel between anchors */
   --ease-in-out-sym: cubic-bezier(0.65, 0, 0.35, 1);
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-spring: cubic-bezier(0.2, 1.5, 0.4, 1);
-  --ease-spring-soft: cubic-bezier(0.2, 1.4, 0.4, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1); /* landing overshoot: tile, stamp, tick */
+  --ease-spring-soft: cubic-bezier(0.3, 1.25, 0.6, 1);
+  --ease-draw: cubic-bezier(0.45, 0.05, 0.2, 1); /* pen: slow to start, quick through, slows into the end */
   --dur-1: 120ms;
   --dur-2: 240ms;
   --dur-3: 480ms;
+
+  /* The Line on this side: pine on day, lamp on night (the scopes below swap it). */
+  --line-here: var(--c-accent);
+}
+
+/* ── Night: only what actually swaps under the lamp. Night surfaces use --c-night / --c-on-night
+      directly, per the contract; this block is for roles that mean something else at night. ── */
+[data-chapter="night"],
+[data-skin="night"] {
+  --c-accent: #f6c945; /* the CTA fill on night is lamp */
+  --c-accent-ink: #0b211d; /* 10.7:1 on lamp */
+  --c-accent-mid: #f6c945;
+  --c-ink-hover: #fbe49a; /* the lamp button, hovered */
+  --c-match: #f6c945; /* kept fireflies, the score numeral on night (8.9:1) */
+  --c-success: #8fd9a8; /* 8.4:1 on pine */
+  --c-danger: #ffa08f; /* 7.1:1 on pine */
+  --c-focus: #f6c945;
+  --shadow-1: 6px 7px 0 0 rgba(246, 201, 69, 0.2); /* the print reads as lamp light on the wall behind */
+  --shadow-2: 12px 14px 0 0 rgba(246, 201, 69, 0.26);
+  --shadow-inset: inset 0 0 0 var(--hairline) var(--c-rule-night);
+  --shadow-nav: 0 0 0 var(--hairline) var(--c-rule-night);
+  --shadow-menu: 6px 7px 0 0 rgba(246, 201, 69, 0.2);
+  --shadow-hover: 3px 4px 0 0 rgba(246, 201, 69, 0.26);
+  --shadow-field: inset 0 0 0 var(--hairline) var(--c-rule-night);
+  --art-stroke-color: var(--art-lamp);
+  --art-fill-opacity: 0.2;
+  --line-here: var(--c-line);
+}
+
+/* ── Day, restated: day-skinned objects, and every paper object whatever its light (the tile, sheet
+      and ticket in both skins; the row and card by day). After the night block on purpose: a
+      lamp-lit sheet is data-skin="night" AND data-paper, and paper wins. ── */
+[data-skin="day"],
+[data-paper] {
+  --c-accent: #12312c;
+  --c-accent-ink: #f4eada;
+  --c-accent-mid: #12312c;
+  --c-ink-hover: #26443e;
+  --c-match: #7a5600;
+  --c-success: #1e6b45;
+  --c-danger: #a8301f;
+  --c-focus: #12312c;
+  --shadow-1: 6px 7px 0 0 var(--art-lamp);
+  --shadow-2: 12px 14px 0 0 var(--art-lamp);
+  --shadow-inset: inset 0 0 0 var(--hairline) var(--c-rule);
+  --shadow-nav: 0 0 0 var(--hairline) var(--c-rule);
+  --shadow-menu: 6px 7px 0 0 var(--art-lamp);
+  --shadow-hover: 3px 4px 0 0 var(--art-lamp);
+  --shadow-field: inset 0 0 0 var(--hairline) var(--c-rule);
+  --art-stroke-color: var(--c-ink);
+  --art-fill-opacity: 1;
+  --line-here: var(--c-accent);
 }

@@ -19,6 +19,7 @@ What it asserts
                every panel visible in order, the waitlist form present
   6. mobile    at 390x844 with touch the beats still run in order and nothing scrolls sideways
   7. native    with Lenis off (?lenis=0) beats, wipes and docking behave the same
+  8. scenes    state.scene names the right painted scene at each beat, and its changes follow the scroll
 
 It uses only public hooks: window.__story (the store), [data-*] attributes and computed styles.
 Later packages can extend it: add checks to the functions below or import `open_page`, `goto_beat`.
@@ -192,6 +193,45 @@ def check_wipes(page, shots):
                  .map((el) => ({ act: el.dataset.stage, clip: getComputedStyle(el).clipPath }))"""
         )
         check(len(info) == 1 and info[0]["clip"] == "none", f"{beat}: one unclipped stage outside wipes, got {info}")
+
+
+def check_scenes(page):
+    """state.scene: which painted scene owns the screen, and how it gives way (SCENE_TRACK in lib/story.ts)."""
+    print("[scenes]")
+    sc = lambda: page.evaluate("() => ({ ...window.__story.get().scene })")
+    for beat, at, want in [
+        ("hero", 0.05, ("desk-night", None, None)),
+        ("hero", 0.5, ("desk-night", "meadow-night", "push")),
+        ("hero", 0.97, ("meadow-night", None, None)),
+        ("pass1", 0.5, ("meadow-night", None, None)),
+        ("reason", 0.5, ("meadow-night", None, None)),
+        ("daybreak", 0.6, ("meadow-night", "paper", "wipe")),
+        ("applied", 0.5, ("paper", None, None)),
+        ("nightfall", 0.6, ("paper", "desk-lamp", "wipe")),
+        ("q2", 0.5, ("desk-lamp", None, None)),
+        ("dawn", 0.08, ("desk-lamp", "desk-bluehour", "fade")),
+        ("dawn", 0.6, ("desk-bluehour", "desk-dawn", "wipe")),
+        ("seat", 0.5, ("desk-dawn", None, None)),
+    ]:
+        goto_beat(page, beat, at)
+        s = sc()
+        got = (s["id"], s["to"], s["kind"])
+        check(got == want, f"scene at {beat}@{at}: expected {want}, got {got}")
+        check(0 <= s["mix"] <= 1 and 0 <= s["progress"] <= 1, f"scene at {beat}@{at}: mix and progress are 0..1 ({s['mix']}, {s['progress']})")
+        if want[1]:
+            check(0 < s["mix"] < 1, f"scene at {beat}@{at}: the change is under way (mix {s['mix']:.2f})")
+    # The push is scrubbed: further down the hero means further through the window.
+    goto_beat(page, "hero", 0.3)
+    a = sc()["mix"]
+    goto_beat(page, "hero", 0.7)
+    b = sc()["mix"]
+    check(0 < a < b < 1, f"scene: the push through the window follows the scroll ({a:.2f} then {b:.2f})")
+    # A scene never sits still: its progress moves with every beat it spans.
+    goto_beat(page, "pass1", 0.2)
+    a = sc()["progress"]
+    goto_beat(page, "ranked", 0.5)
+    b = sc()["progress"]
+    check(a < b, f"scene: progress advances across the meadow ({a:.2f} then {b:.2f})")
 
 
 def check_actor(page, shots):
@@ -375,7 +415,7 @@ def main():
         check(s["beat"] == "hero" and s["chapter"] == "night", f"desktop: starts on hero at night, got {s['beat']} {s['chapter']}")
         total = page.evaluate("() => document.documentElement.scrollHeight / innerHeight")
         print(f"document height: {total:.2f} viewports")
-        check(11.5 < total < 12.3, f"desktop: the document is about 11.9 viewports tall, got {total:.2f}")
+        check(11.5 < total < 12.3, f"desktop: the document is about 12.2 viewports tall, got {total:.2f}")
         ends = page.evaluate("() => [...document.querySelectorAll('.story-act')].map((e) => Math.round(e.getBoundingClientRect().bottom + scrollY))")
         foot = page.evaluate("() => Math.round(document.querySelector('footer').getBoundingClientRect().top + scrollY)")
         check(max(ends) == ends[-1] and abs(foot - ends[-1]) <= 1, f"desktop: no act section ends below the last one, and the footer follows it directly (ends {ends}, footer {foot})")
@@ -383,6 +423,7 @@ def main():
             page.screenshot(path=str(args.shots / "hero.png"))
         check_beats(page, "desktop")
         check_wipes(page, args.shots)
+        check_scenes(page)
         check_actor(page, args.shots)
         check_fast(page, args.shots)
         check(not errors, f"desktop: no console errors: {errors[:3]}")

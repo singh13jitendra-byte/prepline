@@ -18,7 +18,7 @@ import { anchorElement, registeredAnchors } from "@/lib/anchors";
 import { story } from "@/lib/story";
 
 const DEBUG_CSS = `
-        .story-debug{position:fixed;inset:0;z-index:var(--z-debug);pointer-events:none;font:11px/1.45 var(--font-mono),monospace} /* token-ok: debug overlay (?debug only), not part of any theme */
+        .story-debug{position:fixed;inset:0;z-index:var(--z-debug);pointer-events:none;font:11px/1.45 ui-monospace,monospace} /* token-ok: debug overlay (?debug only), not part of any theme */
         .story-debug pre{position:absolute;left:12px;bottom:12px;margin:0;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.82);color:#d7ffd9;white-space:pre} /* token-ok: debug overlay (?debug only), not part of any theme */
         .story-debug-line{position:absolute;top:0;left:0;height:2px;background:#ff2bd6} /* token-ok: debug overlay (?debug only), not part of any theme */
         .story-debug-split{position:absolute;top:0;left:0;width:100%;border-top:1px dashed #19e3ff} /* token-ok: debug overlay (?debug only), not part of any theme */
@@ -62,6 +62,7 @@ export function Debug() {
         `beat     ${s.beat}  ${s.beatProgress.toFixed(3)}\n` +
         `act      ${s.act}  ${s.actProgress.toFixed(3)}\n` +
         `pos      ${s.pos.toFixed(1)}  page ${s.pageProgress.toFixed(3)}  dir ${s.direction}\n` +
+        `scene    ${s.scene.id}${s.scene.to ? ` → ${s.scene.to} (${s.scene.kind} ${s.scene.mix.toFixed(2)})` : ""}  ${s.scene.progress.toFixed(2)}\n` +
         `chapter  ${s.chapter}  dayTop ${s.dayTop.toFixed(0)}  side ${s.line.daySide}\n` +
         `line     y ${s.line.y.toFixed(0)}  x ${s.line.x0.toFixed(0)}..${s.line.x1.toFixed(0)}  w ${s.line.weight.toFixed(1)}\n` +
         `label    ${s.line.label || "(none)"}\n` +

@@ -22,6 +22,7 @@
  *
  *   BEATS, ACTS          the scroll budget (storyboard 2.2). Single source of truth for section heights.
  *   LINE_TRACK           per beat: where the Line goes (storyboard section 2, "Line label" and line moves)
+ *   SCENE_TRACK          per beat: which painted scene is on screen, and how it gives way to the next
  *   ACTOR_TRACK          per beat: where the Actor goes, which face it wears, how it is driven
  *
  * Usage:
@@ -37,6 +38,27 @@
  *
  *   // nav link:
  *   <a href="#join" onClick={(e) => { e.preventDefault(); story.scrollToAct("seat"); }}>Request a seat</a>
+ *
+ * SCENES — the painted world (round 4). `state.scene` says which painting owns the screen and how
+ * far it has given way to the next one:
+ *
+ *   { id, to, kind, mix, progress }
+ *   id        "desk-night" | "meadow-night" | "paper" | "desk-lamp" | "desk-bluehour" | "desk-dawn"
+ *   to, kind  the scene arriving and how ("push" through the window, "wipe" by the Line, "fade"),
+ *             or null while the scene simply holds
+ *   mix       0..1 through that change, linear in scroll. For a "wipe" the split itself is at
+ *             state.dayTop (day below the Line): mix only says how far the sweep has run.
+ *   progress  0..1 across the scene's whole time on screen: drive parallax and drift with it.
+ *
+ *   story.subscribe((s) => {
+ *     const { id, to, kind, mix, progress } = s.scene;
+ *     if (kind === "push") room.style.transform = `scale(${1 + mix * 5})`;   // through the window
+ *     meadow.style.transform = `translate3d(0, ${-progress * 40}px, 0)`;     // never still
+ *   });
+ *
+ * The table is SCENE_TRACK (data, like LINE_TRACK); sceneOf(beat) gives the scene a beat opens on.
+ * The hero's push runs over hero progress 0.16 to 0.92. During it the Line holds full width at
+ * the underline's height (the horizon) and rises to its reading position from 0.5.
  *
  * BREATH — no dead scroll. A timed performance ends after about a second; the
  * rest of the beat must still answer the wheel. `story.breath` gives every beat
@@ -95,6 +117,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 import { anchorElement, anchorRect, measureAnchorFrame, type AnchorId } from "./anchors";
+import { story as copy } from "./content";
 import { gsap } from "./gsap";
 
 /* ────────────────────────────────────────────────────────────── types ── */
@@ -165,6 +188,20 @@ export type StoryState = {
     /** True once the current move has finished and the line sits on an anchor (docked as a rule). */
     rest: boolean;
   };
+  /**
+   * The painted scene on screen (see SCENE_TRACK). `id` is the scene that owns the screen; while it
+   * is giving way, `to` is the scene arriving, `kind` says how, and `mix` runs 0..1 (linear in
+   * scroll). Outside a change `to` and `kind` are null and `mix` is 0.
+   * `progress` runs 0..1 across the whole time `id` is on screen, from the end of its arrival to
+   * the end of its departure: use it for slow parallax and drift, so a scene never sits still.
+   */
+  scene: {
+    id: SceneId;
+    to: SceneId | null;
+    kind: SceneKind | null;
+    mix: number;
+    progress: number;
+  };
   /** Written by the Actor engine each frame. Viewport px. */
   actor: {
     present: boolean;
@@ -191,12 +228,13 @@ export type StoryState = {
 /**
  * The scroll budget. Order is scroll order. Storyboard 2.2, re-cut after review 1
  * so no beat outlasts what is on screen: every timed beat is now about one
- * performance plus one breath long. Pins: read 375, board 210, prep 230, seat 60.
+ * performance plus one breath long. Pins: read 405, board 210, prep 230, seat 60.
  * With the three wipes (190), the seat stage scrolling away (100) and the footer
- * (its own height, about 25vh) the document is about 11.9 viewports (was 14.3).
+ * (its own height) the document is about 12.2 viewports, before the founder note.
  */
 export const BEATS: readonly Beat[] = [
-  { id: "hero", act: "read", vh: 55, kind: "beat" },
+  // 85 since round 4: about 14 to stretch the underline, then 70 for the push through the window.
+  { id: "hero", act: "read", vh: 85, kind: "beat" },
   { id: "pass1", act: "read", vh: 100, kind: "beat" },
   { id: "pass2", act: "read", vh: 90, kind: "beat" },
   { id: "ranked", act: "read", vh: 60, kind: "beat" },
@@ -414,9 +452,15 @@ export const weekX = (day: number, hours: number) => (day * 24 + hours) / 120;
  *              into the hinge. Nightfall is then, truly, the night before.
  */
 export const BOARD_DAY_X = { mon: weekX(0, 18.5), tue: weekX(1, 17), wed: weekX(2, 16 + 5 / 60), thu: weekX(3, 11 + 40 / 60), fri: 1 } as const;
-const DAYS = (to: number, or: AnchorId): LineTarget => ({ anchor: "board-days", x: [0, to], weight: 2, or });
+const DAYS = (to: number, or: AnchorId): LineTarget => ({ anchor: "board-days", x: [0, to], weight: LINE_W, or });
 
-const FULL_W = 2;
+/**
+ * Line weights, in px. The Line is one hand-drawn stroke: 3 at rest and while it travels
+ * (--art-stroke), 1.5 when it docks as a rule under a header or a finished question. Never 1.
+ */
+const LINE_W = 3;
+const RULE_W = 1.5;
+const FULL_W = LINE_W;
 /** Where the `ranked` stub starts, as a fraction of the viewport width (right of the list header text). */
 const RANKED_STUB = 0.82;
 const A = (anchor: AnchorId, extra: Partial<Extract<LineTarget, { anchor: AnchorId }>> = {}): LineTarget => ({ anchor, ...extra });
@@ -425,51 +469,118 @@ const Y = (y: number): LineTarget => ({ y, weight: FULL_W });
 /** Scrubbed line moves per beat, transcribed from storyboard section 2. Tuned at integration against real anchors. */
 export const LINE_TRACK: Record<BeatId, readonly LineMove[]> = {
   hero: [
-    // First 12vh of 55: the underline stretches to full width in place.
-    { range: [0, 0.22], from: A("hero-underline", { edge: "center" }), to: A("hero-underline", { edge: "center", span: "full", weight: FULL_W }), label: "READING" },
-    { range: [0.22, 1], from: A("hero-underline", { edge: "center", span: "full", weight: FULL_W }), to: Y(0.14), label: "2,340 DESIGN ROLES" },
+    // The Line is the underline of "ready.". In the first 14 units it stretches to full width in
+    // place. It then holds as a horizon while the room pushes past and the window opens
+    // (SCENE_TRACK.hero), and rises to its reading position as the meadow arrives.
+    { range: [0, 0.16], from: A("hero-underline", { edge: "center" }), to: A("hero-underline", { edge: "center", span: "full", weight: FULL_W }), label: copy.hero.lineLabels[0] },
+    { range: [0.5, 1], from: A("hero-underline", { edge: "center", span: "full", weight: FULL_W }), to: Y(0.14), label: copy.hero.lineLabels[1] },
   ],
-  pass1: [{ range: [0, 1], from: Y(0.14), to: Y(0.9), label: "PASS 1 · LEVEL AND CITY" }],
-  pass2: [{ range: [0, 1], from: Y(0.9), to: Y(0.14), label: "PASS 2 · PORTFOLIO FIT" }],
+  pass1: [{ range: [0, 1], from: Y(0.14), to: Y(0.9), label: copy.pass1.lineLabel }],
+  pass2: [{ range: [0, 1], from: Y(0.9), to: Y(0.14), label: copy.pass2.lineLabel }],
   // Docks from below. It first pulls in to a short stub at the right end of the list, clear of the
   // "12 fit your portfolio" header, drops just under the rule, then rises onto it while drawing leftward.
   ranked: [
-    { range: [0.04, 0.22], from: Y(0.14), to: { y: 0.14, x: [RANKED_STUB, 1], weight: FULL_W }, label: "RANKED" },
-    { range: [0.22, 0.4], from: { y: 0.14, x: [RANKED_STUB, 1], weight: FULL_W }, to: A("ranked-rule", { x: [0.86, 1], dy: 16, weight: 1.5 }), label: "RANKED" },
-    { range: [0.4, 0.62], from: A("ranked-rule", { x: [0.86, 1], dy: 16, weight: 1.5 }), to: A("ranked-rule", { weight: 1 }), label: "RANKED", quiet: true },
+    { range: [0.04, 0.22], from: Y(0.14), to: { y: 0.14, x: [RANKED_STUB, 1], weight: FULL_W }, label: copy.ranked.lineLabel },
+    { range: [0.22, 0.4], from: { y: 0.14, x: [RANKED_STUB, 1], weight: FULL_W }, to: A("ranked-rule", { x: [0.86, 1], dy: 16, weight: RULE_W }), label: copy.ranked.lineLabel },
+    { range: [0.4, 0.62], from: A("ranked-rule", { x: [0.86, 1], dy: 16, weight: RULE_W }), to: A("ranked-rule", { weight: RULE_W }), label: copy.ranked.lineLabel, quiet: true },
   ],
-  // No label: the card already says 9/10 twice.
-  reason: [{ range: [0, 0.35], from: A("ranked-rule", { weight: 1 }), to: A("card-meter", { edge: "center" }), label: "", quiet: true }],
+  // The Line becomes the fill of the card's 0-to-10 rule and stops at 9. No label: the card says it.
+  reason: [{ range: [0, 0.35], from: A("ranked-rule", { weight: RULE_W }), to: A("card-meter", { edge: "center" }), label: "", quiet: true }],
   daybreak: [
-    { range: [0, 0.2], from: A("card-meter", { edge: "center" }), to: Y(1), label: "SAVED TO YOUR BOARD" },
-    { range: [0.2, 1], from: Y(1), to: Y(0), label: "SAVED TO YOUR BOARD", sweep: true },
+    { range: [0, 0.2], from: A("card-meter", { edge: "center" }), to: Y(1), label: copy.daybreak.lineLabel },
+    { range: [0.2, 1], from: Y(1), to: Y(0), label: copy.daybreak.lineLabel, sweep: true },
   ],
   // The board is read along time: the line rides the Mon→Fri strip and reaches the day of each step.
-  saved: [{ range: [0, 0.6], from: Y(0), to: DAYS(BOARD_DAY_X.mon, "col-saved"), label: "SAVED" }],
-  applied: [{ range: [0.05, 0.6], from: DAYS(BOARD_DAY_X.mon, "col-saved"), to: DAYS(BOARD_DAY_X.tue, "col-applied"), label: "APPLIED BY YOU" }],
-  interview: [{ range: [0.05, 0.6], from: DAYS(BOARD_DAY_X.tue, "col-applied"), to: DAYS(BOARD_DAY_X.thu, "col-interview"), label: "INTERVIEW BOOKED" }],
-  hinge: [{ range: [0, 0.25], from: DAYS(BOARD_DAY_X.thu, "col-interview"), to: A("hinge-text", { weight: 2 }), label: "", quiet: true }],
+  saved: [{ range: [0, 0.6], from: Y(0), to: DAYS(BOARD_DAY_X.mon, "col-saved"), label: copy.saved.lineLabel }],
+  applied: [{ range: [0.05, 0.6], from: DAYS(BOARD_DAY_X.mon, "col-saved"), to: DAYS(BOARD_DAY_X.tue, "col-applied"), label: copy.applied.lineLabel }],
+  interview: [{ range: [0.05, 0.6], from: DAYS(BOARD_DAY_X.tue, "col-applied"), to: DAYS(BOARD_DAY_X.thu, "col-interview"), label: copy.interview.lineLabel }],
+  hinge: [{ range: [0, 0.25], from: DAYS(BOARD_DAY_X.thu, "col-interview"), to: A("hinge-text", { weight: LINE_W }), label: "", quiet: true }],
   nightfall: [
-    { range: [0, 0.15], from: A("hinge-text", { weight: 2 }), to: Y(0), label: "THE NIGHT BEFORE" },
-    { range: [0.15, 1], from: Y(0), to: Y(1), label: "THE NIGHT BEFORE", sweep: true },
+    { range: [0, 0.15], from: A("hinge-text", { weight: LINE_W }), to: Y(0), label: copy.nightfall.lineLabel },
+    { range: [0.15, 1], from: Y(0), to: Y(1), label: copy.nightfall.lineLabel, sweep: true },
   ],
   // The line first pulls in to the sheet's width along the bottom edge, then rises inside the sheet's
   // column to the fold: it never pokes out of the sheet's side into the night.
   unfold: [
-    { range: [0, 0.3], from: Y(1), to: A("sheet-folded", { atY: 1, weight: FULL_W }), label: "WRITING YOUR PREP SHEET" },
-    { range: [0.3, 0.75], from: A("sheet-folded", { atY: 1, weight: FULL_W }), to: A("sheet-folded", { weight: 1 }), label: "WRITING YOUR PREP SHEET", quiet: true },
+    { range: [0, 0.3], from: Y(1), to: A("sheet-folded", { atY: 1, weight: FULL_W }), label: copy.unfold.lineLabel },
+    { range: [0.3, 0.75], from: A("sheet-folded", { atY: 1, weight: FULL_W }), to: A("sheet-folded", { weight: RULE_W }), label: copy.unfold.lineLabel, quiet: true },
   ],
-  q1: [{ range: [0, 0.2], from: A("sheet-folded", { weight: 1 }), to: A("sheet-q1"), label: "FROM THE JD", quiet: true }],
-  q2: [{ range: [0, 0.2], from: A("sheet-q1"), to: A("sheet-q2"), label: "FROM YOUR CASE STUDY", quiet: true }],
-  q3: [{ range: [0, 0.2], from: A("sheet-q2"), to: A("sheet-q3"), label: "ASKED HERE BEFORE", quiet: true }],
-  votes: [{ range: [0, 0.4], from: A("sheet-q3"), to: A("sheet-foot"), label: "THE DAY AFTER", quiet: true }],
+  q1: [{ range: [0, 0.2], from: A("sheet-folded", { weight: RULE_W }), to: A("sheet-q1"), label: copy.q1.lineLabel, quiet: true }],
+  q2: [{ range: [0, 0.2], from: A("sheet-q1"), to: A("sheet-q2"), label: copy.q2.lineLabel, quiet: true }],
+  q3: [{ range: [0, 0.2], from: A("sheet-q2"), to: A("sheet-q3"), label: copy.q3.lineLabel, quiet: true }],
+  votes: [{ range: [0, 0.4], from: A("sheet-q3"), to: A("sheet-foot"), label: copy.votes.lineLabel, quiet: true }],
   dawn: [
-    { range: [0, 0.15], from: A("sheet-foot"), to: Y(1), label: "READY" },
-    { range: [0.15, 1], from: Y(1), to: Y(0), label: "READY", sweep: true },
+    { range: [0, 0.15], from: A("sheet-foot"), to: Y(1), label: copy.dawn.lineLabel },
+    { range: [0.15, 1], from: Y(1), to: Y(0), label: copy.dawn.lineLabel, sweep: true },
   ],
   seat: [{ range: [0, 0.3], from: Y(0), to: A("ready-underline", { edge: "center" }), label: "", quiet: true }],
   footer: [{ range: [0, 1], from: A("ready-underline", { edge: "center" }), to: A("ready-underline", { edge: "center" }), label: "", quiet: true }],
 };
+
+/* ───────────────────────────────────────────────────────────── scenes ── */
+
+/**
+ * The painted scenes (research/reskin-brief.md). One room and one meadow, at four times of day,
+ * plus the plain paper of the day chapters.
+ *   desk-night     11:25 PM. The desk by the open window, lamp on, the laptop showing matches.
+ *   meadow-night   Outside: the firefly meadow. The 2,340 roles are the fireflies.
+ *   paper          Day: cream paper with grain. The board lives here.
+ *   desk-lamp      The same desk, framed close under the lamp. The sheet unfolds here.
+ *   desk-bluehour  The same room just before dawn, lamp still on.
+ *   desk-dawn      The same room in golden morning light. The seat ticket lives here.
+ */
+export type SceneId = "desk-night" | "meadow-night" | "paper" | "desk-lamp" | "desk-bluehour" | "desk-dawn";
+
+/**
+ * How one scene gives way to the next.
+ *   push   the camera pushes through the window (hero): scrubbed 0..1, the World owns the look
+ *   wipe   the Line performs it: the split is at state.dayTop, and `mix` is how far the sweep has run
+ *   fade   a plain crossfade of two paintings of the same room
+ */
+export type SceneKind = "push" | "wipe" | "fade";
+
+export type SceneMove = {
+  /** Sub-range of beat progress this change is scrubbed over (linear). */
+  range: [number, number];
+  to: SceneId;
+  kind: SceneKind;
+};
+
+/**
+ * The scene on screen per beat, and the changes inside a beat. A beat's `scene` is what it opens
+ * on; each move hands over to its `to`, in order. Wipe ranges match the sweep in LINE_TRACK.
+ */
+export const SCENE_TRACK: Record<BeatId, { scene: SceneId; moves?: readonly SceneMove[] }> = {
+  // Signature move 1: through the window. The room scales past and we arrive in the meadow.
+  hero: { scene: "desk-night", moves: [{ range: [0.16, 0.92], to: "meadow-night", kind: "push" }] },
+  pass1: { scene: "meadow-night" },
+  pass2: { scene: "meadow-night" },
+  ranked: { scene: "meadow-night" },
+  reason: { scene: "meadow-night" },
+  daybreak: { scene: "meadow-night", moves: [{ range: [0.2, 1], to: "paper", kind: "wipe" }] },
+  saved: { scene: "paper" },
+  applied: { scene: "paper" },
+  interview: { scene: "paper" },
+  hinge: { scene: "paper" },
+  nightfall: { scene: "paper", moves: [{ range: [0.15, 1], to: "desk-lamp", kind: "wipe" }] },
+  unfold: { scene: "desk-lamp" },
+  q1: { scene: "desk-lamp" },
+  q2: { scene: "desk-lamp" },
+  q3: { scene: "desk-lamp" },
+  votes: { scene: "desk-lamp" },
+  // Signature move 2: sunrise in the room. The lamp-lit night cools to blue hour while the Line
+  // drops to the floor, then the Line rises and golden morning comes up under it.
+  dawn: {
+    scene: "desk-lamp",
+    moves: [
+      { range: [0, 0.15], to: "desk-bluehour", kind: "fade" },
+      { range: [0.15, 1], to: "desk-dawn", kind: "wipe" },
+    ],
+  },
+  seat: { scene: "desk-dawn" },
+  footer: { scene: "desk-dawn" },
+};
+
 
 /** A value that either follows the Actor's travel or plays on its own clock. */
 export type ActorChannel =
@@ -631,7 +742,8 @@ const state: StoryState = {
   velocity: 0,
   chapter: "night",
   dayTop: 100000,
-  line: { x0: 0, x1: 0, y: 0, daySide: "none", label: "READING", weight: FULL_W, sweep: false, rest: false },
+  line: { x0: 0, x1: 0, y: 0, daySide: "none", label: copy.hero.lineLabels[0], weight: FULL_W, sweep: false, rest: false },
+  scene: { id: "desk-night", to: null, kind: null, mix: 0, progress: 0 },
   actor: { present: false, docked: false, face: null, x: 0, y: 0, w: 0, h: 0, travel: 0, fold: 1, flip: 0 },
   pointer: { x: 0, y: 0, inside: false, fine: false },
   viewport: { w: 0, h: 0 },
@@ -694,6 +806,57 @@ function computePos(): number {
     if (feeds[a.id].live && feeds[a.id].p >= 1) return a.start + a.len;
   }
   return 0;
+}
+
+/** One stretch of the story where a scene owns the screen, in story units. */
+type SceneRun = { id: SceneId; start: number; end: number };
+/** Every scene change in scroll order, with absolute positions. */
+const SCENE_MOVES: { at: number; until: number; from: SceneId; to: SceneId; kind: SceneKind }[] = [];
+const SCENE_RUNS: SceneRun[] = [];
+{
+  let current: SceneId = SCENE_TRACK[BEATS[0].id].scene;
+  let runStart = 0;
+  BEATS.forEach((b) => {
+    const base = BEAT_START[b.id];
+    (SCENE_TRACK[b.id].moves ?? []).forEach((m) => {
+      const at = base + m.range[0] * b.vh;
+      const until = base + m.range[1] * b.vh;
+      SCENE_MOVES.push({ at, until, from: current, to: m.to, kind: m.kind });
+      // A scene's run ends when it has fully given way.
+      SCENE_RUNS.push({ id: current, start: runStart, end: until });
+      current = m.to;
+      runStart = until;
+    });
+  });
+  SCENE_RUNS.push({ id: current, start: runStart, end: TOTAL });
+}
+
+function computeScene(pos: number) {
+  const sc = state.scene;
+  let run = 0;
+  while (run < SCENE_RUNS.length - 1 && pos >= SCENE_RUNS[run].end) run++;
+  const r = SCENE_RUNS[run];
+  const move = SCENE_MOVES[run];
+  let to: SceneId | null = null;
+  let kind: SceneKind | null = null;
+  let mix = 0;
+  if (move && pos > move.at) {
+    to = move.to;
+    kind = move.kind;
+    mix = clamp01((pos - move.at) / (move.until - move.at || 1));
+  }
+  const progress = clamp01((pos - r.start) / (r.end - r.start || 1));
+  if (sc.id !== r.id || sc.to !== to || sc.mix !== mix || sc.progress !== progress) dirty = true;
+  sc.id = r.id;
+  sc.to = to;
+  sc.kind = kind;
+  sc.mix = mix;
+  sc.progress = progress;
+}
+
+/** The scene a beat opens on. */
+export function sceneOf(beat: BeatId): SceneId {
+  return SCENE_TRACK[beat].scene;
 }
 
 function resolveTarget(t: LineTarget, out: { x0: number; x1: number; y: number; w: number; ok: boolean }) {
@@ -855,6 +1018,7 @@ function compute() {
   const act = ACT_BY_ID[beat.act];
   state.actProgress = clamp01((pos - act.firstBeatAt) / (act.pin + act.wipeOut || 1));
   state.pageProgress = clamp01(pos / TOTAL);
+  computeScene(pos);
 
   const move = currentMove(LINE_TRACK[beat.id], state.beatProgress);
   const actorMove = ACTOR_TRACK[beat.id];

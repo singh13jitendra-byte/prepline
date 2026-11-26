@@ -89,11 +89,11 @@ export type RegisteredFace = { id: FaceId; Component: ComponentType<FaceProps>; 
 
 /** Natural sizes from the storyboard (row 440x44, card 520x320, tile 154x92, sheet 560x720, ticket 520x300). */
 export const FACE_DEFAULTS: Record<FaceId, FaceMeta> = {
-  row: { width: 440, height: 44, radius: 12, chrome: true, clip: true },
-  card: { width: 520, height: 320, radius: 24, chrome: true, clip: true },
+  row: { width: 440, height: 44, radius: 8, chrome: true, clip: true },
+  card: { width: 520, height: 320, radius: 22, chrome: true, clip: true },
   tile: { width: 154, height: 92, radius: 14, chrome: true, clip: true },
-  sheet: { width: 560, height: 720, radius: 20, chrome: false, clip: false },
-  ticket: { width: 520, height: 300, radius: 24, chrome: true, clip: true },
+  sheet: { width: 560, height: 720, radius: 22, chrome: false, clip: false },
+  ticket: { width: 520, height: 300, radius: 22, chrome: true, clip: true },
 };
 
 export const FACE_ORDER: readonly FaceId[] = ["row", "card", "tile", "sheet", "ticket"];

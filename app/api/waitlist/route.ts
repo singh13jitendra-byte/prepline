@@ -3,6 +3,14 @@ import { getSupabase } from "@/lib/supabase";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * POST { email } → one of
+ *   200 { ok: true }                    stored
+ *   200 { ok: true, duplicate: true }   already on the list (nothing written)
+ *   200 { ok: true, stored: false }     Supabase is not configured (local dev): nothing written
+ *   400 { error }                       not an email
+ *   500 { error }                       the insert failed
+ */
 export async function POST(req: Request) {
   let email = "";
   try {
@@ -24,8 +32,13 @@ export async function POST(req: Request) {
 
   const { error } = await supabase.from("waitlist").insert({ email, source: "landing" });
 
-  // 23505 = unique violation: they're already on the list, which is fine.
-  if (error && error.code !== "23505") {
+  // 23505 = unique violation: they are already on the list. Still a success, and the form says so
+  // ("You're already on the list") instead of pretending it was a first request.
+  // Note: this tells whoever submits an address that it is already signed up.
+  if (error?.code === "23505") {
+    return NextResponse.json({ ok: true, duplicate: true });
+  }
+  if (error) {
     console.error("[waitlist] insert failed:", error.code, error.message);
     return NextResponse.json({ error: "Could not save" }, { status: 500 });
   }

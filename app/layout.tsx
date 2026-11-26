@@ -1,19 +1,23 @@
 import type { Metadata, Viewport } from "next";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
 import { Analytics } from "@vercel/analytics/next";
-import "@fontsource/instrument-serif/latin-400-italic.css";
+// Night Desk faces (all SIL OFL 1.1). Young Serif: display, one weight. Hanken Grotesk: text, UI and
+// figures (variable, upright and italic). Shantell Sans: margin notes only; first used well below
+// the fold, so it loads with font-display: swap and is never preloaded.
+import "@fontsource/young-serif/latin-400.css";
+import "@fontsource-variable/hanken-grotesk/wght.css";
+import "@fontsource-variable/hanken-grotesk/wght-italic.css";
+import "@fontsource-variable/shantell-sans/wght.css";
 import "lenis/dist/lenis.css";
 // globals.css imports app/theme.css first: the token layer is in place before any rule uses it.
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { bootScript } from "@/lib/intro";
+import { storyCopy } from "@/lib/content";
 import { theme } from "@/lib/theme";
 
 export const metadata: Metadata = {
-  title: "Prepline: find the right roles, walk in ready",
-  description:
-    "A job-search copilot for product designers. Roles ranked by portfolio fit, one board for your pipeline, and a prep sheet the moment an interview is booked.",
+  title: storyCopy.meta.title,
+  description: storyCopy.meta.description,
 };
 
 export const viewport: Viewport = {
@@ -24,12 +28,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Decides html.motion / html.reduced before first paint. */}
         <script dangerouslySetInnerHTML={{ __html: bootScript }} />
       </head>
-      <body className="font-text text-[15px] leading-relaxed antialiased">
+      <body className="font-text text-[length:var(--fs-body)] leading-[var(--leading-text)] antialiased">
         <Providers>{children}</Providers>
         <Analytics />
       </body>

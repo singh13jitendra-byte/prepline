@@ -51,7 +51,7 @@ EXPECT = {
     "interview": ("tile", "Thu 11:40"),
     "hinge": ("tile", "Thu 11:40"),
 }
-CHIPS = ["Design-system team", "HealthTech", "Matches your case studies"]
+CHIPS = ["Design-system team", "HealthTech, like your last role", "Close to your booking redesign"]
 
 passed = failed = 0
 
@@ -131,7 +131,7 @@ with sync_playwright() as p:
             const w = [...el.querySelectorAll('.rd-wmask')].map((m) => m.getBoundingClientRect());
             let gaps = 0; for (let i = 1; i < w.length; i++) if (Math.abs(w[i].top - w[i-1].top) < 4 && w[i].left - w[i-1].right < 4) gaps++;
             return gaps; })""")
-        expected = {"Twelve worth your time.", "Every score comes with a reason.", "The moment an interview is booked, your prep sheet is written."}
+        expected = {"Twelve worth an evening.", "Every score shows its working.", "Book the interview, and your prep sheet is written before you’ve told anyone."}
         for t in texts:
             check(t in expected, f"{beat}@{at}: spaced text {t!r}")
         check(all(g == 0 for g in widths), f"{beat}@{at}: visible gaps between heading words {widths}")
