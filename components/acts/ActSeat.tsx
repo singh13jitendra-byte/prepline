@@ -1,39 +1,37 @@
 "use client";
 
 /**
- * ACT IV — SEAT (day, sunrise in the room). Storyboard 2.7, round-4 brief.
+ * ACT IV — SEAT (day, sunrise in the room). Storyboard 2.7, round-4 brief, review 3 (P0-2, P1-8).
  *
  *   dawn (wipe, prep's)  the World crossfades desk-bluehour into desk-dawn as the Line rises; the
  *                        sheet folds and flips into the ticket; "Walk in / ready." rides up under
  *                        the rising line on the sunlit wall, so the line reveals it bottom-up
- *   seat                 the Line docks under "ready." (scrubbed, the bookend); the 25 hand-drawn
- *                        seat rings gather and the ticket lifts (scrubbed); the promises rise (timed)
- *   footer               the stage scrolls away into the after-stage column (components/acts/after)
+ *   seat                 the Line docks under "ready." (scrubbed, the bookend) and the ticket lifts
+ *                        (scrubbed). Nothing else: the headline, one paragraph and the ticket
+ *                        breathe on the painting; small copy never sits on it.
+ *   footer               the stage scrolls away into the after-stage column (components/acts/after):
+ *                        the promises and the data note on a paper slip, then the founder note
  *
  * The ticket is the product <SeatTicket> with the real <WaitlistForm tone="ticket">, docked in
- * a FaceSlot, tilted -2deg until hovered. A successful request claims the ring nearest the
- * ticket: window event `prepline:seat-claimed`, detail { ring: 1..25 }, for the World's gold fill;
- * the stamp presses onto the ticket and the Line under "ready." draws itself once more.
+ * a FaceSlot, tilted -2deg until hovered. The 25 seats are printed on its stub (TicketFace).
+ * A successful request fills the centre seat there and sends the window event
+ * `prepline:seat-claimed`, detail { ring: 1..25 }; the stamp presses onto the ticket and the
+ * Line under "ready." draws itself once more.
  */
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { anchorElement, registerAnchor, useAnchor, type AnchorId } from "@/lib/anchors";
+import { useEffect, useRef, useState } from "react";
+import { anchorElement, useAnchor } from "@/lib/anchors";
 import { storyCopy } from "@/lib/content";
 import { gsap } from "@/lib/gsap";
-import { usePerformance } from "@/lib/perform";
-import { BEATS, clamp01, story } from "@/lib/story";
+import { clamp01, story } from "@/lib/story";
 import { ease } from "@/lib/theme";
-import { ArtDefs, SEAT_RINGS } from "@/components/art";
+import { ArtDefs } from "@/components/art";
 import { FaceFrame, FaceSlot } from "@/components/story/FaceSlot";
 import { Panel, Stage } from "@/components/story/Stage";
 import "@/components/faces/TicketFace";
 import { AfterStage } from "./after/AfterStage";
-import { signoff } from "./after/copy";
-import { seatState, useSeatState } from "./seat/seatState";
+import { CLAIM_RING, seatState } from "./seat/seatState";
 import "./seat/seat.css";
-
-const idx = (b: string) => BEATS.findIndex((x) => x.id === b);
-const RINGS = 25;
 
 /** The real ticket, inside its FaceSlot: a tilt layer around the shared face (-2deg at rest). */
 function TicketDock({ tiltRef }: { tiltRef: React.RefObject<HTMLDivElement | null> }) {
@@ -51,73 +49,12 @@ function MarksDefs() {
   return need ? <ArtDefs /> : null;
 }
 
-function Rings({ hostRef, claimed, world }: { hostRef: React.RefObject<HTMLUListElement | null>; claimed: number | null; world: boolean }) {
-  const { status, at } = useSeatState();
-  const fresh = status === "done" && typeof performance !== "undefined" && performance.now() - at < 2500;
-
-  // Each ring is an anchor (seat-ring-1..25): the World flies a firefly into each during dawn and seat.
-  useEffect(() => {
-    const host = hostRef.current;
-    if (!host) return;
-    const offs = Array.from(host.children).map((el, i) => registerAnchor(`seat-ring-${i + 1}` as AnchorId, el as HTMLElement));
-    return () => offs.forEach((off) => off());
-  }, [hostRef]);
-
-  return (
-    <ul ref={hostRef} className="seat-ring-grid" aria-hidden="true">
-      {Array.from({ length: RINGS }, (_, i) => {
-        const Ring = SEAT_RINGS[i % 3];
-        const col = i % 5;
-        const row = Math.floor(i / 5);
-        // Gather from the centre outward; three hands, each turned, so the grid is not 25 clones.
-        const d = Math.hypot(col - 2, row - 2) / Math.hypot(2, 2);
-        const taken = claimed === i;
-        return (
-          <li
-            key={i}
-            className="seat-ring"
-            data-filled={taken ? "" : undefined}
-            data-fresh={fresh && taken ? "" : undefined}
-            data-world={world && taken ? "" : undefined}
-            style={{ "--d": (d * 0.55).toFixed(3), "--turn": `${(i * 37) % 360}deg` } as CSSProperties}
-          >
-            <Ring taken={taken && !world} idPrefix={`seat-${i}`} className="seat-ring-art" />
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-/** The ring nearest the ticket: that is the seat a successful request claims. */
-function nearestRing(rings: HTMLElement | null, ticket: HTMLElement | null): number {
-  if (!rings || !ticket) return 0;
-  const t = ticket.getBoundingClientRect();
-  const tx = t.left + t.width / 2;
-  const ty = t.bottom;
-  let best = 0;
-  let bestD = Infinity;
-  Array.from(rings.children).forEach((el, i) => {
-    const r = el.getBoundingClientRect();
-    const dd = Math.hypot(r.left + r.width / 2 - tx, r.top + r.height / 2 - ty);
-    if (dd < bestD) {
-      bestD = dd;
-      best = i;
-    }
-  });
-  return best;
-}
-
 export function ActSeat() {
   const underline = useAnchor("ready-underline");
   const underlineEl = useRef<HTMLSpanElement | null>(null);
   const tiltRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const ringsRef = useRef<HTMLUListElement>(null);
-  const riseRef = useRef<HTMLDivElement>(null);
   const rideRef = useRef<HTMLDivElement>(null);
-  const [claimed, setClaimed] = useState<number | null>(null);
-  const [worldFill, setWorldFill] = useState(false);
 
   // The bookend: the Line ends the page under "ready." at the hero underline's own size.
   useEffect(() => {
@@ -136,33 +73,18 @@ export function ActSeat() {
     return () => ro.disconnect();
   }, []);
 
-  // Scrubbed, every pixel (the "breath"):
-  // - dawn: "Walk in / ready." rides up just under the rising line, so the line reveals it bottom-up;
-  // - dawn into seat: the 25 rings gather (the World flies a firefly into each).
+  // Scrubbed, every pixel (the "breath"): in dawn, "Walk in / ready." rides up just under the
+  // rising line, so the line reveals it bottom-up.
   useEffect(() => {
-    const rings = ringsRef.current?.parentElement;
     const ride = rideRef.current;
-    if (!rings || !ride || story.reduced()) return;
+    if (!ride || story.reduced()) return;
     let last = "";
     return story.subscribe((s) => {
-      const i = idx(s.beat);
-      const p = s.beatProgress;
-      let gather = 0;
-      let rise = 0;
-      if (s.beat === "dawn") {
-        gather = 0.4 * clamp01((p - 0.55) / 0.45);
-        rise = clamp01((p - 0.15) / 0.85);
-      } else if (s.beat === "seat") {
-        gather = 0.4 + 0.6 * clamp01(p / 0.6);
-        rise = 1;
-      } else if (i > idx("seat")) {
-        gather = rise = 1;
-      }
-      const key = `${gather.toFixed(3)}|${rise.toFixed(4)}`;
+      const rise = s.beat === "dawn" ? clamp01((s.beatProgress - 0.15) / 0.85) : s.beat === "seat" || s.beat === "footer" ? 1 : 0;
+      const key = (1 - rise).toFixed(4);
       if (key === last) return;
       last = key;
-      rings.style.setProperty("--gather", gather.toFixed(3));
-      ride.style.transform = `translate3d(0, calc(${(1 - rise).toFixed(4)} * var(--ride-d)), 0)`;
+      ride.style.transform = `translate3d(0, calc(${key} * var(--ride-d)), 0)`;
     });
   }, []);
 
@@ -173,16 +95,13 @@ export function ActSeat() {
     return story.breath(tilt, "seat", { from: 0, name: "--lift", reduced: 0 });
   }, []);
 
-  // A successful request claims the ring nearest the ticket (World: gold fill from the firefly inside it).
+  // A successful request: the World hears which seat (its firefly fills it), the Line redraws.
   useEffect(() => {
     let was = seatState.get().status;
     return seatState.subscribe(() => {
       const now = seatState.get().status;
       if (now === "done" && was !== "done") {
-        const ring = nearestRing(ringsRef.current, wrapRef.current);
-        setWorldFill(Boolean((window as unknown as { __world?: unknown }).__world) && new URLSearchParams(location.search).get("world") !== "css");
-        setClaimed(ring);
-        window.dispatchEvent(new CustomEvent("prepline:seat-claimed", { detail: { ring: ring + 1 } }));
+        window.dispatchEvent(new CustomEvent("prepline:seat-claimed", { detail: { ring: CLAIM_RING + 1 } }));
         if (underlineEl.current && !story.reduced()) {
           gsap.fromTo(underlineEl.current, { scaleX: 0 }, { scaleX: 1, duration: 0.9, ease: ease.inOutFirm, delay: 0.2, clearProps: "transform" });
         }
@@ -190,12 +109,6 @@ export function ActSeat() {
       was = now;
     });
   }, []);
-
-  // Timed (on entry): the sign-off, promises and data note rise in, 60ms apart.
-  usePerformance("seat", (tl) => {
-    const rows = riseRef.current ? Array.from(riseRef.current.querySelectorAll<HTMLElement>("[data-rise]")) : [];
-    if (rows.length) tl.fromTo(rows, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: ease.out, stagger: 0.06 }, 0.1);
-  });
 
   // Fine pointer: the ticket straightens and tilts toward the cursor (paper is stiff: 3deg at most).
   useEffect(() => {
@@ -252,26 +165,6 @@ export function ActSeat() {
                 </h2>
                 <p className="seat-body">{storyCopy.seat.body}</p>
               </div>
-              <div ref={riseRef}>
-                <p className="seat-signoff" data-rise="">
-                  {signoff.line}
-                  <span>
-                    <b>{signoff.name}</b>
-                    {signoff.role ? `, ${signoff.role}` : ""}
-                  </span>
-                </p>
-                <ul className="seat-promises">
-                  {storyCopy.seat.promises.map((p) => (
-                    <li key={p.title} className="seat-promise" data-rise="">
-                      <span className="seat-promise-t">{p.title}</span>
-                      <span className="seat-promise-b">{p.body}</span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="seat-note" data-rise="">
-                  {storyCopy.seat.dataNote}
-                </p>
-              </div>
             </div>
 
             <div className="seat-right">
@@ -279,13 +172,6 @@ export function ActSeat() {
                 <FaceSlot anchor="ticket" face="ticket" skin="day" className="seat-ticket-slot">
                   <TicketDock tiltRef={tiltRef} />
                 </FaceSlot>
-              </div>
-              <div className="seat-rings">
-                <Rings hostRef={ringsRef} claimed={claimed} world={worldFill} />
-                <span className="seat-rings-caption">
-                  <span aria-hidden="true">{storyCopy.seat.rings}</span>
-                  <span className="sr-only">{storyCopy.seat.ringsLabel}</span>
-                </span>
               </div>
             </div>
           </div>

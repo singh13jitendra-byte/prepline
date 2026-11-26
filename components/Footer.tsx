@@ -2,8 +2,8 @@
 
 /**
  * FOOTER — quiet, Night Desk (deep pine ground, no texture). A static hand-drawn lamp Line
- * across the top. Left: the one-line description. Right: the visitor's local time,
- * "11:25 PM. Close the laptop. The sheet will keep." beside the closed-laptop drawing, which
+ * across the top. Left: the one-line description. Right, in the evening, the visitor's local time,
+ * "11:25 PM. Close the laptop. The sheet will keep." (by day the line alone) beside the closed-laptop drawing, which
  * draws itself once when the footer comes into view. Last line: the figures, as illustrative.
  */
 
@@ -19,7 +19,11 @@ function useLocalTime() {
     const read = () => {
       try {
         const now = new Date();
-        setTime({ text: now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }), iso: now.toISOString() });
+        // "Close the laptop" is an evening line: the clock is shown only from 6 PM to 4 AM; by
+        // day the line stands on its own, time-agnostic (review 3, P2-11).
+        const h = now.getHours();
+        const evening = h >= 18 || h < 5;
+        setTime(evening ? { text: now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }), iso: now.toISOString() } : null);
       } catch {
         setTime(null);
       }

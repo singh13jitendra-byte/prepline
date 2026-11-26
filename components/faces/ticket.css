@@ -1,7 +1,8 @@
 /* ══════════════════════════════════════════════════════════════════════════
    TICKET FACE — the product SeatTicket at the face's natural size (520 x 300).
    Paper, 2px pine keyline and the solid lamp print come from the product and the
-   theme; this file only fits it into the face and presses the stamp. Tokens only.
+   theme; this file fits it into the face, prints the 25 seats on the stub and
+   presses the stamp. Tokens only.
    ══════════════════════════════════════════════════════════════════════════ */
 
 .tkx {
@@ -15,19 +16,83 @@
   width: 520px;
   height: 300px;
 }
-/* Phones: the wide layout at 460 (above the product's narrow breakpoint), scaled to fill. */
+/* Phones: the wide layout at 468 (its content box clears the product's 459px narrow breakpoint,
+   so the stub and its seats stay), scaled to the slot. */
 @media (max-width: 767px) {
   .tkx-inner {
-    width: 460px;
-    height: 265.4px;
-    transform: scale(1.1304);
+    width: 468px;
+    height: 270px;
+    transform: scale(1.1111);
     transform-origin: 0 0;
+  }
+}
+/* Phones: a narrower stub and a tighter field row, so the placeholder is never cut at 16px. */
+@media (max-width: 767px) {
+  .tkx .pp-ticket {
+    --pp-stub: 104px;
+  }
+  .tkx .wl-input {
+    padding: 0 14px;
+  }
+  .tkx .wl-btn {
+    gap: 6px;
+    padding: 0 14px;
   }
 }
 /* In flight the print slips further off register. */
 .tkx[data-host="actor"] .pp-ticket {
   box-shadow: var(--shadow-2);
 }
+
+/* ── the stub: "Seat", 25 printed seats, "of 25" ── */
+.tkx .pp-ticket-stub {
+  gap: 10px;
+}
+.tkx .pp-ticket-seats[data-empty] {
+  display: none;
+}
+.tkx .pp-ticket-stub > .pp-meta {
+  order: 2;
+}
+.tkx-seats {
+  order: 1;
+  display: grid;
+  grid-template-columns: repeat(5, 14px);
+  gap: 4px;
+}
+.tkx-seat {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+/* Printed seats are quieter than the pen that fills one. */
+.tkx-seats {
+  --art-stroke-color: var(--c-ink-2);
+}
+.tkx-seat[data-taken] {
+  --art-stroke-color: var(--c-ink);
+}
+.tkx-seat-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: rotate(var(--turn, 0deg));
+}
+/* Claimed: the seat fills with the stamp, a beat after it lands. */
+.tkx-seat[data-fresh] {
+  animation: tkx-seat 0.5s 0.55s var(--ease-spring) both;
+}
+@keyframes tkx-seat {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .tkx[data-fresh] .pp-stamp {
   animation: tkx-stamp 0.42s 0.3s var(--ease-spring) both;
 }
@@ -45,7 +110,8 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .tkx[data-fresh] .pp-stamp {
+  .tkx[data-fresh] .pp-stamp,
+  .tkx-seat[data-fresh] {
     animation: none;
   }
 }

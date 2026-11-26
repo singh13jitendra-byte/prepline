@@ -7,14 +7,16 @@
  *
  *   1. QuoteSlot  renders nothing until real beta quotes exist (content `quotes`). With
  *                 ?slots=1 it shows a clearly labelled placeholder for layout work.
- *   2. FounderNote "Why I'm building this": the deck's 150-word draft beside a small crop of
- *                 the painted desk (desk-night), a quiet signature. Registers `founder-note`.
+ *   2. PromiseSlip the four promises and the data note on a paper slip (the ticket's own
+ *                 material): small copy never sits on the painting (review 3, P0-2 / P1-8).
+ *   3. FounderNote "Why I'm building this": the deck's 150-word draft beside a crop of the
+ *                 painted desk (desk-night), signed in the margin-note hand. Registers `founder-note`.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { useAnchor } from "@/lib/anchors";
 import { Frame } from "@/components/art";
-import { founder, quotes } from "./copy";
+import { founder, promises, quotes } from "./copy";
 import { DeskCrop } from "./DeskCrop";
 import "./after.css";
 
@@ -43,6 +45,25 @@ function QuoteSlot() {
         </div>
       </div>
     </figure>
+  );
+}
+
+function PromiseSlip() {
+  return (
+    <section className="af-slip" aria-labelledby="promises-title">
+      <h2 id="promises-title" className="af-slip-h">
+        {promises.title}
+      </h2>
+      <ul className="af-slip-list">
+        {promises.items.map((p) => (
+          <li key={p.title}>
+            <b>{p.title}</b>
+            <span>{p.body}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="af-slip-note">{promises.note}</p>
+    </section>
   );
 }
 
@@ -112,6 +133,7 @@ export function AfterStage() {
   return (
     <div className="af" data-skin="day">
       <QuoteSlot />
+      <PromiseSlip />
       <FounderNote />
     </div>
   );
