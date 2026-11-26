@@ -44,6 +44,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { anchorElement, anchorRect } from "@/lib/anchors";
 import {
   ACTOR_TRACK,
+  actOf,
   BEATS,
   clamp01,
   lerp,
@@ -97,15 +98,25 @@ export function Actor() {
   const flipRef = useRef<HTMLDivElement>(null);
   const els = useRef(new Map<FaceId, FaceEls>());
 
-  // Mount the faces of the previous, current and next beat, so a face is always there before it is needed.
+  // Mount the faces of the previous, current and next beat, so a face is always there before it is
+  // needed, and of each only the skins those beats can show: the chapter's own skin, and both for a
+  // wipe (the only time the line cuts the Actor in two). A flying prep sheet is about 680 nodes per
+  // skin; outside the wipes there is no reason to carry the second one.
   const mounted = useMemo(() => {
     const i = BEATS.findIndex((b) => b.id === beat);
-    const set = new Set<FaceId>();
+    const skins = new Map<FaceId, { night: boolean; day: boolean }>();
     for (let k = i - 1; k <= i + 1; k++) {
       const b = BEATS[k];
-      if (b) facesFor(ACTOR_TRACK[b.id]).forEach((f) => set.add(f));
+      if (!b) continue;
+      const chapter = actOf(b.act).chapter;
+      facesFor(ACTOR_TRACK[b.id]).forEach((f) => {
+        const need = skins.get(f) ?? { night: false, day: false };
+        if (b.kind === "wipe") need.night = need.day = true;
+        else need[chapter] = true;
+        skins.set(f, need);
+      });
     }
-    return FACE_ORDER.filter((f) => set.has(f));
+    return FACE_ORDER.filter((f) => skins.has(f)).map((id) => ({ id, ...(skins.get(id) as { night: boolean; day: boolean }) }));
   }, [beat]);
 
   useEffect(() => {
@@ -352,6 +363,9 @@ export function Actor() {
             put(leaf.clip, "opacity", (meta.chrome ? k : Math.max(k, surface)).toFixed(3));
           }
           if (leaf.content) {
+            // The scale at rest on this beat's destination, to two decimals: constant through the
+            // travel, so this inherited variable is written once per beat, not per frame.
+            put(leaf.content, "--face-k", (meta.fit === "height" ? b.h / meta.height : b.w / meta.width).toFixed(2));
             put(leaf.content, "transform", tf);
             if (cw) put(leaf.content, "width", cw);
           }
@@ -387,7 +401,7 @@ export function Actor() {
     <div className="actor-layer" aria-hidden="true" inert>
       <div ref={rootRef} className="actor" data-actor="">
         <div ref={flipRef} className="actor-flip">
-          {mounted.map((id) => (
+          {mounted.map(({ id, night, day }) => (
             <div
               key={id}
               className="actor-face"
@@ -396,24 +410,30 @@ export function Actor() {
                 slot(id).root = el;
               }}
             >
-              <div
-                className="actor-skin"
-                data-skin="night"
-                ref={(el) => {
-                  slot(id).night = el;
-                }}
-              >
-                <FaceFrame face={id} skin="night" fold={settledFold} progress={1} host="actor" />
-              </div>
-              <div
-                className="actor-skin"
-                data-skin="day"
-                ref={(el) => {
-                  slot(id).day = el;
-                }}
-              >
-                <FaceFrame face={id} skin="day" fold={settledFold} progress={1} host="actor" />
-              </div>
+              {night ? (
+                <div
+                  key="night"
+                  className="actor-skin"
+                  data-skin="night"
+                  ref={(el) => {
+                    slot(id).night = el;
+                  }}
+                >
+                  <FaceFrame face={id} skin="night" fold={settledFold} progress={1} host="actor" />
+                </div>
+              ) : null}
+              {day ? (
+                <div
+                  key="day"
+                  className="actor-skin"
+                  data-skin="day"
+                  ref={(el) => {
+                    slot(id).day = el;
+                  }}
+                >
+                  <FaceFrame face={id} skin="day" fold={settledFold} progress={1} host="actor" />
+                </div>
+              ) : null}
             </div>
           ))}
         </div>

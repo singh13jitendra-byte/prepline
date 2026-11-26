@@ -156,13 +156,17 @@ def check_wipes(page, shots):
                 return { act: el.dataset.stage, visible: c.visibility === 'visible', top: r.top, height: r.height, clip: c.clipPath, sticky: c.position };
               });
               const at = (y) => document.elementFromPoint(innerWidth / 2, y)?.closest('.story-stage')?.dataset.stage ?? null;
-              // The live line variables are written on line scopes (.story-vars), not on <html>.
-              // The world's wrapper takes all three; the nav pills and rail copies take --day-top only.
-              const scopes = [...document.querySelectorAll('.story-root > .story-vars:first-child, .nav-pill, .rail-copy')].map((el) => getComputedStyle(el));
-              const v = getComputedStyle(document.querySelector('.story-root > .story-vars:first-child'));
+              // The live line variables are written only on the elements whose own rules read them:
+              // the world's day backdrop (and its no-WebGL field layers, which also take --line-y),
+              // the nav pills and the rail copies. Never on <html>, never on a big wrapper.
+              const scopes = [...document.querySelectorAll('.world-day, .nav-pill, .rail-copy')].map((el) => getComputedStyle(el));
+              const v = getComputedStyle(document.querySelector('.world-day'));
+              const cf = document.querySelector('.cf-grid, .cf-dense, .cf-gold');
+              const wrapper = document.querySelector('.story-root > .story-vars');
               const split = parseFloat(v.getPropertyValue('--day-top'));
               const agree = scopes.every((c) => c.getPropertyValue('--day-top') === v.getPropertyValue('--day-top'));
-              return { stages, wipe: d.dataset.wipe, split, lineY: parseFloat(v.getPropertyValue('--line-y')), scopes: scopes.length, agree,
+              return { stages, wipe: d.dataset.wipe, split, lineY: cf ? parseFloat(getComputedStyle(cf).getPropertyValue('--line-y')) : null, scopes: scopes.length, agree,
+                       wrapperInline: wrapper ? wrapper.style.cssText : '',
                        htmlInline: d.style.getPropertyValue('--day-top') + d.style.getPropertyValue('--line-y'),
                        side: v.getPropertyValue('--day-side').trim(), above: at(split - 4), below: at(split + 4) };
             }"""
@@ -177,7 +181,8 @@ def check_wipes(page, shots):
         check(info["scopes"] >= 3 and info["agree"], f"{wipe}: every line scope carries the same line variables ({info['scopes']} scopes)")
         check(info["htmlInline"] == "", f"{wipe}: no per-frame line variable is written on <html> ({info['htmlInline']!r})")
         check(info["side"] == "below", f"{wipe}: --day-side should be below, got {info['side']!r}")
-        check(abs(info["split"] - s["dayTop"]) < 0.6 and abs(info["lineY"] - s["line"]["y"]) < 0.6, f"{wipe}: CSS variables match the store")
+        check(abs(info["split"] - s["dayTop"]) < 0.6 and (info["lineY"] is None or abs(info["lineY"] - s["line"]["y"]) < 0.6), f"{wipe}: CSS variables match the store")
+        check(info["wrapperInline"] == "", f"{wipe}: nothing is written on the world's wrapper ({info['wrapperInline']!r})")
         check(info["above"] == above, f"{wipe}: just above the line is the {above} stage, got {info['above']}")
         check(info["below"] == below, f"{wipe}: just below the line is the {below} stage, got {info['below']}")
         if shots:

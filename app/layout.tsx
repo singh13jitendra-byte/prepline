@@ -16,6 +16,9 @@ import { storyCopy } from "@/lib/content";
 import { theme } from "@/lib/theme";
 
 export const metadata: Metadata = {
+  // Phones rewrite text that looks like a phone number, date or address into links before React
+  // hydrates ("11:25 PM", "Thu 11:40", "4 of 6"): that is a text mismatch (React #418) on a cold load.
+  formatDetection: { telephone: false, date: false, address: false, email: false },
   title: storyCopy.meta.title,
   description: storyCopy.meta.description,
 };

@@ -56,12 +56,21 @@ export function WaitlistForm({ tone = "night", onStatusChange }: { tone?: Tone; 
     }
     setStatus("sending");
     setLive(copy.sendingLive);
+    let res: Response;
     try {
-      const res = await fetch("/api/waitlist", {
+      res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: value }),
       });
+    } catch {
+      // The request never reached a server (no network, or it dropped): say so, keep the email.
+      setLive("");
+      setStatus("error");
+      setError(copy.offline);
+      return;
+    }
+    try {
       if (!res.ok) throw new Error();
       const data = (await res.json().catch(() => ({}))) as { duplicate?: boolean };
       setLive("");
@@ -145,5 +154,25 @@ export function WaitlistForm({ tone = "night", onStatusChange }: { tone?: Tone; 
         {live}
       </span>
     </form>
+  );
+}
+
+/**
+ * The ticket-tone form as a still print: the same classes and text, no input, no state.
+ * For decorative copies (the Actor's flying ticket), so a flight carries no live form.
+ */
+export function WaitlistPrint() {
+  return (
+    <div className="wl" data-tone="ticket" data-status="idle" aria-hidden="true">
+      <span className="wl-label">{copy.label}</span>
+      <div className="wl-row">
+        <span className="wl-input wl-input-print">{copy.placeholder}</span>
+        <span className="wl-btn">
+          <span className="wl-btn-label">{copy.cta}</span>
+          <Icon name="arrow-right" size={16} />
+        </span>
+      </div>
+      <p className="wl-msg">{copy.helper}</p>
+    </div>
   );
 }

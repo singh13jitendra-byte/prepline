@@ -24,7 +24,7 @@ import { offsetIn, softBelow, span, useScrub } from "../read/runtime";
 const sentence = storyCopy.hinge.sentence;
 const words = sentence.split(" ");
 /** Beat progress over which the words are read: after the board copy has gone (12%), to the end. */
-const READ: [number, number] = [0.26, 0.98];
+const READ: [number, number] = [0.24, 0.98];
 const HINGE = BEATS.findIndex((b) => b.id === "hinge");
 
 type Box = { x: number; y: number; w: number; h: number; line: number };
@@ -66,7 +66,7 @@ export function HingePanel() {
     if (!text || !under || b.length === 0) return;
     const i = BEATS.findIndex((x) => x.id === s.beat);
     const p = i < HINGE ? 0 : i > HINGE ? 1 : s.beatProgress;
-    text.style.setProperty("--in", span(p, 0.14, 0.26).toFixed(4));
+    text.style.setProperty("--in", span(p, 0.13, 0.24).toFixed(4)); // only after the board is at 0 (12%)
     // At nightfall the night stage covers this one from the top: ink the sentence out through a
     // 24px soft edge just below the Line instead of letting the stage clip cut through letters.
     const root = rootRef.current;

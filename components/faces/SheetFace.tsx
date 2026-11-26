@@ -15,9 +15,10 @@
  *   caret); sheet-foot is PrepSheet's own "n of 3 asked". The story scrolls the sheet's body
  *   with the reading (a breath channel) and ends on "Before it starts".
  * - host "actor": decorative copies only (the Actor layer is inert and aria-hidden). Three
- *   paper panels on hinges driven by the Actor's fold, flat 6% tints and dashed creases for
- *   shading (no gradients, no blur). The folded cover is the board tile (TileFace), so
- *   nightfall grows the tile into this exact picture.
+ *   paper panels on hinges driven by the Actor's fold, flat 6% tints and faint creases for
+ *   shading (no blur). Each panel holds a still print of the sheet (SheetPrint: PrepSheet's
+ *   classes, only what can be seen, no live parts), not the product tree. The folded cover is
+ *   the board tile (TileFace), so nightfall grows the tile into this exact picture.
  */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -26,7 +27,7 @@ import { registerAnchor, type AnchorId } from "@/lib/anchors";
 import { usePerformance } from "@/lib/perform";
 import { BEATS, clamp01, story, type BeatId } from "@/lib/story";
 import { registerFace, type FaceProps } from "@/components/story/faces";
-import { PrepSheet, productData } from "@/components/product";
+import { Icon, Illustrative, KeyValue, PrepSheet, ScoreRule, SourceChip, productData } from "@/components/product";
 import { prepState, usePrepState, type Vote, type Votes } from "@/components/acts/prep/prepState";
 import { TileFace } from "./TileFace";
 import "./sheet.css";
@@ -61,12 +62,153 @@ function Sheet({ live, votes }: { live: boolean; votes: Votes }) {
   const rec = useMemo(() => record(votes), [votes]);
   return (
     <div className="shx-inner" data-skin="day">
-      <PrepSheet
-        skin="day"
-        nav={false}
-        votes={rec}
-        onVote={live ? (id, v) => prepState.set(QIDS.indexOf(id), v) : undefined}
-      />
+      <PrepSheet skin="day" nav={false} votes={rec} onVote={live ? (id, v) => prepState.set(QIDS.indexOf(id), v) : undefined} />
+    </div>
+  );
+}
+
+/** Phones (the face's 360-wide layout): the sheet focuses on each beat's subject (review 3, P1-5). */
+const SMALL = "(max-width: 767px)";
+function useSmall(): boolean {
+  const [small, setSmall] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(SMALL);
+    const on = () => setSmall(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return small;
+}
+
+/**
+ * The sheet as a still print, for the flying copies (review 3, P1-9): PrepSheet's own classes and
+ * text for what can be seen in flight, and nothing else — no live region, no hidden sections'
+ * content, no handlers, no ids. Laid out identically to the real sheet, so the hand-over at rest
+ * shows no seam. `opener`: include "Before it starts" (seen only from the dawn on).
+ * `foot`: include the footer (only the bottom panel shows it).
+ */
+function SheetPrint({ votes, opener, foot, head, body }: { votes: Votes; opener: boolean; foot: boolean; head: boolean; body: boolean }) {
+  const { role, interview, questions } = SHEET;
+  const asked = questions.filter((_, i) => votes[i] === "asked").length;
+  return (
+    <div className="shx-inner" data-skin="day">
+      <article className="pp pp-prep" data-skin="day">
+        {!head && prepState.headPx > 0 ? (
+          <div style={{ flex: "none", height: prepState.headPx }} />
+        ) : (
+          <header className="pp-prep-h">
+            <div className="pp-prep-top">
+              <span className="pp-meta pp-trunc pp-prep-written">
+                Prep sheet<span className="pp-sep">·</span>
+                {SHEET.written}
+              </span>
+              <span className="pp-spacer" />
+              <Illustrative />
+            </div>
+            <div className="pp-prep-title">
+              <div>
+                <h2>{role.title}</h2>
+                <p className="pp-meta">
+                  {role.company}
+                  <span className="pp-sep">·</span>
+                  {role.city}
+                </p>
+              </div>
+              <ScoreRule score={role.score} size="md" suffix className="pp-prep-rule" />
+            </div>
+            <KeyValue
+              items={[
+                {
+                  k: "Interview",
+                  v: (
+                    <>
+                      {interview.when} <span style={{ fontWeight: 400 }}>{interview.zone}</span>
+                    </>
+                  ),
+                },
+                { k: "Round", v: interview.round },
+                { k: "Format", v: interview.format },
+              ]}
+            />
+          </header>
+        )}
+        <div className="pp-prep-body">
+          {body ? (
+            <>
+              <section className="pp-prep-sec">
+                <div className="pp-prep-sec-h">
+                  <h3>Likely questions</h3>
+                </div>
+                <p className="pp-prep-sec-p">Each one shows where it came from. Say your answer out loud once.</p>
+                <ol className="pp-qs">
+                  {questions.map((q, i) => {
+                    const vote = votes[i] ?? null;
+                    return (
+                      <li key={q.id} className="pp-q" data-vote={vote ?? undefined}>
+                        <span className="pp-q-n">{i + 1}</span>
+                        <p className="pp-q-text">{q.text}</p>
+                        <p className="pp-q-tell">
+                          <b>Tell:</b> {q.angle}
+                          {q.tell ? <span>{q.tell}</span> : null}
+                        </p>
+                        <div className="pp-q-foot">
+                          {q.sources.map((src) => (
+                            <SourceChip key={src.label + (src.detail ?? "")} {...src} size="sm" />
+                          ))}
+                          <span className="pp-vote">
+                            <button type="button" tabIndex={-1} data-v="asked" aria-pressed={vote === "asked"}>
+                              <Icon name="check" size={14} />
+                              Asked
+                            </button>
+                            <button type="button" tabIndex={-1} data-v="not-asked" aria-pressed={vote === "not-asked"}>
+                              <Icon name="x" size={14} />
+                              Not asked
+                            </button>
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </section>
+              {/* Design round and Ask them back are hidden on this sheet: empty boxes keep the order. */}
+              <section className="pp-prep-sec" />
+              <section className="pp-prep-sec" />
+              {opener ? (
+                <section className="pp-prep-sec">
+                  <div className="pp-prep-sec-h">
+                    <h3>Before it starts</h3>
+                  </div>
+                  <p className="pp-prep-sec-p">A couple of easy things to say while everyone joins the call.</p>
+                  <figure className="pp-opener">
+                    <blockquote>{SHEET.opener.text}</blockquote>
+                    <figcaption>
+                      <Icon name="chat" size={16} />
+                      <span>{SHEET.opener.why}</span>
+                      <SourceChip {...SHEET.opener.source} />
+                    </figcaption>
+                  </figure>
+                  <p className="pp-disclaimer">{SHEET.disclaimer}</p>
+                </section>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+        {foot ? (
+          <footer className="pp-prep-f">
+            <span className="pp-prog">
+              {questions.map((q, i) => (
+                <span key={q.id} data-v={votes[i] ?? undefined} />
+              ))}
+            </span>
+            <span className="pp-prep-count">
+              {asked} of {questions.length} asked
+            </span>
+            <span className="pp-prep-note">After the interview, mark each question. Votes are anonymous.</span>
+          </footer>
+        ) : null}
+      </article>
     </div>
   );
 }
@@ -144,8 +286,17 @@ function TypedQuestion({ index, body, root }: { index: number; body: HTMLElement
           textWrap: cs.getPropertyValue("text-wrap") || "wrap",
         } as Partial<CSSStyleDeclaration>);
         const lo = offsetIn(li, body);
-        row = { x: o.x, y: lo.y + li.offsetHeight, w: lo.x + li.offsetWidth - o.x };
-        boxes = glyphs.current.map((g) => ({ l: o.x + g.offsetLeft, t: o.y + g.offsetTop, w: g.offsetWidth, h: g.offsetHeight }));
+        row = {
+          x: o.x,
+          y: lo.y + li.offsetHeight,
+          w: lo.x + li.offsetWidth - o.x,
+        };
+        boxes = glyphs.current.map((g) => ({
+          l: o.x + g.offsetLeft,
+          t: o.y + g.offsetTop,
+          w: g.offsetWidth,
+          h: g.offsetHeight,
+        }));
         stale = false;
       };
 
@@ -158,7 +309,12 @@ function TypedQuestion({ index, body, root }: { index: number; body: HTMLElement
           if (stale) measure();
           box.style.visibility = "hidden";
           caret.removeAttribute("data-on");
-          Object.assign(anchor.style, { left: `${row.x}px`, top: `${row.y - 1.5}px`, width: `${row.w}px`, height: "1.5px" });
+          Object.assign(anchor.style, {
+            left: `${row.x}px`,
+            top: `${row.y - 1.5}px`,
+            width: `${row.w}px`,
+            height: "1.5px",
+          });
           return;
         }
         if (stale) measure();
@@ -185,14 +341,30 @@ function TypedQuestion({ index, body, root }: { index: number; body: HTMLElement
           }
         const right = n === 0 ? first.l : last.l + last.w;
         // While typing, the Line's right end is the caret: it underlines the line being written.
-        Object.assign(anchor.style, { left: `${lineLeft}px`, top: `${(lineTop + lineH + 1).toFixed(1)}px`, width: `${Math.max(0, right - lineLeft).toFixed(1)}px`, height: "2px" });
-        Object.assign(caret.style, { left: `${(right + 1).toFixed(1)}px`, top: `${(lineTop + lineH * 0.1).toFixed(1)}px`, height: `${(lineH * 0.8).toFixed(1)}px` });
+        Object.assign(anchor.style, {
+          left: `${lineLeft}px`,
+          top: `${(lineTop + lineH + 1).toFixed(1)}px`,
+          width: `${Math.max(0, right - lineLeft).toFixed(1)}px`,
+          height: "2px",
+        });
+        Object.assign(caret.style, {
+          left: `${(right + 1).toFixed(1)}px`,
+          top: `${(lineTop + lineH * 0.1).toFixed(1)}px`,
+          height: `${(lineH * 0.8).toFixed(1)}px`,
+        });
         caret.toggleAttribute("data-on", t > 0);
       };
 
       const proxy = { t: 0 };
       render(0);
-      tl.to(proxy, { t: T, duration: T, ease: "none", onUpdate: () => render(proxy.t), onComplete: () => render(T), onReverseComplete: () => render(0) });
+      tl.to(proxy, {
+        t: T,
+        duration: T,
+        ease: "none",
+        onUpdate: () => render(proxy.t),
+        onComplete: () => render(T),
+        onReverseComplete: () => render(0),
+      });
       remeasure.current = () => {
         stale = true;
         shown = -1;
@@ -246,6 +418,10 @@ function SheetDock({ skin }: { skin: FaceProps["skin"] }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [body, setBody] = useState<HTMLElement | null>(null);
   const { votes } = usePrepState();
+  const beat = story.useBeat();
+  const small = useSmall();
+  // Phones, from `votes`: the three questions as a checklist with their vote buttons (sheet.css).
+  const focus = small && order(beat) >= order("votes") ? "votes" : undefined;
 
   useLayoutEffect(() => {
     setBody(rootRef.current?.querySelector<HTMLElement>(".pp-prep-body") ?? null);
@@ -261,18 +437,45 @@ function SheetDock({ skin }: { skin: FaceProps["skin"] }) {
   // Breath (scrubbed, every pixel from q1 to the end of votes): the sheet's own body scrolls with
   // the reading, question by question, and ends on "Before it starts". The overlay and anchors live
   // inside the body, so they ride along.
+  // Phones (review 3, P1-5): the body shows a question at a time, so each q beat first brings its
+  // question to the top (12px under the header, in the first fifth of the beat, while it is typed),
+  // then eases down just far enough to show its votes. From `votes` the sheet is a checklist at
+  // the top (data-focus="votes"), every vote button in view.
   useEffect(() => {
     const root = rootRef.current;
     if (!root || !body || story.reduced()) return;
     let stops = [0, 0, 0, 0, 0];
+    let small = false;
+    let rowA = [0, 0, 0];
+    let rowB = [0, 0, 0];
     const measure = () => {
+      small = window.matchMedia(SMALL).matches;
+      const head = root.querySelector<HTMLElement>(".pp-prep-h");
+      const sheet = root.querySelector<HTMLElement>(".pp-prep");
+      if (head && sheet && sheet.offsetHeight > 0) {
+        prepState.headPx = head.offsetHeight;
+        prepState.headFace = (head.offsetHeight / sheet.offsetHeight) * 720;
+      }
       const rows = Array.from(body.querySelectorAll<HTMLElement>(".pp-q"));
       const opener = body.querySelector<HTMLElement>(".pp-opener");
-      const max = Math.max(0, body.scrollHeight - body.clientHeight);
-      const top = (el: HTMLElement | undefined | null, pad: number) => (el ? Math.min(max, Math.max(0, offsetIn(el, body).y - pad)) : 0);
-      const endY = opener ? Math.min(max, offsetIn(opener, body).y + opener.offsetHeight - body.clientHeight + 16) : max;
-      stops = [0, top(rows[1], body.clientHeight * 0.45), top(rows[2], body.clientHeight * 0.4), top(rows[2], body.clientHeight * 0.2), Math.max(endY, top(rows[2], 0))];
-      prepState.scrollEnd = stops[4];
+      const ch = body.clientHeight;
+      const max = Math.max(0, body.scrollHeight - ch);
+      const clampY = (y: number) => Math.min(max, Math.max(0, y));
+      const top = (el: HTMLElement | undefined | null, pad: number) => (el ? clampY(offsetIn(el, body).y - pad) : 0);
+      if (small) {
+        // Measured in the full layout only (the checklist moves the rows).
+        if (root.dataset.focus) return;
+        rowA = rows.map((r) => clampY(offsetIn(r, body).y - 12));
+        rowB = rows.map((r, i) => {
+          const y = offsetIn(r, body).y;
+          return Math.max(rowA[i], clampY(Math.min(y - 2, y + r.offsetHeight - ch + 4)));
+        });
+        prepState.scrollEnd = 0;
+      } else {
+        const endY = opener ? Math.min(max, offsetIn(opener, body).y + opener.offsetHeight - ch + 16) : max;
+        stops = [0, top(rows[1], ch * 0.45), top(rows[2], ch * 0.4), top(rows[2], ch * 0.2), Math.max(endY, top(rows[2], 0))];
+        prepState.scrollEnd = stops[4];
+      }
       story.invalidate();
     };
     measure();
@@ -280,11 +483,23 @@ function SheetDock({ skin }: { skin: FaceProps["skin"] }) {
     ro.observe(body);
     document.fonts?.ready.then(measure).catch(() => {});
     let last = -1;
+    let lastBeat = "";
+    const smooth = (x: number) => x * x * (3 - 2 * x);
     const off = story.subscribe((s) => {
       const qi = Q_BEATS.indexOf(s.beat);
       const i = order(s.beat);
+      if (s.beat !== lastBeat) {
+        lastBeat = s.beat;
+        if (small && qi >= 0) measure();
+      }
       let y = 0;
-      if (qi >= 0) y = stops[qi] + (stops[qi + 1] - stops[qi]) * s.beatProgress;
+      if (small) {
+        if (qi >= 0) {
+          const from = qi === 0 ? 0 : rowB[qi - 1];
+          const p = s.beatProgress;
+          y = p < 0.2 ? from + (rowA[qi] - from) * smooth(p / 0.2) : rowA[qi] + (rowB[qi] - rowA[qi]) * ((p - 0.2) / 0.8);
+        }
+      } else if (qi >= 0) y = stops[qi] + (stops[qi + 1] - stops[qi]) * s.beatProgress;
       else if (s.beat === "votes") y = stops[3] + (stops[4] - stops[3]) * clamp01((s.beatProgress - 0.2) / 0.8);
       else if (i > order("votes")) y = stops[4];
       const r = Math.round(y);
@@ -311,19 +526,41 @@ function SheetDock({ skin }: { skin: FaceProps["skin"] }) {
       if (!prepState.isCancelled() && !ctx.skipped() && d > lastD) {
         marks.forEach((m, i) => {
           if (lastD < m && d >= m) {
-            const btn = rootRef.current?.querySelectorAll<HTMLElement>(".pp-q")[i]?.querySelector<HTMLElement>(`.pp-vote button[data-v="${demo[i]}"]`);
-            btn?.animate([{ transform: "scale(1)" }, { transform: "scale(0.92)", offset: 0.35 }, { transform: "scale(1)" }], { duration: 360, easing: "cubic-bezier(0.34,1.4,0.64,1)" });
+            const btn = rootRef.current
+              ?.querySelectorAll<HTMLElement>(".pp-q")
+              [i]?.querySelector<HTMLElement>(`.pp-vote button[data-v="${demo[i]}"]`);
+            btn?.animate([{ transform: "scale(1)" }, { transform: "scale(0.92)", offset: 0.35 }, { transform: "scale(1)" }], {
+              duration: 360,
+              easing: "cubic-bezier(0.34,1.4,0.64,1)",
+            });
           }
         });
       }
       lastD = d;
       prepState.setDemo(next);
     };
-    tl.to(proxy, { d: 1.2, duration: 1.2, ease: "none", onUpdate: apply, onComplete: apply, onReverseComplete: apply });
+    tl.to(proxy, {
+      d: 1.2,
+      duration: 1.2,
+      ease: "none",
+      onUpdate: apply,
+      onComplete: apply,
+      onReverseComplete: apply,
+    });
   });
 
   return (
-    <div ref={rootRef} className="shx" data-host="dock" data-skin={skin} data-q1="blank" data-q2="blank" data-q3="blank" suppressHydrationWarning>
+    <div
+      ref={rootRef}
+      className="shx"
+      data-host="dock"
+      data-skin={skin}
+      data-focus={focus}
+      data-q1="blank"
+      data-q2="blank"
+      data-q3="blank"
+      suppressHydrationWarning
+    >
       <div className="shx-plate" aria-hidden="true" />
       <Sheet live votes={votes} />
       <div className="shx-crease" style={{ top: 240 }} aria-hidden="true" />
@@ -371,14 +608,17 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
   const plateRef = useRef<HTMLDivElement>(null);
   const tints = useRef<Record<string, HTMLDivElement | null>>({});
 
+  const small = useSmall();
   const typed = Q_BEATS.filter((b) => order(b) < order(beat)).length;
   const late = order(beat) > order("votes");
+  const focus = small && order(beat) >= order("votes") ? "votes" : undefined;
 
-  // Match the dock's scroll: the top of the sheet in the unfold, "Before it starts" in the dawn.
+  // Match the dock's scroll: the top of the sheet in the unfold, "Before it starts" in the dawn
+  // (on phones the vote checklist, at the top).
   useLayoutEffect(() => {
     const y = late ? prepState.scrollEnd : 0;
     rootRef.current?.querySelectorAll<HTMLElement>(".pp-prep-body").forEach((b) => (b.scrollTop = y));
-  }, [late]);
+  }, [late, focus]);
 
   useEffect(() => {
     let last = "";
@@ -418,13 +658,19 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
   const tint = (k: string) => <div ref={(el) => void (tints.current[k] = el)} className="shx-tint" />;
   const slice = (i: number) => (
     <div className="shx-slice" style={{ top: -240 * i }}>
-      <Sheet live={false} votes={votes} />
+      <SheetPrint
+        votes={votes}
+        opener={late}
+        foot={i === 2}
+        head={i === 0 || prepState.headFace > 240 * i}
+        body={i > 0 || !(prepState.headFace >= 240)}
+      />
     </div>
   );
   const q = (n: number) => (n < typed ? "done" : "blank");
 
   return (
-    <div ref={rootRef} className="shx" data-host="actor" data-skin={skin} data-q1={q(0)} data-q2={q(1)} data-q3={q(2)}>
+    <div ref={rootRef} className="shx" data-host="actor" data-skin={skin} data-focus={focus} data-q1={q(0)} data-q2={q(1)} data-q3={q(2)}>
       <div ref={plateRef} className="shx-plate" style={{ transform: "scaleY(0.3333)" }} />
       <div className="shx-3d">
         <div ref={p1Ref} className="shx-panel shx-p1">
@@ -440,7 +686,14 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
             {/* The folded sheet's cover is the board tile itself at this size, so nightfall grows
                 the tile into this exact picture and the hand-over has nothing to dissolve. */}
             <div className="shx-cover" data-skin="day">
-              <div style={{ width: 560 / COVER_SCALE, height: TILE_H, transform: `scale(${COVER_SCALE})`, transformOrigin: "0 0" }}>
+              <div
+                style={{
+                  width: 560 / COVER_SCALE,
+                  height: TILE_H,
+                  transform: `scale(${COVER_SCALE})`,
+                  transformOrigin: "0 0",
+                }}
+              >
                 <TileFace skin="day" fold={0} progress={1} host="actor" />
               </div>
             </div>

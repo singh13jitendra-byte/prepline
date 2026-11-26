@@ -155,34 +155,52 @@ html.motion .rd-underline {
   line-height: 1.4;
   color: var(--c-on-night-2);
 }
-/* The hero form, Night Desk: a deep well with a sage keyline and a lamp button. No glass. */
-.rd-form form {
-  background: var(--art-deep, var(--c-night));
-  border: var(--hairline) solid var(--c-on-night-2);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+/* The slip (review-3 P0-2: text under 18px never sits directly on a painting). A flat pine card in
+   the wall's own colour with a night hairline: on the wall it disappears; over lit plaster, the window
+   frame, the laptop or the meadow it holds the copy at AA (cream 11.7:1, sage 7.1:1). No glass. */
+.rd-slip {
+  position: relative;
+  isolation: isolate;
+  padding: 18px 20px 16px;
+  margin-inline: -20px;
+  border-radius: var(--r-md);
 }
-.rd-form form:focus-within {
-  border-color: var(--c-on-night);
+.rd-slip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--c-night);
+  box-shadow: inset 0 0 0 var(--hairline) var(--c-rule-night);
 }
-.rd-form input {
-  font-family: var(--font-text);
-  color: var(--c-on-night);
+.rd-hero-slip {
+  margin-top: 14px;
 }
-.rd-form input::placeholder {
-  color: var(--c-on-night-2);
+.rd-hero-slip > .rd-sub {
+  margin-top: 0;
 }
-.rd-form button[type="submit"] {
-  background: var(--art-lamp, var(--c-line));
-  color: var(--art-deep, var(--c-night));
-  font-family: var(--font-text);
-  font-weight: var(--weight-strong);
+.rd-stmt-slip {
+  display: inline-grid;
+  grid-template-rows: auto 1fr;
+  max-width: 100%;
+  padding: 12px 18px 14px;
+  margin-inline: -18px;
 }
-.rd-form [role="status"] {
-  background: var(--art-deep, var(--c-night));
-  border: var(--hairline) solid var(--c-on-night-2);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+.rd-detail-wrap {
+  min-height: 0;
+  overflow: hidden;
+}
+/* While the count is still the hero's "2,340 read" there is no detail yet: the slip holds the
+   statement alone and opens for the detail as the first pass starts. */
+html.motion .rd-stmt-slip {
+  transition: grid-template-rows var(--dur-3) var(--ease-out);
+}
+html.motion .rd-pass[data-pass="0"] .rd-stmt-slip {
+  grid-template-rows: auto 0fr;
+}
+html.motion .rd-stmt-slip::before {
+  opacity: calc(1 - min(1, var(--k, 0) * 2.2));
 }
 .rd-cue {
   font-size: var(--fs-small);
@@ -199,13 +217,10 @@ html.motion .rd-hero-root {
 html.motion .rd-hero-layer {
   position: absolute;
   inset: 0;
-  -webkit-mask-image: var(--hero-mask, none);
-  mask-image: var(--hero-mask, none);
 }
-html.motion .rd-hero-copy {
-  transform-origin: 0 60%;
-  transform: scale(calc(1 - 0.04 * var(--recede, 0)));
-  opacity: calc(1 - 0.4 * var(--recede, 0));
+/* Past the hold the hero is gone (opacity 0): it leaves hit-testing and the focus order. */
+html.motion .rd-hero-root[data-gone] {
+  visibility: hidden;
 }
 html.motion .rd-hero-grid {
   height: 100%;
@@ -213,8 +228,12 @@ html.motion .rd-hero-grid {
   /* Puts the underline near 58% of the viewport (storyboard 2.4). */
   padding-top: clamp(40px, 7svh, 84px);
 }
+/* The hold: the headline fades out in place (opacity only; the underline anchor never moves). */
 html.motion .rd-h1-vis > .rd-mask {
-  opacity: calc(1 - 0.5 * var(--hold, 0));
+  opacity: calc(1 - var(--hold, 0));
+}
+html.motion .rd-line3 {
+  opacity: calc(1 - var(--hold3, 0));
 }
 html.motion .rd-drop {
   transform: translate3d(0, calc(var(--drop) * 24px), 0);
@@ -574,6 +593,10 @@ html:not(.motion) .rd-card-obj {
 /* ══ small screens (under 768px, storyboard 5.7) ═══════════════════════ */
 
 @media (max-width: 767px) {
+  .rd-slip {
+    padding-inline: 14px;
+    margin-inline: -14px;
+  }
   .rd-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     column-gap: 16px;
@@ -608,7 +631,7 @@ html:not(.motion) .rd-card-obj {
     font-size: 18px;
   }
   /* The statement and detail wrap on a phone (they stack in one grid cell, so swaps stay in place). */
-  .rd-detail .rd-swap {
+  .rd-detail :is(.rd-swap, .rd-swap-inner) {
     white-space: normal;
     text-wrap: pretty;
   }

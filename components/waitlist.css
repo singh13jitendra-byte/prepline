@@ -69,8 +69,13 @@ form.wl[data-tone] {
   border-radius: var(--r-pill);
   transition: border-color var(--dur-2) var(--ease-out);
 }
-.wl[data-tone="ticket"] .wl-input {
-  font-size: 15px;
+/* The still print (flying copies): the field's box with its placeholder as plain text. */
+.wl-input-print {
+  display: flex;
+  align-items: center;
+  color: var(--wl-fg-2);
+  white-space: nowrap;
+  overflow: hidden;
 }
 .wl-input::placeholder {
   color: var(--wl-fg-2);

@@ -305,7 +305,8 @@
 /* ── Night: only what actually swaps under the lamp. Night surfaces use --c-night / --c-on-night
       directly, per the contract; this block is for roles that mean something else at night. ── */
 [data-chapter="night"],
-[data-skin="night"] {
+[data-skin="night"],
+.slip-night {
   --c-accent: #f6c945; /* the CTA fill on night is lamp */
   --c-accent-ink: #0b211d; /* 10.7:1 on lamp */
   --c-accent-mid: #f6c945;
@@ -330,7 +331,8 @@
       and ticket in both skins; the row and card by day). After the night block on purpose: a
       lamp-lit sheet is data-skin="night" AND data-paper, and paper wins. ── */
 [data-skin="day"],
-[data-paper] {
+[data-paper],
+.slip {
   --c-accent: #12312c;
   --c-accent-ink: #f4eada;
   --c-accent-mid: #12312c;

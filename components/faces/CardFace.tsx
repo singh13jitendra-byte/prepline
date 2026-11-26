@@ -63,6 +63,8 @@ export function CardFace({ skin, host }: FaceProps) {
         last.score = n;
         const t = num?.firstChild;
         if (t && t.nodeType === 3) t.nodeValue = String(n);
+        // Before the count starts the rule reads dimmed, not "0/10".
+        rule?.toggleAttribute("data-pending", n === 0);
       }
       const shown = Math.floor(cardShow.rows);
       if (shown !== last.rows) {

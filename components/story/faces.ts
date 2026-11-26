@@ -54,7 +54,7 @@
  *   the split at the line will show an offset.
  */
 
-import { createElement, type ComponentType, type ReactElement } from "react";
+import { createContext, createElement, type ComponentType, type ReactElement } from "react";
 import type { FaceId, Skin } from "@/lib/story";
 
 export type FaceProps = {
@@ -83,9 +83,30 @@ export type FaceMeta = {
    * (natural height stays), so a flex layout re-spaces as the box changes aspect ratio.
    */
   fit?: "width" | "height";
+  /**
+   * The natural size on small screens (under 768px). A face is scaled to its box, and a desktop
+   * layout scaled to a phone is 8px type. Give the size your narrow layout is designed at and the
+   * face is laid out there instead, at close to 1:1:
+   *
+   *   registerFace("ticket", TicketFace, { width: 520, height: 300, small: { width: 360, height: 360 } });
+   *
+   * FaceSlot takes its aspect ratio from it and the Actor its scale, so anchors and the flying copy
+   * stay coherent. Inside the face, read the size from the `--face-w` / `--face-h` variables on the
+   * content box (px), or use <Showcase scale={…}>, which follows them by itself. Do not hard-code
+   * the desktop width in the face's own CSS.
+   */
+  small?: { width: number; height: number; radius?: number };
 };
 
-export type RegisteredFace = { id: FaceId; Component: ComponentType<FaceProps>; meta: FaceMeta; placeholder: boolean };
+export type RegisteredFace = {
+  id: FaceId;
+  Component: ComponentType<FaceProps>;
+  /** The meta for this screen (the small size applied under 768px). */
+  meta: FaceMeta;
+  /** The meta as registered (the desktop size), when `meta` is the small-screen one. */
+  base?: FaceMeta;
+  placeholder: boolean;
+};
 
 /** Natural sizes from the storyboard (row 440x44, card 520x320, tile 154x92, sheet 560x720, ticket 520x300). */
 export const FACE_DEFAULTS: Record<FaceId, FaceMeta> = {
@@ -96,12 +117,58 @@ export const FACE_DEFAULTS: Record<FaceId, FaceMeta> = {
   ticket: { width: 520, height: 300, radius: 22, chrome: true, clip: true },
 };
 
+/**
+ * Small-screen natural sizes used when a face registers none of its own.
+ * card: RoleDetail's compact layout at phone width needs a taller box than 520x320 scaled down.
+ */
+export const FACE_SMALL_DEFAULTS: Partial<Record<FaceId, NonNullable<FaceMeta["small"]>>> = {
+  card: { width: 360, height: 300 },
+};
+
+/**
+ * What a face's content can know about the box it is drawn in. <Showcase> reads it: a screen whose
+ * size is the face's registered size is "the face's own screen", follows the small-screen size and
+ * obeys the minimum scale. Anything else inside a face (the tile on the folded sheet's cover) is
+ * left exactly as its author sized it.
+ */
+export const FaceBoxContext = createContext<{ registered: { width: number; height: number }; now: { width: number; height: number } } | null>(null);
+
 export const FACE_ORDER: readonly FaceId[] = ["row", "card", "tile", "sheet", "ticket"];
 
 const registry = new Map<FaceId, RegisteredFace>();
 const placeholders = new Map<FaceId, RegisteredFace>();
 const listeners = new Set<() => void>();
 let version = 0;
+
+/* Small screens. Server markup and the first client render use the desktop sizes (so hydration
+   matches); the first subscriber then checks the breakpoint and, on a phone, every face re-renders
+   at its small size. */
+let small = false;
+let watching = false;
+const resolved = new WeakMap<RegisteredFace, RegisteredFace>();
+function watchBreakpoint() {
+  if (watching || typeof window === "undefined") return;
+  watching = true;
+  const mq = window.matchMedia("(max-width: 767px)");
+  const sync = () => {
+    if (mq.matches === small) return;
+    small = mq.matches;
+    version++;
+    listeners.forEach((fn) => fn());
+  };
+  mq.addEventListener("change", sync);
+  sync();
+}
+function forScreen(face: RegisteredFace): RegisteredFace {
+  const s = small ? (face.meta.small ?? FACE_SMALL_DEFAULTS[face.id]) : undefined;
+  if (!s) return face;
+  let hit = resolved.get(face);
+  if (!hit) {
+    hit = { ...face, base: face.meta, meta: { ...face.meta, width: s.width, height: s.height, radius: s.radius ?? face.meta.radius } };
+    resolved.set(face, hit);
+  }
+  return hit;
+}
 
 /** Register the component for a face. The latest registration wins. Returns an unregister function. */
 export function registerFace(id: FaceId, Component: ComponentType<FaceProps>, meta: Partial<FaceMeta> = {}): () => void {
@@ -121,7 +188,7 @@ export function registerFace(id: FaceId, Component: ComponentType<FaceProps>, me
 /** The registered face, or a grey placeholder that shows the face id (stubs, and before a package lands). */
 export function getFace(id: FaceId): RegisteredFace {
   const hit = registry.get(id);
-  if (hit) return hit;
+  if (hit) return forScreen(hit);
   let ph = placeholders.get(id);
   if (!ph) {
     ph = { id, Component: placeholderFace(id), meta: { ...FACE_DEFAULTS[id], chrome: true, clip: true }, placeholder: true };
@@ -133,6 +200,7 @@ export function getFace(id: FaceId): RegisteredFace {
 /** For useSyncExternalStore: re-render when the registry changes. */
 export function subscribeFaces(fn: () => void): () => void {
   listeners.add(fn);
+  watchBreakpoint();
   return () => listeners.delete(fn);
 }
 export function facesVersion(): number {

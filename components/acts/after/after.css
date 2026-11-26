@@ -1,5 +1,6 @@
 /* ══════════════════════════════════════════════════════════════════════════
-   AFTER THE STAGE — day skin, natural scroll: the quote slot and the founder note.
+   AFTER THE STAGE — day skin, natural scroll: the quote slot, the promise slip and
+   the founder note.
    Tokens only.
    ══════════════════════════════════════════════════════════════════════════ */
 
@@ -8,17 +9,73 @@
   z-index: var(--z-acts, 2);
   display: flex;
   flex-direction: column;
-  gap: 96px;
-  padding: 120px 32px 128px;
+  gap: 88px;
+  padding: 96px 32px 120px;
   color: var(--c-ink);
   font-family: var(--font-text);
   background: var(--tex-paper), var(--c-paper);
 }
 
+/* ── promise slip: the ticket's own material (paper, pine keyline, hard lamp print) ── */
+.af-slip {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 28px 32px 24px;
+  background: var(--c-paper-2);
+  border: 2px solid var(--c-ink);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+}
+.af-slip-h {
+  margin: 0 0 20px;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  font-weight: var(--weight-display);
+  text-wrap: balance;
+}
+.af-slip-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.af-slip-list li {
+  padding-top: 14px;
+  border-top: var(--hairline) solid var(--c-rule);
+}
+.af-slip-list b {
+  display: block;
+  font-size: var(--fs-body);
+  line-height: 1.35;
+  font-weight: var(--weight-strong);
+}
+.af-slip-list span {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--c-ink-2);
+  text-wrap: pretty;
+}
+.af-slip-note {
+  margin: 22px 0 0;
+  padding-top: 14px;
+  border-top: var(--hairline) dashed var(--c-rule);
+  max-width: 78ch;
+  font-size: var(--fs-small);
+  line-height: 1.55;
+  color: var(--c-ink-2);
+}
+
 /* ── founder note ── */
 .af-founder {
   display: grid;
-  grid-template-columns: 320px minmax(0, 560px);
+  grid-template-columns: 360px minmax(0, 560px);
   justify-content: center;
   align-items: start;
   gap: 56px;
@@ -27,8 +84,8 @@
   margin: 0 auto;
 }
 .af-crop {
-  width: 320px;
-  height: 192px;
+  width: 360px;
+  height: 216px;
   margin-top: 8px;
   overflow: hidden;
   border: 2px solid var(--c-ink);
@@ -75,8 +132,13 @@
   font-size: var(--fs-small);
   line-height: 1.4;
 }
+/* Signed by hand: the one place the margin-note face belongs (Night Desk). */
 .af-sign b {
-  font-weight: var(--weight-strong);
+  font-family: var(--font-accent);
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 500;
+  color: var(--c-ink);
 }
 .af-sign span {
   color: var(--c-ink-2);
@@ -156,10 +218,23 @@ html.motion .af-founder[data-seen] {
   color: var(--c-ink);
 }
 
+@media (max-width: 1080px) {
+  .af-slip-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 28px;
+  }
+}
 @media (max-width: 860px) {
+  .af-slip {
+    padding: 22px 20px 18px;
+  }
   .af {
     gap: 64px;
     padding: 80px 20px 96px;
+  }
+  .af-slip-list {
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
   .af-founder {
     grid-template-columns: 1fr;

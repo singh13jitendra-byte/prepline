@@ -12,10 +12,11 @@
  * then the rest rises (subline, form, privacy note), and the scroll cue fades in.
  * Any scroll during the load snaps it to its end state.
  *
- * Scroll (scrubbed, linear): 0 → 22% the copy around the headline drops 24px and
- * fades while the Line stretches to full width; 22 → 100% the Line rises and the
- * hero copy is clipped at it, so the headline is erased from the bottom up.
- * (The counter below the Line is revealed by ReadPanel at the same moment.)
+ * Scroll (scrubbed, linear, 85-unit beat): 0 → 16% the copy around the headline
+ * drops 24px and fades while the Line stretches to full width; 16 → 50% the Line
+ * holds on the underline and the headline fades out in place (lines 1–2, then
+ * line 3); 50 → 100% the Line rises over clear meadow and ReadPanel inks the
+ * counter in below it. No type ever meets type at the Line.
  */
 
 import { useLayoutEffect, useRef } from "react";
@@ -89,21 +90,17 @@ export function HeroPanel() {
     };
     set("--drop", k.toFixed(4));
     set("--cue", (1 - span(h, 0, 0.1)).toFixed(4));
-    // The hold (0.16–0.5): the headline stays exactly still (the Line rests on its underline), but
-    // "Close the / other tabs." quietly dims, so the scroll is never dead and "Walk in ready." is left lit.
-    set("--hold", span(h, 0.16, 0.5).toFixed(4));
-    // The Line erases the headline from the bottom up through a 24px soft edge (it inks out,
-    // it is not guillotined), while the headline steps back: scale 1 → 0.96, 40% dimmer.
-    const e = span(h, 0.5, 1);
-    set("--recede", e.toFixed(4));
-    const y = s.line.y;
-    // Past the hero the headline is fully erased: one constant mask, so the line moving through the
-    // rest of the page never touches (and restyles) the hero again.
-    const mask = i > HERO_INDEX ? "linear-gradient(transparent, transparent)" : h > 0.5 ? `linear-gradient(to bottom, black ${(y - 24).toFixed(1)}px, transparent ${y.toFixed(1)}px)` : "none";
-    if (root.dataset.mask !== mask) {
-      root.dataset.mask = mask;
-      root.style.setProperty("--hero-mask", mask);
-    }
+    // The hold (0.16–0.5): the headline stays exactly still (the Line rests on its underline) while
+    // it fades right out, so the scroll is never dead and nothing of it is left when the Line rises
+    // and the counter inks in (review-3 P1-3). "Close the / other tabs." goes first (0.16–0.36);
+    // "Walk in ready." follows (0.3–0.46), so the Line is left alone on the underline for a beat
+    // as the World hands the room over to the meadow (about 0.45).
+    set("--hold", span(h, 0.16, 0.36).toFixed(4));
+    set("--hold3", span(h, 0.3, 0.46).toFixed(4));
+    // Past the hold nothing of the hero is on screen: take it out of hit-testing and the a11y tree's
+    // focus order too (the form is invisible from 0.16, but it must not catch a click).
+    const gone = i > HERO_INDEX || h >= 0.46;
+    if (root.hasAttribute("data-gone") !== gone) root.toggleAttribute("data-gone", gone);
   });
 
   const [l1, l2, l3] = copy.h1;
@@ -146,6 +143,10 @@ export function HeroPanel() {
                 </span>
               </h1>
               <div className="rd-drop">
+                {/* Small copy never sits directly on the painting (review-3 P0-2): a flat pine slip, the
+                    wall's own colour, so it disappears on the wall and holds AA over the lit plaster,
+                    the window frame and (on a phone) the laptop. */}
+                <div className="rd-slip rd-hero-slip">
                 <p className="rd-sub" data-rise>
                   {copy.sub}
                 </p>
@@ -156,6 +157,7 @@ export function HeroPanel() {
                 <p className="rd-privacy" data-rise>
                   {copy.privacy}
                 </p>
+                </div>
               </div>
             </div>
           </div>

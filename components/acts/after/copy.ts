@@ -1,6 +1,6 @@
 /**
  * Copy for Acts III–IV, the after-stage column and the form, read from lib/content.ts
- * (Foundation round 4 keys: story.form, story.founder, story.quotes, story.seat, story.footer).
+ * (Foundation round 4 keys: story.form, story.founder, story.quotes, story.seat, story.privacy, story.footer).
  * This file holds no strings of its own: it only shapes those keys for the components.
  */
 import { storyCopy } from "@/lib/content";
@@ -22,7 +22,12 @@ export const founder = {
   links: [] as { label: string; href: string }[],
 };
 
-export const signoff = { line: c.founder.line, ...splitSignature(c.founder.signature) };
+/** The promises and the data note, on the paper slip after the seat stage (review 3, P0-2 / P1-8). */
+export const promises = {
+  title: c.privacy.title,
+  items: c.seat.promises as readonly { title: string; body: string }[],
+  note: c.seat.dataNote,
+};
 
 export const quotes = {
   real: c.quotes.real as boolean,
