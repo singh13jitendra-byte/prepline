@@ -31,6 +31,7 @@ import { useAnchor, type AnchorId } from "@/lib/anchors";
 import { ACTOR_TRACK, BEATS, story, travelEase, type BeatId, type StoryState } from "@/lib/story";
 import { offsetIn, setMask, softBelow, span, tileShow, useActorExtra, usePerformanceAt, useScrub } from "../read/runtime";
 import { boardHours, BOOKED_AT, clockLabel, DAYS, Odo, setOdo, SLOT_AT, sunAt } from "./timelapse";
+import { ease } from "@/lib/theme";
 
 const copy = storyCopy;
 const L = copy.ledger;
@@ -459,8 +460,8 @@ export function BoardPanel() {
     // Visual order in Saved: 1, 2, 3 (still at their start), then 4.
     const g = [1, 2, 3, 4].map((k) => root.querySelector<HTMLElement>(`[data-ghost="${k}"] .bd-ghost`)).filter(Boolean);
     tl.fromTo(show, { settle: 0 }, { settle: 1, duration: 0.6, ease: "none" }, 0)
-      .fromTo(g, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.6, ease: "expo.out", stagger: 0.06 }, 0.08)
-      .fromTo(show, { savedIn: 0 }, { savedIn: 5, duration: 0.6, ease: "power2.out" }, 0.05);
+      .fromTo(g, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.6, ease: ease.out, stagger: 0.06 }, 0.08)
+      .fromTo(show, { savedIn: 0 }, { savedIn: 5, duration: 0.6, ease: ease.outSoft }, 0.05);
   }, [layout]);
 
   /* ── applied: the tile carries, three ghosts follow, the chip flips ── */
@@ -504,11 +505,11 @@ export function BoardPanel() {
       );
     });
     const g4 = root.querySelector<HTMLElement>(`[data-ghost="4"]`);
-    if (g4) tl.fromTo(g4, { x: 0, y: 0 }, { x: d.g4.x, y: d.g4.y, duration: 0.6, ease: "expo.out" }, 0.4);
-    tl.fromTo(tileShow, { applied: 0 }, { applied: 1, duration: 0.36, ease: "power2.inOut" }, 0.42)
-      .fromTo(show, { savedOut: 0, appliedIn: 0 }, { savedOut: 4, appliedIn: 4, duration: 0.5, ease: "power2.out" }, 0.3);
-    if (steps) tl.fromTo(steps, { "--sa": 0 }, { "--sa": 1, duration: 0.5, ease: "power2.inOut" }, 0.1);
-    if (zero) tl.fromTo(zero, { "--pulse": 0 }, { "--pulse": 1, duration: 0.18, ease: "power2.out" }, 0.72).to(zero, { "--pulse": 0, duration: 0.5, ease: "power2.in" }, ">");
+    if (g4) tl.fromTo(g4, { x: 0, y: 0 }, { x: d.g4.x, y: d.g4.y, duration: 0.6, ease: ease.out }, 0.4);
+    tl.fromTo(tileShow, { applied: 0 }, { applied: 1, duration: 0.36, ease: ease.inOut }, 0.42)
+      .fromTo(show, { savedOut: 0, appliedIn: 0 }, { savedOut: 4, appliedIn: 4, duration: 0.5, ease: ease.outSoft }, 0.3);
+    if (steps) tl.fromTo(steps, { "--sa": 0 }, { "--sa": 1, duration: 0.5, ease: ease.inOut }, 0.1);
+    if (zero) tl.fromTo(zero, { "--pulse": 0 }, { "--pulse": 1, duration: 0.18, ease: ease.outSoft }, 0.72).to(zero, { "--pulse": 0, duration: 0.5, ease: ease.in }, ">");
   }, [layout]);
 
   /* ── interview: the tile carries, the chip becomes a booking ── */
@@ -517,14 +518,14 @@ export function BoardPanel() {
     if (!root) return;
     const steps = root.querySelector<HTMLElement>(".bd-steps");
     const head = root.querySelector<HTMLElement>(`[data-col="interview"]`);
-    tl.fromTo(tileShow, { interview: 0 }, { interview: 1, duration: 0.36, ease: "power2.inOut" }, 0.42)
-      .fromTo(tileShow, { tick: 0 }, { tick: 1, duration: 0.4, ease: "power2.out" }, 0.7)
+    tl.fromTo(tileShow, { interview: 0 }, { interview: 1, duration: 0.36, ease: ease.inOut }, 0.42)
+      .fromTo(tileShow, { tick: 0 }, { tick: 1, duration: 0.4, ease: ease.outSoft }, 0.7)
       .fromTo(show, { appliedOut: 0, interviewIn: 0 }, { appliedOut: 1, interviewIn: 1, duration: 0.3, ease: "none" }, 0.5);
-    if (head) tl.fromTo(head, { "--hi": 0 }, { "--hi": 1, duration: 0.5, ease: "power2.out" }, 0.62);
+    if (head) tl.fromTo(head, { "--hi": 0 }, { "--hi": 1, duration: 0.5, ease: ease.outSoft }, 0.62);
     const shifts = [1, 2, 3].map((k) => root.querySelector<HTMLElement>(`[data-ghost="${k}"] .bd-ghost-shift`)).filter(Boolean);
     const up = deltas.current.up;
-    tl.fromTo(shifts, { x: 0, y: 0 }, { x: up.x, y: up.y, duration: 0.6, ease: "expo.out", stagger: 0.05 }, 0.35);
-    if (steps) tl.fromTo(steps, { "--si": 0 }, { "--si": 1, duration: 0.5, ease: "power2.inOut" }, 0.1);
+    tl.fromTo(shifts, { x: 0, y: 0 }, { x: up.x, y: up.y, duration: 0.6, ease: ease.out, stagger: 0.05 }, 0.35);
+    if (steps) tl.fromTo(steps, { "--si": 0 }, { "--si": 1, duration: 0.5, ease: ease.inOut }, 0.1);
   }, [layout]);
 
   /* ── the Actor: anticipation lift, landing settle, pointer tilt ── */

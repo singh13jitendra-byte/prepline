@@ -3,7 +3,7 @@
    ══════════════════════════════════════════════════════════════════════════ */
 
 .seat-panel {
-  color: var(--color-ink, #1b1916);
+  color: var(--c-ink);
 }
 .seat-grid {
   position: relative;
@@ -45,11 +45,11 @@
 .seat-accent {
   position: relative;
   display: inline-block;
-  font-family: var(--font-serif);
+  font-family: var(--font-accent);
   font-style: italic;
   font-weight: 400;
   letter-spacing: -0.02em;
-  color: var(--color-accent, #b45309);
+  color: var(--c-accent);
 }
 /* The Line rests here, at the same share of the word as the hero underline (left .05em,
    right .02em of "ready."). Static page: a quiet amber rule. */
@@ -59,18 +59,18 @@
   right: 0.02em;
   bottom: 0.02em;
   height: 3px;
-  border-radius: 2px;
+  border-radius: var(--r-2xs);
   transform-origin: 0 50%;
   pointer-events: none;
 }
 html:not(.motion) .seat-underline {
-  background: var(--color-accent, #b45309);
+  background: var(--c-accent);
 }
 
 .seat-body {
   margin-top: 40px;
   max-width: 44ch;
-  color: var(--color-muted, #5f5a53);
+  color: var(--c-ink-2);
 }
 .seat-promises {
   display: grid;
@@ -86,13 +86,13 @@ html:not(.motion) .seat-underline {
   grid-template-columns: 18px 1fr;
   column-gap: 10px;
   padding-top: 14px;
-  border-top: 1px solid rgba(27, 25, 22, 0.1);
+  border-top: 1px solid color-mix(in oklab, var(--c-ink) 10%, transparent);
 }
 .seat-promise svg {
   width: 16px;
   height: 16px;
   margin-top: 2px;
-  color: var(--color-accent, #b45309);
+  color: var(--c-accent);
 }
 .seat-promise-t {
   font-size: 15px;
@@ -105,14 +105,14 @@ html:not(.motion) .seat-underline {
   margin-top: 3px;
   font-size: 14px;
   line-height: 1.45;
-  color: var(--color-muted, #5f5a53);
+  color: var(--c-ink-2);
 }
 .seat-note {
   margin-top: 22px;
   max-width: 60ch;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--color-muted, #5f5a53);
+  color: var(--c-ink-2);
 }
 
 /* ── the ticket ── */
@@ -150,38 +150,38 @@ html:not(.motion) .seat-underline {
   position: relative;
   width: 12px;
   height: 12px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   /* hollow: the World's speck settles inside it */
-  box-shadow: inset 0 0 0 1.25px rgba(27, 25, 22, 0.42);
+  box-shadow: inset 0 0 0 1.25px color-mix(in oklab, var(--c-ink) 42%, transparent);
   opacity: var(--g);
   transform: scale(calc(0.35 + 0.65 * var(--g)));
   transition: box-shadow 0.4s ease, background-color 0.4s ease;
 }
 .seat-ring[data-near] {
-  box-shadow: inset 0 0 0 1.5px var(--color-accent, #b45309);
-  background: rgba(180, 83, 9, 0.12);
+  box-shadow: inset 0 0 0 1.5px var(--c-accent);
+  background: color-mix(in oklab, var(--c-accent) 12%, transparent);
   transition-duration: 0.15s;
 }
 /* Claimed. With the WebGL World running it fills the ring gold, so the DOM mark stays subtle;
    without it (CSS field, no WebGL) the DOM fills the ring itself. */
 .seat-ring[data-filled] {
-  background: var(--color-accent, #b45309);
-  box-shadow: inset 0 0 0 1.5px var(--color-accent, #b45309);
+  background: var(--c-accent);
+  box-shadow: inset 0 0 0 1.5px var(--c-accent);
 }
 .seat-ring[data-filled][data-world] {
-  background: rgba(180, 83, 9, 0.12);
-  box-shadow: inset 0 0 0 1.75px var(--color-accent, #b45309);
+  background: color-mix(in oklab, var(--c-accent) 12%, transparent);
+  box-shadow: inset 0 0 0 1.75px var(--c-accent);
 }
 .seat-ring[data-fresh] {
-  animation: seat-fill 0.7s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+  animation: seat-fill 0.7s var(--ease-spring) both;
 }
 .seat-ring[data-fresh]::after {
   content: "";
   position: absolute;
   inset: -6px;
-  border-radius: 999px;
-  box-shadow: 0 0 0 1.5px var(--color-accent, #b45309);
-  animation: seat-ripple 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  border-radius: var(--r-pill);
+  box-shadow: 0 0 0 1.5px var(--c-accent);
+  animation: seat-ripple 0.9s var(--ease-out) both;
 }
 @keyframes seat-fill {
   0% {
@@ -202,7 +202,7 @@ html:not(.motion) .seat-underline {
   padding-left: 4px;
 }
 .seat-rings-caption {
-  color: var(--color-muted, #5f5a53);
+  color: var(--c-ink-2);
   white-space: nowrap;
   /* only once the first ring exists */
   opacity: clamp(0, calc((var(--gather, 1) - 0.03) * 8), 1);
@@ -298,7 +298,7 @@ html:not(.motion) .seat-grid {
   .seat-ring {
     width: 7px;
     height: 7px;
-    box-shadow: inset 0 0 0 1px rgba(27, 25, 22, 0.45);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c-ink) 45%, transparent);
   }
   html:not(.motion) .seat-promise-b {
     display: block;

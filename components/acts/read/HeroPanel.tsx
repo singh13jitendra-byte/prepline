@@ -24,6 +24,7 @@ import { useAnchor } from "@/lib/anchors";
 import { gsap } from "@/lib/gsap";
 import { BEATS, story } from "@/lib/story";
 import { span, useScrub } from "./runtime";
+import { ease } from "@/lib/theme";
 
 const copy = storyCopy.hero;
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
@@ -49,20 +50,20 @@ export function HeroPanel() {
     root.setAttribute("data-loaded", "");
     gsap.set(lines, { y: 0 });
 
-    const tl = gsap.timeline({ defaults: { ease: "expo.out" } });
+    const tl = gsap.timeline({ defaults: { ease: ease.out } });
     tl.fromTo(rises[0], { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 }, 0.04)
       .fromTo(lines, { yPercent: 108 }, { yPercent: 0, duration: 0.9, stagger: 0.06 }, 0.1)
-      .fromTo(ready, { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.7, ease: "power2.out", clearProps: "filter" }, 0.36)
-      .fromTo(under, { scaleX: 0 }, { scaleX: 1, duration: 0.7, ease: "power3.inOut" }, 0.62)
+      .fromTo(ready, { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.7, ease: ease.outSoft, clearProps: "filter" }, 0.36)
+      .fromTo(under, { scaleX: 0 }, { scaleX: 1, duration: 0.7, ease: ease.inOutFirm }, 0.62)
       .fromTo(rises.slice(1), { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, stagger: 0.08 }, 0.5)
-      .fromTo(chrome, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power2.out" }, 0.2)
+      .fromTo(chrome, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: ease.outSoft }, 0.2)
       .fromTo(
         n,
         { v: 0 },
         {
           v: copy.readoutCount,
           duration: 1.3,
-          ease: "power3.out",
+          ease: ease.outFirm,
           onUpdate: () => {
             if (count) count.textContent = fmt(n.v);
           },
@@ -104,7 +105,7 @@ export function HeroPanel() {
     const y = s.line.y;
     // Past the hero the headline is fully erased: one constant mask, so the line moving through the
     // rest of the page never touches (and restyles) the hero again.
-    const mask = i > HERO_INDEX ? "linear-gradient(transparent, transparent)" : h > 0.22 ? `linear-gradient(to bottom, #000 ${(y - 24).toFixed(1)}px, transparent ${y.toFixed(1)}px)` : "none";
+    const mask = i > HERO_INDEX ? "linear-gradient(transparent, transparent)" : h > 0.22 ? `linear-gradient(to bottom, black ${(y - 24).toFixed(1)}px, transparent ${y.toFixed(1)}px)` : "none";
     if (root.dataset.mask !== mask) {
       root.dataset.mask = mask;
       root.style.setProperty("--hero-mask", mask);

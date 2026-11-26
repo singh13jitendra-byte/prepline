@@ -11,7 +11,7 @@
   height: 44px;
   padding: 0 20px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
@@ -22,7 +22,7 @@
   isolation: isolate;
   -webkit-tap-highlight-color: transparent;
   transition:
-    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.18s var(--ease-out),
     background-color 0.45s ease,
     color 0.45s ease,
     box-shadow 0.45s ease;
@@ -33,12 +33,12 @@
   gap: 8px;
 }
 .cta-ink {
-  background: #1b1916;
-  color: #fff;
+  background: var(--c-ink);
+  color: var(--c-on-night);
 }
 .cta-white {
-  background: #fff;
-  color: #1b1916;
+  background: var(--c-on-night);
+  color: var(--c-ink);
 }
 .cta:active {
   transform: scale(0.97);
@@ -48,12 +48,12 @@
   opacity: 0.75;
 }
 .cta:focus-visible {
-  outline: 2px solid #b45309;
+  outline: 2px solid var(--c-focus);
   outline-offset: 2px;
 }
 /* On night the amber ring would not show: gold carries the focus there. */
 .cta-white:focus-visible {
-  outline-color: #ffd77a;
+  outline-color: var(--c-focus-night);
 }
 .cta-line {
   position: absolute;
@@ -61,18 +61,18 @@
   right: 16px;
   bottom: 0;
   height: 2px;
-  border-radius: 2px 2px 0 0;
-  background: #ffd77a;
+  border-radius: var(--r-2xs) var(--r-2xs) 0 0;
+  background: var(--c-accent-night);
   transform: scaleX(0);
   transform-origin: 0 50%;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.4s var(--ease-out);
   pointer-events: none;
 }
 .cta-white .cta-line {
-  background: #d99a1c;
+  background: var(--c-accent-mid);
 }
 .cta .cta-arrow {
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.4s var(--ease-out);
 }
 @media (hover: hover) {
   .cta:hover .cta-line {
@@ -84,7 +84,7 @@
     transition-duration: 0.2s;
   }
   .cta-ink:hover {
-    background: #2a2723;
+    background: var(--c-ink-hover);
   }
 }
 .cta:focus-visible .cta-line {

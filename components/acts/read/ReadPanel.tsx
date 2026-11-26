@@ -33,6 +33,7 @@ import { usePerformance } from "@/lib/perform";
 import { ACTOR_TRACK, BEATS, story, type BeatId, type StoryState } from "@/lib/story";
 import { getRow1Hover, RowView, setRow1Hover } from "./RowView";
 import { cardShow, offsetIn, setMask, softAbove, span, useActorExtra, usePerformanceAt, useScrub } from "./runtime";
+import { ease } from "@/lib/theme";
 
 /**
  * Flight contract with the World (review P1-W3): gold speck i leaves at 0.05·i s, flies 0.55 s
@@ -215,7 +216,7 @@ export function ReadPanel() {
     // The ink edge trails the Line by a tenth of the screen, so the outgoing "right roles." (erased
     // at the Line) and the incoming 2,340 never touch: there is always clear night between them.
     const gap = 0.1 * s.viewport.h;
-    const mask = !revealing ? "none" : h > 0.22 ? `linear-gradient(to bottom, transparent ${(ly + gap).toFixed(1)}px, #000 ${(ly + gap + 40).toFixed(1)}px)` : "linear-gradient(transparent, transparent)";
+    const mask = !revealing ? "none" : h > 0.22 ? `linear-gradient(to bottom, transparent ${(ly + gap).toFixed(1)}px, black ${(ly + gap + 40).toFixed(1)}px)` : "linear-gradient(transparent, transparent)";
     if (pass.dataset.mask !== mask) {
       pass.dataset.mask = mask;
       pass.style.setProperty("-webkit-mask-image", mask);
@@ -302,10 +303,10 @@ export function ReadPanel() {
     if (!root) return;
     const out = root.querySelectorAll("[data-swap-out='1']");
     const inn = root.querySelectorAll("[data-swap-in='1']");
-    tl.fromTo(out, { y: 0, opacity: 1 }, { y: -12, opacity: 0, duration: 0.25, ease: "power2.in" }, 0).fromTo(
+    tl.fromTo(out, { y: 0, opacity: 1 }, { y: -12, opacity: 0, duration: 0.25, ease: ease.in }, 0).fromTo(
       inn,
       { y: 12, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.45, ease: "expo.out" },
+      { y: 0, opacity: 1, duration: 0.45, ease: ease.out },
       0.18,
     );
   });
@@ -314,10 +315,10 @@ export function ReadPanel() {
     if (!root) return;
     const out = root.querySelectorAll("[data-swap-out='2']");
     const inn = root.querySelectorAll("[data-swap-in='2']");
-    tl.fromTo(out, { y: 0, opacity: 1 }, { y: -12, opacity: 0, duration: 0.25, ease: "power2.in" }, 0).fromTo(
+    tl.fromTo(out, { y: 0, opacity: 1 }, { y: -12, opacity: 0, duration: 0.25, ease: ease.in }, 0).fromTo(
       inn,
       { y: 12, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.45, ease: "expo.out" },
+      { y: 0, opacity: 1, duration: 0.45, ease: ease.out },
       0.18,
     );
   });
@@ -329,7 +330,7 @@ export function ReadPanel() {
     const rows = Array.from(list.querySelectorAll<HTMLElement>("[data-row-in]"));
     rows.forEach((el, n) => {
       const at = RANK_LAND_START + n * RANK_STAGGER;
-      tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: RANK_FADE, ease: "power1.out" }, at);
+      tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: RANK_FADE, ease: ease.outGentle }, at);
     });
   });
 
@@ -338,12 +339,12 @@ export function ReadPanel() {
     const root = rootRef.current;
     const privacy = root?.querySelector("[data-privacy]");
     const lens = storyCopy.reason.chips.map((c) => c.length);
-    tl.fromTo(cardShow, { score: 0 }, { score: storyCopy.reason.card.score, duration: 0.9, ease: "power2.out" }, 0)
-      .fromTo(cardShow, { meter: 0 }, { meter: 0.9, duration: 0.95, ease: "expo.out" }, 0.02)
+    tl.fromTo(cardShow, { score: 0 }, { score: storyCopy.reason.card.score, duration: 0.9, ease: ease.outSoft }, 0)
+      .fromTo(cardShow, { meter: 0 }, { meter: 0.9, duration: 0.95, ease: ease.out }, 0.02)
       .fromTo(cardShow, { c0: 0 }, { c0: lens[0], duration: lens[0] * 0.022, ease: "none" }, 0.2)
       .fromTo(cardShow, { c1: 0 }, { c1: lens[1], duration: lens[1] * 0.022, ease: "none" }, 0.32)
       .fromTo(cardShow, { c2: 0 }, { c2: lens[2], duration: lens[2] * 0.022, ease: "none" }, 0.44);
-    if (privacy) tl.fromTo(privacy, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.6, ease: "expo.out" }, 0.9);
+    if (privacy) tl.fromTo(privacy, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.6, ease: ease.out }, 0.9);
   });
 
   /* ── pointer: card tilt (reason), row-1 lift (ranked) ── */

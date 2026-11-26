@@ -15,13 +15,13 @@
   z-index: var(--z-nav, 5);
   padding: var(--nav-top) 12px 0;
   pointer-events: none;
-  transition: transform 0.3s cubic-bezier(0.5, 0, 0.75, 0);
+  transition: transform 0.3s var(--ease-in);
 }
 html.motion .nav[data-hidden]:not(:focus-within):not([data-open]) {
   transform: translateY(calc(-100% - 8px));
 }
 html.motion .nav:not([data-hidden]) {
-  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.55s var(--ease-out);
 }
 .nav-stack {
   position: relative;
@@ -37,7 +37,7 @@ html.motion .nav:not([data-hidden]) {
   justify-content: space-between;
   gap: 16px;
   padding: 0 8px 0 18px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   border: 1px solid transparent;
   pointer-events: auto;
   transition:
@@ -50,26 +50,26 @@ html.motion .nav:not([data-hidden]) {
 /* skins */
 html.motion[data-chapter="night"] .nav-base,
 html.motion[data-chapter="day"] .nav-overlay {
-  --nav-fg: #fff;
-  --nav-fg-2: rgba(255, 255, 255, 0.78);
-  --nav-hover: rgba(255, 255, 255, 0.1);
-  --nav-accent: #ffd77a;
+  --nav-fg: var(--c-on-night);
+  --nav-fg-2: color-mix(in oklab, var(--c-on-night) 78%, transparent);
+  --nav-hover: color-mix(in oklab, var(--c-on-night) 10%, transparent);
+  --nav-accent: var(--c-accent-night);
   color: var(--nav-fg);
-  background: rgba(7, 20, 42, 0.52);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: color-mix(in oklab, var(--c-night-glass) 52%, transparent);
+  border-color: color-mix(in oklab, var(--c-on-night) 12%, transparent);
   -webkit-backdrop-filter: blur(16px) saturate(1.3);
   backdrop-filter: blur(16px) saturate(1.3);
 }
 .nav-base,
 html.motion[data-chapter="night"] .nav-overlay {
-  --nav-fg: #1b1916;
-  --nav-fg-2: #5f5a53;
-  --nav-hover: rgba(27, 25, 22, 0.06);
-  --nav-accent: #b45309;
+  --nav-fg: var(--c-ink);
+  --nav-fg-2: var(--c-ink-2);
+  --nav-hover: color-mix(in oklab, var(--c-ink) 6%, transparent);
+  --nav-accent: var(--c-accent);
   color: var(--nav-fg);
-  background: rgba(246, 244, 239, 0.8);
-  border-color: rgba(27, 25, 22, 0.08);
-  box-shadow: 0 10px 30px -18px rgba(27, 25, 22, 0.35);
+  background: color-mix(in oklab, var(--c-paper) 80%, transparent);
+  border-color: color-mix(in oklab, var(--c-ink) 8%, transparent);
+  box-shadow: var(--shadow-nav);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
   backdrop-filter: blur(16px) saturate(1.2);
 }
@@ -79,11 +79,11 @@ html.motion[data-chapter="night"] .nav-base {
 /* Over the hero (and before the story has started) the nav is clear. */
 html.motion[data-beat="hero"] .nav-base,
 html.motion:not([data-beat]) .nav-base {
-  --nav-fg: #fff;
-  --nav-fg-2: rgba(255, 255, 255, 0.86);
-  --nav-hover: rgba(255, 255, 255, 0.12);
-  --nav-accent: #ffd77a;
-  color: #fff;
+  --nav-fg: var(--c-on-night);
+  --nav-fg-2: color-mix(in oklab, var(--c-on-night) 86%, transparent);
+  --nav-hover: color-mix(in oklab, var(--c-on-night) 12%, transparent);
+  --nav-accent: var(--c-accent-night);
+  color: var(--c-on-night);
   background: transparent;
   border-color: transparent;
   box-shadow: none;
@@ -99,21 +99,21 @@ html.motion[data-chapter="night"] .nav-base .cta,
 html.motion[data-beat="hero"] .nav-base .cta,
 html.motion:not([data-beat]) .nav-base .cta,
 html.motion[data-chapter="day"] .nav-overlay .cta {
-  background: #fff;
-  color: #1b1916;
+  background: var(--c-on-night);
+  color: var(--c-ink);
 }
 html.motion[data-chapter="night"] .nav-overlay .cta {
-  background: #1b1916;
-  color: #fff;
+  background: var(--c-ink);
+  color: var(--c-on-night);
 }
 html.motion[data-chapter="night"] .nav-base .cta .cta-line,
 html.motion[data-beat="hero"] .nav-base .cta .cta-line,
 html.motion[data-chapter="day"] .nav-overlay .cta .cta-line {
-  background: #d99a1c;
+  background: var(--c-accent-mid);
 }
 html.motion[data-chapter="night"] .nav-base .cta:focus-visible,
 html.motion[data-beat="hero"] .nav-base .cta:focus-visible {
-  outline-color: #ffd77a;
+  outline-color: var(--c-focus-night);
 }
 
 /* the split, during wipes: each skin keeps to its side of the line */
@@ -140,13 +140,13 @@ html.motion[data-wipe] .nav-pill {
 }
 html.motion[data-wipe][data-chapter="night"] .nav-base,
 html.motion[data-wipe][data-chapter="day"] .nav-overlay {
-  background: rgb(9, 22, 44);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--c-nav-night-solid);
+  border-color: color-mix(in oklab, var(--c-on-night) 12%, transparent);
   box-shadow: none;
 }
 html.motion[data-wipe][data-chapter="day"] .nav-base,
 html.motion[data-wipe][data-chapter="night"] .nav-overlay {
-  background: rgb(244, 241, 235);
+  background: var(--c-nav-day-solid);
 }
 
 .nav-brand {
@@ -157,7 +157,7 @@ html.motion[data-wipe][data-chapter="night"] .nav-overlay {
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--nav-fg);
-  border-radius: 10px;
+  border-radius: var(--r-sm);
 }
 .nav-logo {
   position: relative;
@@ -166,15 +166,15 @@ html.motion[data-wipe][data-chapter="night"] .nav-overlay {
   justify-content: center;
   width: 22px;
   height: 22px;
-  border-radius: 7px;
+  border-radius: calc(var(--r-xs) * 7 / 6);
   background: var(--nav-fg);
 }
 .nav-logo::before {
   content: "";
   width: 8px;
   height: 8px;
-  border-radius: 999px;
-  background: #b45309;
+  border-radius: var(--r-pill);
+  background: var(--c-accent);
 }
 .nav-logo::after {
   content: "";
@@ -183,7 +183,7 @@ html.motion[data-wipe][data-chapter="night"] .nav-overlay {
   right: 5px;
   bottom: 4px;
   height: 1.5px;
-  border-radius: 1px;
+  border-radius: calc(var(--r-2xs) / 2);
   background: var(--nav-accent);
   opacity: 0.9;
 }
@@ -201,7 +201,7 @@ html.motion[data-wipe][data-chapter="night"] .nav-overlay {
   align-items: center;
   height: 36px;
   padding: 0 14px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   font-size: 14px;
   color: var(--nav-fg-2);
   transition: background-color 0.4s ease, color 0.4s ease;
@@ -214,10 +214,10 @@ html.motion[data-wipe][data-chapter="night"] .nav-overlay {
   bottom: 4px;
   width: 4px;
   height: 4px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--nav-accent);
   transform: scale(0);
-  transition: transform 0.45s cubic-bezier(0.2, 1.5, 0.4, 1);
+  transition: transform 0.45s var(--ease-spring);
 }
 .nav-link[aria-current="true"] {
   color: var(--nav-fg);
@@ -250,7 +250,7 @@ html.motion[data-wipe][data-chapter="night"] .nav-overlay {
   width: 40px;
   height: 40px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: transparent;
   color: var(--nav-fg);
   cursor: pointer;
@@ -268,9 +268,9 @@ html.motion[data-wipe][data-chapter="night"] .nav-overlay {
   left: 0;
   width: 16px;
   height: 1.5px;
-  border-radius: 1px;
+  border-radius: calc(var(--r-2xs) / 2);
   background: currentColor;
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.35s var(--ease-out);
 }
 .nav-menu-btn span::before {
   top: 0;
@@ -289,31 +289,31 @@ html.motion[data-wipe][data-chapter="night"] .nav-overlay {
   max-width: 1240px;
   margin: 8px auto 0;
   padding: 8px;
-  border-radius: 24px;
+  border-radius: var(--r-lg);
   pointer-events: auto;
-  background: rgba(246, 244, 239, 0.94);
-  border: 1px solid rgba(27, 25, 22, 0.08);
-  box-shadow: 0 30px 60px -30px rgba(27, 25, 22, 0.45);
+  background: color-mix(in oklab, var(--c-paper) 94%, transparent);
+  border: 1px solid color-mix(in oklab, var(--c-ink) 8%, transparent);
+  box-shadow: var(--shadow-menu);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  animation: nav-menu-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: nav-menu-in 0.35s var(--ease-out);
 }
 html.motion[data-chapter="night"] .nav-menu {
-  background: rgba(7, 20, 42, 0.92);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: color-mix(in oklab, var(--c-night-glass) 92%, transparent);
+  border-color: color-mix(in oklab, var(--c-on-night) 12%, transparent);
 }
 .nav-menu a {
   display: block;
   padding: 14px 16px;
-  border-radius: 16px;
+  border-radius: var(--r-md);
   font-size: 17px;
-  color: #1b1916;
+  color: var(--c-ink);
 }
 html.motion[data-chapter="night"] .nav-menu a {
-  color: #fff;
+  color: var(--c-on-night);
 }
 .nav-menu a:focus-visible {
-  outline: 2px solid #b45309;
+  outline: 2px solid var(--c-focus);
   outline-offset: -2px;
 }
 @keyframes nav-menu-in {
@@ -371,15 +371,15 @@ html.motion[data-chapter="night"] .nav-menu a {
 }
 html.motion[data-chapter="night"] .rail-base,
 html.motion[data-chapter="day"] .rail-overlay {
-  --rail-fg: #fff;
-  --rail-dim: rgba(255, 255, 255, 0.4);
-  --rail-accent: #ffd77a;
+  --rail-fg: var(--c-on-night);
+  --rail-dim: color-mix(in oklab, var(--c-on-night) 40%, transparent);
+  --rail-accent: var(--c-accent-night);
 }
 .rail-base,
 html.motion[data-chapter="night"] .rail-overlay {
-  --rail-fg: #1b1916;
-  --rail-dim: rgba(27, 25, 22, 0.32);
-  --rail-accent: #b45309;
+  --rail-fg: var(--c-ink);
+  --rail-dim: color-mix(in oklab, var(--c-ink) 32%, transparent);
+  --rail-accent: var(--c-accent);
 }
 .rail-overlay {
   display: none;
@@ -404,16 +404,16 @@ html.motion[data-wipe][data-chapter="night"] .rail-overlay {
   height: 24px;
   padding-left: 12px;
   pointer-events: auto;
-  border-radius: 6px;
+  border-radius: var(--r-xs);
   color: var(--rail-fg);
 }
 .rail-tick {
   display: block;
   width: 8px;
   height: 2px;
-  border-radius: 1px;
+  border-radius: calc(var(--r-2xs) / 2);
   background: var(--rail-dim);
-  transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s ease;
+  transition: width 0.5s var(--ease-out), background-color 0.4s ease;
 }
 .rail-link[aria-current="true"] .rail-tick {
   /* longer and full ink/white, never amber: the Line is the only amber line */
@@ -422,12 +422,13 @@ html.motion[data-wipe][data-chapter="night"] .rail-overlay {
 }
 .rail-label {
   font-family: var(--font-mono);
+  font-variant-numeric: var(--mono-numeric);
   font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: calc(0.08em * var(--mono-tracking));
+  text-transform: var(--mono-case);
   opacity: 0;
   transform: translateX(4px);
-  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.4s ease, transform 0.4s var(--ease-out);
 }
 @media (hover: hover) {
   .rail-link:hover .rail-label {
@@ -464,8 +465,8 @@ html.motion[data-wipe][data-chapter="night"] .rail-overlay {
   flex-direction: column;
   justify-content: space-between;
   padding: 56px 32px 28px;
-  background: #1b1916;
-  color: #f6f4ef;
+  background: var(--c-ink);
+  color: var(--c-paper);
 }
 .ft::before {
   /* a static gold hairline along the top edge */
@@ -475,7 +476,7 @@ html.motion[data-wipe][data-chapter="night"] .rail-overlay {
   right: 0;
   top: 0;
   height: 1px;
-  background: linear-gradient(90deg, rgba(255, 215, 122, 0) 0%, rgba(255, 215, 122, 0.7) 18%, rgba(255, 215, 122, 0.7) 82%, rgba(255, 215, 122, 0) 100%);
+  background: linear-gradient(90deg, color-mix(in oklab, var(--c-line) 0%, transparent) 0%, color-mix(in oklab, var(--c-line) 70%, transparent) 18%, color-mix(in oklab, var(--c-line) 70%, transparent) 82%, color-mix(in oklab, var(--c-line) 0%, transparent) 100%);
 }
 .ft-inner {
   display: grid;
@@ -494,11 +495,11 @@ html.motion[data-wipe][data-chapter="night"] .rail-overlay {
   margin: 0;
   font-size: 15px;
   line-height: 1.5;
-  color: #d9d3c9;
+  color: var(--c-on-footer-2);
 }
 .ft-brand .nav-logo {
-  --nav-fg: #f6f4ef;
-  --nav-accent: #ffd77a;
+  --nav-fg: var(--c-paper);
+  --nav-accent: var(--c-accent-night);
   flex: none;
   margin-top: 2px;
 }
@@ -515,23 +516,23 @@ html.motion[data-wipe][data-chapter="night"] .rail-overlay {
   display: inline-block;
   font-size: 15px;
   line-height: 1.5;
-  color: #d9d3c9;
-  border-radius: 4px;
+  color: var(--c-on-footer-2);
+  border-radius: calc(var(--r-2xs) * 2);
   transition: color 0.4s ease;
 }
 @media (hover: hover) {
   .ft-links a:hover {
-    color: #fff;
+    color: var(--c-on-night);
     text-decoration: underline;
-    text-decoration-color: rgba(255, 215, 122, 0.8);
+    text-decoration-color: color-mix(in oklab, var(--c-line) 80%, transparent);
     text-underline-offset: 4px;
     transition-duration: 0.18s;
   }
 }
 .ft-links a:focus-visible {
-  outline: 2px solid #ffd77a;
+  outline: 2px solid var(--c-focus-night);
   outline-offset: 4px;
-  color: #fff;
+  color: var(--c-on-night);
 }
 .ft-time {
   justify-self: end;
@@ -539,21 +540,21 @@ html.motion[data-wipe][data-chapter="night"] .rail-overlay {
   text-align: right;
   font-size: 15px;
   line-height: 1.5;
-  color: #f6f4ef;
+  color: var(--c-paper);
 }
 .ft-time time {
   font-variant-numeric: tabular-nums;
 }
 .ft-time span {
-  color: #a8a097;
+  color: var(--c-ink-3);
 }
 .ft-last {
   width: 100%;
   max-width: 1240px;
   margin: 44px auto 0;
   padding-top: 18px;
-  border-top: 1px solid rgba(246, 244, 239, 0.1);
-  color: rgba(255, 255, 255, 0.5);
+  border-top: 1px solid color-mix(in oklab, var(--c-paper) 10%, transparent);
+  color: color-mix(in oklab, var(--c-on-night) 50%, transparent);
   line-height: 1.6;
 }
 @media (max-width: 767px) {

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { prefersReducedMotion } from "@/lib/gl";
 import { gsap, SplitText } from "@/lib/gsap";
+import { ease } from "@/lib/theme";
 
 /**
  * Section heading whose words brighten one by one as it scrolls through view
@@ -26,7 +27,7 @@ export function ScrollWords({ text, className = "" }: { text: string; className?
               opacity: 1,
               y: 0,
               stagger: 0.08,
-              ease: "power1.out",
+              ease: ease.outGentle,
               scrollTrigger: { trigger: el, start: "top 88%", end: "top 48%", scrub: 0.6 },
             },
           ),

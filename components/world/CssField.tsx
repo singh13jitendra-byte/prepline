@@ -12,6 +12,10 @@
  * so the passes still read as dense noise turning into sparse order, and
  * against --day-top during a wipe. When the world draws its first frame they
  * fade out under it (html.world-on).
+ *
+ * Theme: the SVG tiles are masks (alpha only); the colour is the layer's own
+ * background (--art-speck, --c-dim for the dimmed copies, --c-match for the gold),
+ * so a theme recolours the field without re-encoding a tile.
  */
 
 function rng(seed: number) {
@@ -38,7 +42,7 @@ function denseTile(size: number, count: number, seed: number, opacity = 1) {
     groups[g < 0.5 ? 0 : g < 0.85 ? 1 : 2] += `M${x} ${y}h0`;
   }
   return esc(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" fill="none" stroke="#fff6e3" stroke-linecap="round" opacity="${opacity}">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" fill="none" stroke="black" stroke-linecap="round" opacity="${opacity}">` +
       `<path d="${groups[0]}" stroke-width="1.6" opacity=".4"/><path d="${groups[1]}" stroke-width="2.6" opacity=".62"/><path d="${groups[2]}" stroke-width="3.8" opacity=".85"/></svg>`,
   );
 }
@@ -47,16 +51,16 @@ function gridTile(seed: number) {
   const rand = rng(seed);
   let d = "";
   for (let j = 0; j < 10; j++) for (let i = 0; i < 10; i++) if (rand() < 0.46) d += `M${24 + i * 48} ${24 + j * 48}h0`;
-  return esc(`<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480" fill="none" stroke="#fff6e3" stroke-linecap="round"><path d="${d}" stroke-width="3.8"/></svg>`);
+  return esc(`<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480" fill="none" stroke="black" stroke-linecap="round"><path d="${d}" stroke-width="3.8"/></svg>`);
 }
 
 const DENSE_A = denseTile(293, 86, 11);
 const DENSE_B = denseTile(367, 118, 29);
 const GRID_TILE = gridTile(7);
-/** The still dot texture of the night panels on the static (reduced-motion) page. */
+/** The still dot texture (a mask) of the night panels on the static (reduced-motion) page. */
 export const STATIC_DOTS = `${denseTile(293, 44, 11, 0.4)}, ${denseTile(367, 64, 29, 0.4)}`;
-const dense = { backgroundImage: `${DENSE_A}, ${DENSE_B}` };
-const grid = { backgroundImage: GRID_TILE, backgroundPosition: "50% 50%" };
+const dense = { maskImage: `${DENSE_A}, ${DENSE_B}`, WebkitMaskImage: `${DENSE_A}, ${DENSE_B}` };
+const grid = { maskImage: GRID_TILE, WebkitMaskImage: GRID_TILE, maskPosition: "50% 50%", WebkitMaskPosition: "50% 50%" };
 
 const GOLD: [number, number][] = [
   [13, 27], [31, 21], [52, 30], [71, 24], [88, 33], [22, 46],
@@ -72,7 +76,7 @@ export function CssField() {
       <div aria-hidden="true" className="cf cf-grid only-motion" style={grid} />
       <svg aria-hidden="true" className="cf cf-gold only-motion" width="100%" height="100%">
         {GOLD.map(([x, y]) => (
-          <circle key={`${x}-${y}`} cx={`${x}%`} cy={`${y}%`} r="3.4" fill="#ffd77a" />
+          <circle key={`${x}-${y}`} cx={`${x}%`} cy={`${y}%`} r="3.4" style={{ fill: "var(--c-match)" }} />
         ))}
       </svg>
     </>

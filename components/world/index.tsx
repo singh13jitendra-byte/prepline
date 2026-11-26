@@ -20,19 +20,22 @@ import { WorldCanvas } from "./WorldCanvas";
 
 const CSS = `
 .world-night,.world-day,.world-grain{position:fixed;inset:0;z-index:var(--z-backdrop);pointer-events:none}
-.world-night{background:radial-gradient(120% 95% at 50% 38%,#0f2a4f 0%,var(--color-night) 42%,var(--color-night-2) 100%)}
-.world-day{background:var(--color-canvas);visibility:hidden}
+.world-night{background:radial-gradient(120% 95% at 50% 38%,var(--art-night-glow) 0%,var(--c-night) 42%,var(--c-night-2) 100%)}
+.world-day{background:var(--c-paper);visibility:hidden}
 .world-day[data-mode="day"]{visibility:visible}
 .world-day[data-mode="split"]{visibility:visible;clip-path:inset(var(--day-top) 0 0 0)}
-.world-grain{background-size:128px 128px}
+.world-grain{background-size:128px 128px;background-image:var(--tex-night)}
+html[data-chapter="day"] .world-grain{background-image:var(--tex-paper)}
 
 .world-canvas{position:fixed;top:0;left:0;width:100%;height:100vh;height:100lvh;z-index:var(--z-world);pointer-events:none;opacity:0;transition:opacity .4s linear}
 html.world-on .world-canvas{opacity:1}
 
 .cf{position:fixed;inset:0;z-index:var(--z-world);pointer-events:none;transition:opacity .9s linear,visibility 0s linear .9s}
-.cf-dust{opacity:.17}
+.cf{background-color:var(--art-speck)}
+.cf-dust{opacity:.17;background-color:var(--c-dim)}
 .cf-dense{opacity:.8}
-.cf-grid-dim{opacity:.16}
+.cf-grid-dim{opacity:.16;background-color:var(--c-dim)}
+.cf-gold{background:none}
 .cf-grid,.cf-grid-dim,.cf-gold{visibility:hidden}
 html[data-beat]:not([data-beat="hero"],[data-beat="pass1"]) .cf-dense{visibility:hidden}
 html[data-beat="pass1"] .cf-dense{clip-path:inset(var(--line-y) 0 0 0)}
@@ -47,18 +50,19 @@ html.world-on .cf{opacity:0;visibility:hidden}
 .world-line-glow{mix-blend-mode:plus-lighter}
 .world-line-label{position:fixed;top:0;left:0;z-index:var(--z-line);pointer-events:none;white-space:nowrap;line-height:11px;transition:color .25s linear;will-change:transform,opacity}
 
-.world-lens{position:fixed;top:0;left:0;z-index:var(--z-nav);pointer-events:none;border-radius:50%;border:1px solid #fff;will-change:transform,opacity}
-.world-lens-label{position:fixed;top:0;left:0;z-index:var(--z-nav);pointer-events:none;white-space:nowrap;font-family:var(--font-mono);font-size:11px;line-height:1;color:rgba(255,255,255,.88);background:rgba(6,18,38,.74);border:1px solid rgba(255,255,255,.14);border-radius:7px;padding:6px 8px;will-change:transform,opacity}
+.world-lens{position:fixed;top:0;left:0;z-index:var(--z-nav);pointer-events:none;border-radius:var(--r-round);border:1px solid var(--c-on-night);will-change:transform,opacity}
+.world-lens-label{position:fixed;top:0;left:0;z-index:var(--z-nav);pointer-events:none;white-space:nowrap;font-family:var(--font-mono);font-variant-numeric:var(--mono-numeric);font-size:var(--fs-micro);line-height:1;color:color-mix(in oklab,var(--c-on-night) 88%,transparent);background:color-mix(in oklab,var(--c-night-2) 74%,transparent);border:1px solid var(--c-rule-night);border-radius:calc(var(--r-xs) * 7 / 6);padding:6px 8px;will-change:transform,opacity}
 
 /* Chrome stops presenting the canvas once an opaque footer covers about a third of the viewport
    (seen headless at the page bottom: the seat specks and the dawn vanish above the footer).
    A footer that is not fully opaque is not treated as an occluder; 0.4% is invisible on ink. */
-html.world-on footer.ft{background-color:rgba(27,25,22,.996)}
+html.world-on footer.ft{background-color:color-mix(in oklab,var(--c-footer) 99.6%,transparent)}
 /* No WebGL: the seats still look taken. A CSS pin in each ring, where the world would leave a speck. */
-html.motion:not(.world-on) .seat-ring::before{content:"";position:absolute;inset:31%;border-radius:50%;background:var(--color-accent);opacity:.92}
-html:not(.motion) .story-stage[data-chapter="night"]{background-image:${STATIC_DOTS},radial-gradient(120% 90% at 50% 0%,var(--color-night) 0%,var(--color-night-2) 100%)}
-html:not(.motion) [data-anchor="hero-underline"]{background:var(--color-gold);min-height:2px;border-radius:2px}
-html:not(.motion) [data-anchor="ready-underline"]{background:var(--color-accent);min-height:2px;border-radius:2px}
+html.motion:not(.world-on) .seat-ring::before{content:"";position:absolute;inset:31%;border-radius:var(--r-round);background:var(--c-accent);opacity:.92}
+html:not(.motion) .story-stage[data-chapter="night"]{isolation:isolate}
+html:not(.motion) .story-stage[data-chapter="night"]::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background-color:var(--art-speck);-webkit-mask-image:${STATIC_DOTS};mask-image:${STATIC_DOTS}}
+html:not(.motion) [data-anchor="hero-underline"]{background:var(--c-accent-night);min-height:2px;border-radius:var(--r-2xs)}
+html:not(.motion) [data-anchor="ready-underline"]{background:var(--c-accent);min-height:2px;border-radius:var(--r-2xs)}
 `;
 
 export function World() {

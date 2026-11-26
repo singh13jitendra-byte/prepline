@@ -23,6 +23,7 @@ import { registerFace, type FaceProps } from "@/components/story/faces";
 import { asked, prepState, usePrepState, type Vote } from "@/components/acts/prep/prepState";
 import { TileFace } from "./TileFace";
 import "./sheet.css";
+import { ease, cssToken } from "@/lib/theme";
 
 /** The folded sheet's cover is the tile face scaled to the folded panel's height (240 / 92). */
 const TILE_H = 92;
@@ -93,7 +94,7 @@ function VoteButton({ index, kind, pressed, live }: { index: number; kind: "aske
       if (!el || i !== index || story.reduced()) return;
       if (source === "demo") {
         // The demo presses the button itself.
-        el.animate([{ transform: "scale(1)" }, { transform: "scale(0.92)", offset: 0.35 }, { transform: "scale(1)" }], { duration: 380, easing: "cubic-bezier(0.16,1,0.3,1)" });
+        el.animate([{ transform: "scale(1)" }, { transform: "scale(0.92)", offset: 0.35 }, { transform: "scale(1)" }], { duration: 380, easing: cssToken("--ease-out") });
       }
       if (kind !== "asked") return;
       const w = el.offsetWidth;
@@ -109,7 +110,7 @@ function VoteButton({ index, kind, pressed, live }: { index: number; kind: "aske
             { transform: "translate(0,0) scale(1)", opacity: 1 },
             { transform: `translate(${(d.x * rx).toFixed(1)}px,${(d.y * ry).toFixed(1)}px) scale(0.4)`, opacity: 0 },
           ],
-          { duration: 560, easing: "cubic-bezier(0.16,1,0.3,1)" },
+          { duration: 560, easing: cssToken("--ease-out") },
         ).onfinish = () => dot.remove();
       });
     });
@@ -335,7 +336,7 @@ function Question({ index, live, typed, vote }: QuestionProps) {
         onComplete: () => render(T),
         onReverseComplete: () => render(0),
       });
-      tl.fromTo(chip, { autoAlpha: 0, y: 5, scale: 0.9 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.35, ease: "back.out(1.8)", clearProps: "transform" }, ">-0.02");
+      tl.fromTo(chip, { autoAlpha: 0, y: 5, scale: 0.9 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.35, ease: ease.spring, clearProps: "transform" }, ">-0.02");
 
       remeasure.current = () => {
         stale = true;
@@ -564,7 +565,7 @@ function SheetDock({ skin }: { skin: FaceProps["skin"] }) {
   });
 
   return (
-    <article ref={rootRef} className="sh-root" data-skin={skin} data-host="dock" aria-labelledby="sheet-title">
+    <article ref={rootRef} className="sh-root" data-skin={skin} data-paper="" data-host="dock" aria-labelledby="sheet-title">
       <div className="sh-glow" style={{ height: 720 }} aria-hidden="true" />
       <SheetContent live typedCount={3} />
     </article>
@@ -663,6 +664,7 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
       ref={rootRef}
       className="sh-root"
       data-skin={skin}
+      data-paper=""
       data-host="actor"
       data-writing={beat === "unfold" ? "" : undefined}
       data-lamp={order(beat) > order("votes") ? "end" : undefined}

@@ -57,6 +57,7 @@ import {
 } from "@/lib/story";
 import { FaceFrame } from "./FaceSlot";
 import { FACE_ORDER, getFace } from "./faces";
+import { faceRadius } from "@/lib/theme";
 
 type FaceEls = { root: HTMLDivElement | null; night: HTMLDivElement | null; day: HTMLDivElement | null };
 type Clock = { travel: number; fold: number; flip: number };
@@ -252,7 +253,8 @@ export function Actor() {
       const rot = (move.rotate ? lerp(move.rotate[0], move.rotate[1], t) : 0) + lean;
 
       const fromMeta = (faceFrom ?? faceTo).meta;
-      const radius = lerp(fromMeta.radius * (a.w / fromMeta.width), faceTo.meta.radius * (b.w / faceTo.meta.width), t);
+      const fromId = (faceFrom ?? faceTo).id;
+      const radius = lerp(faceRadius(fromId, fromMeta.radius) * (a.w / fromMeta.width), faceRadius(faceTo.id, faceTo.meta.radius) * (b.w / faceTo.meta.width), t);
       const opacity = move.fadeIn ? clamp01((p - move.fadeIn[0]) / (move.fadeIn[1] - move.fadeIn[0] || 1)) : 1;
 
       const target = move.dock && t >= 1 && !split ? anchorElement(move.to) : null;

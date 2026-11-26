@@ -18,12 +18,12 @@ import { anchorElement, registeredAnchors } from "@/lib/anchors";
 import { story } from "@/lib/story";
 
 const DEBUG_CSS = `
-        .story-debug{position:fixed;inset:0;z-index:var(--z-debug);pointer-events:none;font:11px/1.45 var(--font-mono),monospace}
-        .story-debug pre{position:absolute;left:12px;bottom:12px;margin:0;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.82);color:#d7ffd9;white-space:pre}
-        .story-debug-line{position:absolute;top:0;left:0;height:2px;background:#ff2bd6}
-        .story-debug-split{position:absolute;top:0;left:0;width:100%;border-top:1px dashed #19e3ff}
-        .story-debug-actor{position:absolute;top:0;left:0;outline:1px solid #9dff00}
-        .story-debug-anchor{position:absolute;top:0;left:0;outline:1px solid rgba(255,140,0,.9);color:#ff8c00;font-size:9px;line-height:1;white-space:nowrap;text-shadow:0 0 2px #000}
+        .story-debug{position:fixed;inset:0;z-index:var(--z-debug);pointer-events:none;font:11px/1.45 var(--font-mono),monospace} /* token-ok: debug overlay (?debug only), not part of any theme */
+        .story-debug pre{position:absolute;left:12px;bottom:12px;margin:0;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.82);color:#d7ffd9;white-space:pre} /* token-ok: debug overlay (?debug only), not part of any theme */
+        .story-debug-line{position:absolute;top:0;left:0;height:2px;background:#ff2bd6} /* token-ok: debug overlay (?debug only), not part of any theme */
+        .story-debug-split{position:absolute;top:0;left:0;width:100%;border-top:1px dashed #19e3ff} /* token-ok: debug overlay (?debug only), not part of any theme */
+        .story-debug-actor{position:absolute;top:0;left:0;outline:1px solid #9dff00} /* token-ok: debug overlay (?debug only), not part of any theme */
+        .story-debug-anchor{position:absolute;top:0;left:0;outline:1px solid rgba(255,140,0,.9);color:#ff8c00;font-size:9px;line-height:1;white-space:nowrap;text-shadow:0 0 2px #000} /* token-ok: debug overlay (?debug only), not part of any theme */
       `;
 
 export function Debug() {

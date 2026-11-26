@@ -16,7 +16,7 @@
  * Usage:
  *
  *   usePerformance("reason", (tl) => {
- *     tl.fromTo(ring, { drawSVG: 0 }, { drawSVG: "90%", duration: 1.1, ease: "expo.out" })
+ *     tl.fromTo(ring, { drawSVG: 0 }, { drawSVG: "90%", duration: 1.1, ease: ease.out })
  *       .from(chips, { autoAlpha: 0, y: 8, stagger: 0.12 }, 0.2)
  *       .from(privacy, { autoAlpha: 0 }, ">");
  *   });
@@ -46,6 +46,7 @@
 import { useEffect, type DependencyList } from "react";
 import { gsap } from "./gsap";
 import { BEATS, story, type BeatId, type Direction } from "./story";
+import { ease } from "@/lib/theme";
 
 export type PerformanceContext = {
   beat: BeatId;

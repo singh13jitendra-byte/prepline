@@ -13,8 +13,9 @@ import { rankedRoles, storyCopy } from "@/lib/content";
 import { mountGL, type GLController } from "@/lib/gl";
 import { BEATS, beatPosition, clamp01, story, type BeatId, type StoryState } from "@/lib/story";
 import { LENS_RADIUS, worldBus } from "./bus";
-import { BIG, LAND_FADE, LAST_LANDING, PASS_DOLLY, ROW_IN, SEATS, STAGGER, buildField, createField, nearestSpeck, type FieldData, type FieldUniforms, type Verdict } from "./fieldScene";
-import { createLight, type LightUniforms } from "./lightPass";
+import { BIG, FIELD_COLORS, LAND_FADE, LAST_LANDING, PASS_DOLLY, ROW_IN, SEATS, STAGGER, buildField, createField, nearestSpeck, type FieldData, type FieldUniforms, type Verdict } from "./fieldScene";
+import { LIGHT_COLORS, createLight, type LightUniforms } from "./lightPass";
+import { labelWidth, onThemeChange, readWorld } from "@/lib/theme";
 
 const ORDER = Object.fromEntries(BEATS.map((b, i) => [b.id, i])) as Record<BeatId, number>;
 const ROW_IDS = Array.from({ length: 12 }, (_, i) => `row-${i + 1}` as AnchorId);
@@ -102,6 +103,17 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
   let getDpr = () => 1;
   let needs = true;
 
+  /* ── theme: every colour the shaders draw is a uniform read from the live theme ── */
+  // An alpha-0 --c-line-glow switches the Line's halo and bloom off: the light pass skips them.
+  let glowOn = true;
+  const applyColors = () => {
+    const { colors, alpha } = readWorld();
+    for (const [u, role] of Object.entries(FIELD_COLORS)) fu[u as keyof typeof FIELD_COLORS].value.fromArray(colors[role]);
+    for (const [u, role] of Object.entries(LIGHT_COLORS)) lu[u as keyof typeof LIGHT_COLORS].value.fromArray(colors[role]);
+    glowOn = alpha.lineGlow > 0;
+    needs = true;
+  };
+
   const controller = await mountGL(
     host,
     (THREE, { width, height }, renderer) => {
@@ -110,6 +122,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
       const lightPass = createLight(THREE, width, height);
       fu = field.uniforms;
       lu = lightPass.uniforms;
+      applyColors();
       light = lightPass.mesh;
       info = renderer.info;
       glc = renderer.getContext() as WebGL2RenderingContext;
@@ -137,6 +150,8 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
   );
   if (!controller) return () => {};
   gl = controller;
+
+  offs.push(onThemeChange(applyColors));
   worldBus.stats.instances = data.count;
 
   /* ── timed pieces (the load, the flight, the pulse, the exposure, a claimed seat) ── */
@@ -443,7 +458,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
       line.y > a.y &&
       line.y < a.y + a.h + 2;
     let bloom = nightOnScreen ? (0.4 + 0.6 * clamp01(line.weight - 1)) * (0.55 + 0.45 * clamp01(len / (vw * 0.5))) : 0;
-    if (onPaper || len < 2) bloom = 0;
+    if (onPaper || len < 2 || !glowOn) bloom = 0;
     bloom *= intro;
     lu.uLine.value.set(line.x0, line.x1, line.y, line.weight);
     lu.uBloom.value = bloom;
@@ -581,7 +596,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
         if (text !== lens.label) {
           lens.label = text;
           label.textContent = text;
-          lens.w = text.length * 6.7 + 18;
+          lens.w = labelWidth(label, text, 6.7) + 18; // measured when --font-mono is proportional
         }
         const flip = lens.x + 18 + lens.w > vw - 8;
         ring.style.transform = `translate3d(${(lens.x - LENS_RADIUS).toFixed(1)}px,${(lens.y - LENS_RADIUS).toFixed(1)}px,0) scale(${(0.92 + 0.08 * lens.k).toFixed(3)})`;

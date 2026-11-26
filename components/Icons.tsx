@@ -16,11 +16,11 @@ export function Logo({ dark = false }: { dark?: boolean }) {
   return (
     <span
       aria-hidden
-      className={`inline-flex size-[22px] items-center justify-center rounded-[7px] transition-colors duration-500 ${
-        dark ? "bg-ink" : "bg-white"
+      className={`inline-flex size-[22px] items-center justify-center rounded-[calc(var(--r-xs)*7/6)] transition-colors duration-500 ${
+        dark ? "bg-ink" : "bg-on-night"
       }`}
     >
-      <span className="size-2 rounded-full bg-accent" />
+      <span className="size-2 rounded-pill bg-accent" />
     </span>
   );
 }
