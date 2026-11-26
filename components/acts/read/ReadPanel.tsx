@@ -32,7 +32,6 @@ import { FaceSlot } from "@/components/story/FaceSlot";
 import { Panel } from "@/components/story/Stage";
 import { rankedRoles, storyCopy } from "@/lib/content";
 import { registerAnchor, useAnchor, type AnchorId } from "@/lib/anchors";
-import { usePerformance } from "@/lib/perform";
 import { ACTOR_TRACK, BEATS, story, type BeatId, type StoryState } from "@/lib/story";
 import { MatchRow, productData } from "@/components/product";
 import { getRow1Hover, setRow1Hover } from "./RowView";
@@ -42,6 +41,8 @@ import { landAt, listDrift } from "@/components/world/flight";
 
 /** Beat progress (`ranked`) at which each row's firefly touches down: the row prints and ignites. */
 const LAND = Array.from({ length: 12 }, (_, i) => landAt(i));
+/** Beat progress (`ranked`) by which the paper panel is fully laid down (the first landing is at 0.25). */
+const PANEL_IN = 0.04;
 /** Beat progress at which the reason card finishes its travel (ACTOR_TRACK.reason.range[1]). */
 const REASON_AT = ACTOR_TRACK.reason?.range?.[1] ?? 0.35;
 /** The row → card travel (ACTOR_TRACK.reason, scrubbed), 0..1, outside the beat 0 (before) or 1. */
@@ -134,6 +135,8 @@ export function ReadPanel() {
   } | null>(null);
   /** The beat index of the previous scrub frame: a row ignites only when the wheel carries it there. */
   const lastBeat = useRef(-1);
+  /** The panel's clip-path as last written (written only when it changes). */
+  const panelClip = useRef("");
   const morph = useRef({ dn: { x: 0, y: 0, s: 1 }, st: { x: 0, y: 0, s: 1 } });
 
   /* ── rows 2..12 anchors; on small screens rows 7..12 hide and their specks land on "and 6 more" ── */
@@ -281,6 +284,18 @@ export function ReadPanel() {
     setAll(tg.ranked, "--h2a", span(r, 0.05, 0.2).toFixed(4));
     setAll(tg.ranked, "--b2a", span(r, 0.1, 0.26).toFixed(4));
 
+    // The paper panel is laid down by the wheel, not on a clock: a wipe from the top edge down, opaque
+    // the whole way (never translucent paper over the meadow), done by PANEL_IN, before the first
+    // firefly can land, and reversed exactly on the way back up. A clip only: the panel never moves,
+    // so the World's landing points, measured once, stay true.
+    const pin = i > I.ranked ? 1 : i === I.ranked ? span(r, 0, PANEL_IN) : 0;
+    const pe = 1 - (1 - pin) * (1 - pin);
+    const clip = pe >= 1 ? "none" : `inset(-4px -14px calc(${((1 - pe) * 100).toFixed(2)}% + ${(-14 * pe).toFixed(2)}px) -4px)`;
+    if (tg.panel && panelClip.current !== clip) {
+      panelClip.current = clip;
+      tg.panel.style.clipPath = clip;
+    }
+
     // Delight 3: each row prints as its firefly lands on its score rule, and ignites (a quick lamp
     // flash behind the rule, read.css) only when the wheel carried it there: a jump or a load past
     // the moment shows the rows lit, quietly. Written only when a row's state changes.
@@ -366,14 +381,6 @@ export function ReadPanel() {
       { y: 0, opacity: 1, duration: 0.45, ease: ease.out },
       0.18,
     );
-  });
-
-  /* ── ranked: the paper panel is laid down first, so the fireflies land on paper. Opacity only: the
-     World measures the rows' landing points once, and a moving panel would leave them behind.
-     The rows themselves print as their fireflies land (the scrub above). ── */
-  usePerformance("ranked", (tl) => {
-    const panel = listRef.current?.closest<HTMLElement>(".rd-panel");
-    if (panel) tl.fromTo(panel, { opacity: 0 }, { opacity: 1, duration: 0.45, ease: ease.out }, 0.05);
   });
 
   /* ── reason: score, meter, chips, privacy (starts when the card lands) ── */

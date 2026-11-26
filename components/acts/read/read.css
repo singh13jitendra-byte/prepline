@@ -567,8 +567,10 @@ html.motion .rd-list-wrap {
      transform and opacity written by ReadPanel: no custom property for twelve rows to inherit. */
   transform: translate3d(0, 10px, 0);
 }
+/* The panel is laid down by a scrubbed wipe (ReadPanel writes clip-path, only while it changes):
+   closed until the script runs, never translucent. */
 html.motion .rd-panel {
-  opacity: 0;
+  clip-path: inset(-4px -14px 100% -4px);
 }
 
 /* ── Delight 3: the fireflies become the jobs ──
