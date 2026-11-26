@@ -4,28 +4,30 @@ import type { WorldColorRole } from "@/lib/theme";
 import { LENS_RADIUS } from "./bus";
 
 /**
- * THE FIELD — draw call 1 of 2.
+ * THE FIREFLIES — the World's one draw call (round 4: the painted world).
  *
- * One instanced quad per role. Everything a speck does is decided in the vertex
- * shader from a handful of uniforms, so a scroll frame costs no CPU work:
+ * One instanced quad per role, and every role is a firefly over the painted meadow: small,
+ * warm, soft, and mostly dark. Each blinks on its own slow clock, so of the 2,340 only a
+ * few hundred are lit at any moment; that is what keeps them fireflies and not a particle
+ * field. No bloom, no halo, no lens glass, no dust. Everything a firefly does is decided
+ * in the vertex shader from a handful of uniforms, so a scroll frame costs no CPU work:
  *
- *   unread      a slip or a soft warm disc, drifting; size, alpha and softness come from its depth
- *   pass 1      read = its own screen y against the line's y (uT1). Dropped specks flare,
- *               dim to 7% and sink. Kept ones come into focus and snap to the 48px grid.
- *   pass 2      the kept are read again from below (uT2): 12 turn gold, the rest dim
- *   afterglow   a speck just read stays lit for about 0.4s: the shader compares its y with
- *               where the line was 0.1, 0.2, 0.3 and 0.4s ago (uHist1, uHist2), so a fast scrub
- *               drags a trail of embers and a still line has none
- *   ranked      the 12 fly an arc to the live row rects (uRows) and stretch into the full row
- *   day / prep  the lattice lets go and everything is dust: ink on day, lamp-lit at night
- *   interview   as the tile lands, the day dust is pulled into lanes at the Interview column (uFil)
- *   dawn, seat  25 of the survivors ride the day line up and are left in the seat rings (uRings)
+ *   unread      drifting, blinking, a pale warm green-yellow
+ *   hero        drawn only inside the window's glass (uClip follows the painted window as
+ *               the camera pushes through it)
+ *   pass 1      read = its own screen y against the Line's y (uT1). Dropped: one last flare,
+ *               then it dims and sinks into the grass. Kept: it stops blinking, turns lamp
+ *               yellow and settles on its node of the 48px grid.
+ *   pass 2      the kept are read again from below (uT2): 174 dim and sink, 12 stay lit and grow
+ *   afterglow   a firefly just read stays lit for about 0.4s (uHist1, uHist2)
+ *   ranked      the 12 fly an arc to the live row rects (uRows) and stretch into the full row:
+ *               a flat lamp tint with a lamp border, which hands over to the DOM row
+ *   dawn, seat  25 come back up with the day line and settle in the seat rings (uRings);
+ *               a claimed seat fills
  *
- * In focus a speck is a tiny listing: a 7x4 rounded slip with a brighter top edge.
- * Out of focus it is a disc of warm light.
- *
- * The fragment shader draws a signed-distance rounded box (a disc is a box with
- * full radius) and picks the night or day colour per pixel from the line.
+ * Indoors and by day the field is not drawn at all (uField), except the 25 in their rings.
+ * The fragment shader draws a signed-distance rounded box: a firefly is a soft-edged disc,
+ * a landed row is a hard-edged bar.
  */
 
 export const GRID = 48;
@@ -37,7 +39,7 @@ export const PASS_DOLLY = 0.13;
  * The ranked flight, shared with Act I (components/acts/read/ReadPanel.tsx):
  * speck i leaves STAGGER * i seconds after `ranked` entry, flies FLIGHT seconds and lands as the
  * full row rect. The DOM row i fades in from ROW_IN + STAGGER * i over LAND_FADE seconds, and the
- * speck's gold border fades into the row's glass border over the same window.
+ * firefly's lamp border fades into the row's own border over the same window.
  */
 export const STAGGER = 0.05;
 export const FLIGHT = 0.55;
@@ -51,7 +53,7 @@ export const BIG = 1e6;
 export type FieldData = {
   count: number;
   mid: number;
-  /** Instance index of the brightest of the twelve (rank 1): where the hero lens parks. */
+  /** Instance index of the brightest of the twelve (rank 1): the first of the twelve. */
   first: number;
   /** home.x, home.y (−0.5..0.5), depth z, seed */
   a: Float32Array;
@@ -185,32 +187,30 @@ const vert = /* glsl */ `
   uniform vec2 uRes;
   uniform float uTime;
   uniform float uT1;
-  uniform float uT1Min;
-  uniform float uT1X;
   uniform float uT2;
   uniform vec4 uHist1;
   uniform vec4 uHist2;
   uniform float uBand;
   uniform float uDolly;
-  uniform float uBright;
+  uniform vec2 uPar;
+  uniform float uField;
   uniform float uIntro;
   uniform float uAnt;
   uniform float uGatherT;
   uniform vec4 uRows[12];
   uniform float uRowR;
-  uniform float uRelease;
   uniform vec3 uLens;
-  uniform vec3 uLamp;
-  uniform vec2 uLampR;
-  uniform float uPulse;
-  uniform float uFocus;
   uniform vec4 uRings[${SEATS}];
   uniform float uSeatC;
   uniform float uSeatLine;
   uniform float uBeadY;
   uniform vec2 uClaim; // seat number (0 none), fill 0..1
-  uniform vec4 uFil;   // the Interview column: x, y, w, h
-  uniform vec2 uFilK;  // pull 0..1, ink 0..1
+
+  // Colours come from the theme (lib/theme.ts readWorld, set in worldRuntime.ts): no literals here.
+  uniform vec3 ucWarm;  // --art-speck-warm: an unlit, unread firefly leans this way
+  uniform vec3 ucGold;  // --c-match (night): lamp
+  uniform vec3 ucSeat;  // --art-seat: a seat by day
+  uniform vec3 ucEdge;  // --c-on-night: a landed row's border
 
   varying vec2 vP;
   varying vec2 vBox;
@@ -218,35 +218,11 @@ const vert = /* glsl */ `
   varying float vSoft;
   varying vec4 vCol;
   varying vec4 vDay;
-  varying vec4 vFx;   // halo, border, top edge, halo reach
-  varying vec3 vEdge; // border colour
-
-  // Colours come from the theme (lib/theme.ts readWorld, set in worldRuntime.ts): no literals here.
-  uniform vec3 ucWarm;  // --art-speck-warm
-  uniform vec3 ucCool;  // --art-speck-cool
-  uniform vec3 ucGold;  // --c-match
-  uniform vec3 ucEmber; // --art-ember
-  uniform vec3 ucLamp;  // --art-lamp-dust
-  uniform vec3 ucInk;   // --art-dust-day
-  uniform vec3 ucAmber; // --c-accent
-  uniform vec3 ucSeat;  // --art-seat
-  uniform vec3 ucEdge;  // --c-on-night
-  #define WARM ucWarm
-  #define COOL ucCool
-  #define GOLD ucGold
-  #define EMBER ucEmber
-  #define LAMP ucLamp
-  #define INK ucInk
-  #define AMBER ucAmber
-  #define SEAT ucSeat
+  varying vec2 vFx;   // border, flat fill (0 = soft firefly, 1 = flat shape)
+  varying vec3 vEdge;
 
   const float PI = 3.14159265;
 
-  float backOut(float x) {
-    float s = 1.4;
-    float y = x - 1.0;
-    return 1.0 + (s + 1.0) * y * y * y + s * y * y;
-  }
   // cubic-bezier(0.65, 0, 0.15, 1): the page's travel curve.
   float travelEase(float x) {
     if (x <= 0.0) return 0.0;
@@ -259,7 +235,7 @@ const vert = /* glsl */ `
     }
     return (3.0 - 2.0 * t) * t * t;
   }
-  // How recently the line passed y: 1 just now, 0 from about 0.4s ago. dir +1 reads downward.
+  // How recently the Line passed y: 1 just now, 0 from about 0.4s ago. dir +1 reads downward.
   float afterglow(float y, float now, vec4 hist, float dir) {
     vec4 unread = clamp((y - hist) * dir / 10.0 + 0.5, 0.0, 1.0);
     float read = clamp((now - y) * dir / 10.0 + 0.5, 0.0, 1.0);
@@ -282,102 +258,83 @@ const vert = /* glsl */ `
     vec2 drift = vec2(
       sin(uTime * (0.10 + 0.16 * h1) + h2 * 6.283) + 0.5 * sin(uTime * (0.23 + 0.10 * h3) + h4 * 6.283),
       cos(uTime * (0.09 + 0.15 * h3) + h1 * 6.283) + 0.5 * cos(uTime * (0.19 + 0.12 * h2) + h4 * 6.283)
-    ) * (5.0 + 20.0 * z);
-    vec2 P0 = c + aA.xy * uRes * ${SPREAD.toFixed(2)} * (1.0 + uDolly * persp) + drift;
+    ) * (6.0 + 18.0 * z);
+    vec2 P0 = c + aA.xy * uRes * ${SPREAD.toFixed(2)} * (1.0 + uDolly * persp) + drift + uPar * persp;
 
-    // Depth of field: the focal plane sits mid-field. Near specks are soft warm light, far ones small.
-    float near = clamp((z - 0.7) / 0.3, 0.0, 1.0);
-    float far = clamp((0.3 - z) / 0.3, 0.0, 1.0);
-    float blur = near * near * 4.0 + far * far * 1.0;
-    float r0 = mix(0.75, 2.0, z) + h4 * 0.35;
-    float a0 = mix(0.34, 1.0, smoothstep(0.0, 0.7, z)) * (0.88 + 0.12 * sin(uTime * (0.6 + h2) + h1 * 40.0));
+    // Each firefly blinks on its own slow clock: lit for about a third of it, dark for the rest.
+    float phase = fract(uTime * (0.055 + 0.07 * h1) + h2);
+    float lit = smoothstep(0.0, 0.10, phase) * (1.0 - smoothstep(0.22, 0.46, phase));
+    float r0 = mix(0.9, 2.1, z) + h4 * 0.3;
+    float a0 = (0.07 + 0.93 * lit) * mix(0.45, 1.0, z);
 
     vec2 P = P0;
-    float radius = r0;
+    float radius = r0 * (0.8 + 0.4 * lit);
     float alpha = a0;
-    vec3 col = mix(mix(WARM, COOL, step(0.8, h3) * 0.75), EMBER, near * 0.6);
-    vec3 dayCol = INK;
-    vec3 edgeCol = GOLD;
-    float halo = 0.0;
-    float reach = 28.0;
+    vec3 col = mix(ucWarm, ucGold, 0.35 + 0.35 * lit);
+    vec3 dayCol = ucSeat;
+    vec3 edgeCol = ucGold;
+    float dayA = 0.0;
     float border = 0.0;
-    vec2 box = vec2(0.0);
-    float rad = 0.0;
+    float flat_ = 0.0;
     float shape = 0.0;
     float gone = 0.0;
-    float slip = 1.0;   // 1 = a listing slip, 0 = a disc
     float seatK = 0.0;
-    float dayA = (0.035 + 0.055 * z) * (1.0 - near);
+    float field = uField;
+    vec2 box = vec2(0.0);
+    float rad = 0.0;
 
-    // Pass 1: read the moment the line's y passes the speck's own y.
-    float inBand = clamp((P0.y - uT1Min) / 16.0, 0.0, 1.0) * clamp((P0.x - uT1X) / 40.0, 0.0, 1.0);
-    float r1 = clamp((uT1 - P0.y) / uBand, 0.0, 1.0) * inBand;
+    // Pass 1: read the moment the Line's y passes the firefly's own y.
+    float r1 = clamp((uT1 - P0.y) / uBand, 0.0, 1.0);
     float e1 = r1 * r1 * (3.0 - 2.0 * r1);
     float flare = sin(PI * clamp(r1 * 2.2, 0.0, 1.0));
-    float glow = afterglow(P0.y, uT1, uHist1, 1.0) * inBand;
-    float dustA = 0.10 + 0.16 * z;
+    float glow = afterglow(P0.y, uT1, uHist1, 1.0);
 
     if (kind < 0.5) {
-      // Dropped: it holds its light for a moment (the afterglow), then dims and sinks.
+      // Dropped: one last light, then it dims and sinks into the grass.
       float dim = e1 * (1.0 - glow * 0.85);
-      P = mix(P0, c + (P0 - c) * 0.955 + vec2(0.0, 7.0), e1);
-      radius = r0 * mix(1.0, 0.6, dim) + flare * 0.5 + glow * 0.5;
-      alpha = mix(alpha, dustA, dim) + (flare * 0.35 + glow * 0.3) * (1.0 - e1 * 0.5);
-      col = mix(col, EMBER, max(glow, flare * 0.5));
-      slip = 1.0 - dim;
+      P.y += e1 * (34.0 + 80.0 * h3);
+      P.x += sin(e1 * 3.0 + h1 * 6.283) * 5.0 * e1;
+      alpha = mix(alpha, 0.0, dim) + (flare * 0.55 + glow * 0.35) * (1.0 - e1);
+      radius = mix(radius, r0 * 0.6, dim) + flare * 0.5;
+      col = mix(col, ucGold, max(glow, flare) * 0.6);
     } else {
       float r2 = clamp((G.y - uT2) / uBand, 0.0, 1.0) * r1;
       float e2 = r2 * r2 * (3.0 - 2.0 * r2);
       float glow2 = afterglow(G.y, uT2, uHist2, -1.0) * step(0.5, r1);
-      float held = kind < 1.5 ? 1.0 - uRelease : 1.0;
-      P = mix(P0, G, backOut(r1) * held);
-      blur *= 1.0 - e1 * held;
-      radius = mix(r0, 1.9, e1) + flare * 0.9 + glow * 0.5;
-      alpha = mix(alpha, 1.0, e1);
-      col = mix(mix(col, WARM, e1), GOLD, glow * 0.7);
-      halo = glow * 0.35;
-      reach = 14.0;
+      // Kept: it stops blinking, turns lamp yellow and settles on its node.
+      P = mix(P0, G, e1);
+      radius = mix(radius, 1.9, e1) + flare * 0.6;
+      alpha = mix(alpha, 0.96, e1);
+      col = mix(col, ucGold, e1);
       if (kind < 1.5) {
-        float flare2 = sin(PI * clamp(r2 * 2.2, 0.0, 1.0));
         float dim2 = e2 * (1.0 - glow2 * 0.85);
-        radius = radius * mix(1.0, 0.62, dim2) + flare2 * 0.5;
-        alpha = mix(alpha, 0.2, dim2);
-        col = mix(col, EMBER, glow2);
-        alpha = mix(alpha, dustA, uRelease);
-        radius = mix(radius, r0 * 0.6, uRelease);
-        slip = (1.0 - dim2 * 0.6) * (1.0 - uRelease);
+        P.y += e2 * (34.0 + 80.0 * h3);
+        alpha = mix(alpha, 0.0, dim2) + glow2 * 0.3 * (1.0 - e2);
+        radius = mix(radius, 1.1, dim2);
 
-        // Dawn: 25 survivors are collected by the line, ride it up as it brings the day,
-        // and are left behind in the seat rings as it passes them.
+        // Dawn: 25 of them come back up, ride the Line as it brings the day, and are left
+        // in the seat rings as it passes them.
         if (slot > 0.5 && uSeatC > 0.0) {
           vec4 ring = uRings[int(slot - 0.5)];
           seatK = uSeatC * uSeatC * (3.0 - 2.0 * uSeatC) * step(0.5, ring.z);
           float span = uRes.y * 0.22;
           float g = clamp((ring.y + span - uSeatLine) / (span + 24.0), 0.0, 1.0);
           float tr = travelEase(g);
-          vec2 S = vec2(mix(P.x, ring.x, tr), max(uBeadY, ring.y));
+          vec2 S = vec2(mix(G.x, ring.x, tr), max(uBeadY, ring.y));
           float fill = step(abs(slot - uClaim.x), 0.5) * uClaim.y;
-          float pin = mix(2.6, max(2.0, ring.z * 0.36), tr);
+          float pin = mix(2.4, max(2.0, ring.z * 0.3), tr);
           P = mix(P, S, seatK);
-          radius = mix(radius, mix(pin, ring.z - 0.5, backOut(fill)), seatK);
+          radius = mix(radius, mix(pin, ring.z * 0.64, fill * fill * (3.0 - 2.0 * fill)), seatK);
           alpha = mix(alpha, 1.0, seatK);
-          col = mix(col, GOLD, seatK);
-          dayCol = mix(dayCol, mix(AMBER, SEAT, fill), seatK);
-          dayA = mix(dayA, 0.92, seatK);
-          halo = max(halo, seatK * (0.45 + 0.5 * sin(PI * fill) + 0.35 * fill));
-          reach = mix(reach, 12.0 + 16.0 * fill, seatK);
-          blur *= 1.0 - seatK;
-          slip *= 1.0 - seatK;
+          dayA = seatK;
+          flat_ = seatK * tr;
+          field = max(field, seatK);
         }
       } else {
-        float pop = backOut(r2);
-        col = mix(col, GOLD, e2);
-        radius = radius * mix(1.0, 1.8, pop) * (1.0 + 0.55 * uPulse);
-        halo = max(halo, e2 * (0.55 + 0.6 * uPulse));
-        reach = 28.0;
-        dayA = 0.0;
+        // The twelve: lamp, a little larger, steady. No halo.
+        radius *= mix(1.0, 1.6, e2) * (1.0 + 0.3 * sin(PI * clamp(glow2 * 1.2, 0.0, 1.0)));
 
-        // Ranked: fly an arc to the live row rect and stretch from a slip into the full row.
+        // Ranked: fly an arc to the live row rect and stretch from a light into the full row.
         vec4 row = uRows[int(slot + 0.5)];
         float has = step(1.0, row.z);
         float t0 = uGatherT - slot * ${STAGGER.toFixed(2)};
@@ -390,82 +347,34 @@ const vert = /* glsl */ `
         if (n.y > 0.0) n = -n;
         P = mix(G, C, travel) + n * 0.06 * dist * sin(PI * travel);
         shape = smoothstep(0.3, 1.0, tr) * has;
-        // Landed: the gold glass turns into the row's own glass as the DOM row fades in over it.
         float landed = clamp((t0 - ${ROW_IN.toFixed(2)}) / ${LAND_FADE.toFixed(2)}, 0.0, 1.0);
         border = shape;
-        edgeCol = mix(GOLD, ucEdge, landed);
-        alpha = mix(1.0, 0.34, shape);
-        halo *= 1.0 - shape;
+        flat_ = shape;
+        edgeCol = mix(ucGold, ucEdge, landed);
+        alpha = mix(alpha, 0.2, shape);
         gone = mix(landed, clamp(uGatherT / 0.3, 0.0, 1.0), 1.0 - has);
+        box = mix(vec2(radius), row.zw * 0.5, shape);
+        rad = min(mix(radius, uRowR, shape), min(box.x, box.y));
       }
     }
 
-    // Interview: for a moment the day dust is drawn toward the column the tile just landed in,
-    // lining up in lanes above and below it like filings on a magnet, then let go.
-    if (uFilK.x + uFilK.y > 0.0 && kind < 1.5 && seatK <= 0.0) {
-      vec2 fc = uFil.xy + uFil.zw * 0.5;
-      vec2 fd = (P - fc) / vec2(uFil.z * 2.6, uFil.w * 1.05);
-      float w = 1.0 - smoothstep(0.72, 1.0, length(fd));
-      float lane = uFil.x + (floor(h1 * 8.0) + 0.5) / 8.0 * uFil.z;
-      vec2 T = vec2(lane, floor(P.y / 7.0) * 7.0 + 3.5);
-      P = mix(P, T, uFilK.x * w);
-      dayA = mix(dayA, 0.42 + 0.2 * h2, uFilK.y * w);
-      dayCol = mix(dayCol, AMBER, uFilK.y * w);
-      slip = max(slip, uFilK.y * w);
-      blur *= 1.0 - uFilK.y * w;
-      radius = mix(radius, 1.3, uFilK.y * w);
-    }
+    // Near the pointer a firefly lights up and comes a little closer. No glass, no ring.
+    float lk = uLens.z * (1.0 - smoothstep(${(LENS_RADIUS * 0.4).toFixed(1)}, ${LENS_RADIUS.toFixed(1)}, distance(P, uLens.xy))) * (1.0 - shape) * (1.0 - seatK);
+    radius *= 1.0 + 0.15 * lk;
+    alpha = mix(alpha, max(alpha, 0.85), lk * step(0.02, alpha + lit));
 
-    // The lamp catches dust (Act III).
-    vec2 lv = (P - uLamp.xy) / uLampR;
-    float lampK = uLamp.z * exp(-pow(length(lv), 1.5) * 2.2);
-    float dusty = step(shape, 0.0) * step(kind, 1.5) * (1.0 - seatK);
-    alpha *= 1.0 + 5.0 * lampK * dusty;
-    col = mix(col, LAMP, clamp(lampK * 1.6, 0.0, 1.0) * dusty);
-
-    // The reading lens: magnify, sharpen, and let the twelve glint.
-    vec2 dl = P - uLens.xy;
-    float lk = uLens.z * (1.0 - smoothstep(${(LENS_RADIUS * 0.55).toFixed(1)}, ${LENS_RADIUS.toFixed(1)}, length(dl))) * (1.0 - shape);
-    float focus = step(abs(float(gl_InstanceID) - uFocus), 0.5) * uLens.z;
-    P += dl * 0.16 * lk;
-    radius *= 1.0 + 1.2 * lk + 0.5 * focus;
-    blur *= 1.0 - lk;
-    alpha = mix(alpha, max(alpha, 0.72 + 0.26 * z), lk);
-    alpha = mix(alpha, 1.0, focus);
-    slip = max(slip, lk * (1.0 - seatK));
-    if (kind > 1.5) {
-      col = mix(col, GOLD, lk);
-      if (lk * 0.5 > halo) {
-        halo = lk * 0.5;
-        reach = 22.0;
-      }
-    }
-
-    // Load: the field arrives from the centre outward.
-    float order = length(aA.xy) * 1.5;
-    alpha *= smoothstep(order, order + 0.3, uIntro * 1.85);
-    alpha *= (1.0 - gone) * mix(uBright, 1.0, max(step(1.5, kind), seatK));
-
-    // In focus a speck is a listing slip; out of focus it is a disc whose light thins as it spreads.
-    float disc = radius + blur * 0.6;
-    float thin = (radius * radius) / (disc * disc);
-    slip *= 1.0 - clamp(blur / 1.2, 0.0, 1.0);
-    if (shape <= 0.0) {
-      alpha *= mix(max(thin, 0.24), 0.86, slip);
-      vec2 slipBox = vec2(radius * 1.75 + 0.3, radius);
-      box = mix(vec2(disc), slipBox, slip);
-      rad = min(mix(disc, 1.25, slip), box.y);
-    } else {
-      vec4 row = uRows[int(slot + 0.5)];
-      vec2 from = vec2(radius * 1.75 + 0.3, radius);
-      box = mix(from, row.zw * 0.5, shape);
-      rad = min(mix(1.25, uRowR, shape), min(box.x, box.y));
-      slip = 0.0;
-    }
-    float soft = max(0.75, blur * 0.9) * (1.0 - shape) + 0.75 * shape;
+    // Load: they come out a few at a time.
+    alpha *= smoothstep(h3 * 0.7, h3 * 0.7 + 0.3, uIntro);
+    alpha *= (1.0 - gone) * field;
     dayA *= 1.0 - gone;
 
-    float pad = soft + 1.5 + step(0.001, halo) * reach;
+    if (shape <= 0.0) {
+      box = vec2(radius);
+      rad = radius;
+    }
+    // A firefly's edge is as soft as it is wide; a row or a seat is printed flat.
+    float soft = mix(radius * 0.95, 0.75, flat_);
+    float pad = soft + 1.5;
     vec2 hs = box + pad;
     vP = position.xy * hs;
     vBox = box;
@@ -473,7 +382,7 @@ const vert = /* glsl */ `
     vSoft = soft;
     vCol = vec4(col, alpha);
     vDay = vec4(dayCol, dayA);
-    vFx = vec4(halo, border * (1.0 - gone), slip, reach);
+    vFx = vec2(border * (1.0 - gone), flat_);
     vEdge = edgeCol;
 
     vec2 px = P + vP;
@@ -487,6 +396,7 @@ const frag = /* glsl */ `
   uniform vec2 uRes;
   uniform float uDpr;
   uniform float uDayTop;
+  uniform vec4 uClip; // x0, y0, x1, y1: the window's glass, in CSS px
 
   varying vec2 vP;
   varying vec2 vBox;
@@ -494,32 +404,29 @@ const frag = /* glsl */ `
   varying float vSoft;
   varying vec4 vCol;
   varying vec4 vDay;
-  varying vec4 vFx;
+  varying vec2 vFx;
   varying vec3 vEdge;
 
   void main() {
+    vec2 p = vec2(gl_FragCoord.x / uDpr, uRes.y - gl_FragCoord.y / uDpr);
+    // Inside the glass only, with a few px of give so nothing is cut hard at the frame.
+    vec2 inside = smoothstep(uClip.xy - 2.0, uClip.xy + 6.0, p) * (1.0 - smoothstep(uClip.zw - 6.0, uClip.zw + 2.0, p));
+    float clip = inside.x * inside.y;
+
     vec2 q = abs(vP) - (vBox - vRad);
     float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - vRad;
     float fill = 1.0 - smoothstep(-vSoft, vSoft, d);
-    // The halo is windowed to reach exactly zero inside the quad's padding: no square can show.
-    float dh = max(d, 0.0);
-    float window = 1.0 - smoothstep(vFx.w * 0.45, vFx.w * 0.92, dh);
-    float halo = vFx.x * (exp(-dh / 4.0) * 0.36 + exp(-dh / 11.0) * 0.16) * window;
-    float edge = vFx.y * (1.0 - smoothstep(0.35, 1.25, abs(d + 0.9)));
-    // A slip's top edge catches the light; its body sits back.
-    float top = 1.0 - smoothstep(0.5, 1.5, vP.y + vBox.y);
-    float body = mix(1.0, 0.56 + 0.44 * top, vFx.z);
+    // A soft light falls off toward its edge; a printed shape does not.
+    fill = mix(fill * fill, fill, vFx.y);
+    float edge = vFx.x * (1.0 - smoothstep(0.35, 1.25, abs(d + 0.9)));
 
-    float y = uRes.y - gl_FragCoord.y / uDpr;
-    float day = step(uDayTop, y);
-    float aBody = mix(vCol.a, vDay.a, day) * fill * body;
-    // On cream a halo reads as a stain: only a claimed seat (the widest reach) keeps its bloom by day.
-    float aHalo = halo * (1.0 - fill) * mix(1.0, 0.12 + 0.6 * step(20.0, vFx.w), day);
-    float aEdge = edge * 0.72 * (1.0 - day);
-    float a = clamp(aBody + aHalo + aEdge, 0.0, 1.0);
-    if (a < 0.002) discard;
+    float day = step(uDayTop, p.y);
+    float aBody = mix(vCol.a, vDay.a, day) * fill;
+    float aEdge = edge * 0.85 * (1.0 - day);
+    float a = clamp(aBody + aEdge, 0.0, 1.0) * clip;
+    if (a < 0.003) discard;
     vec3 base = mix(vCol.rgb, vDay.rgb, day);
-    vec3 col = (base * (aBody + aHalo) + vEdge * aEdge) / max(aBody + aHalo + aEdge, 0.0001);
+    vec3 col = (base * aBody + vEdge * aEdge) / max(aBody + aEdge, 0.0001);
     gl_FragColor = vec4(col * a, a);
   }
 `;
@@ -529,40 +436,28 @@ export type FieldUniforms = {
   uDpr: { value: number };
   uTime: { value: number };
   uDayTop: { value: number };
+  uClip: { value: THREE_NS.Vector4 };
   uT1: { value: number };
-  uT1Min: { value: number };
-  uT1X: { value: number };
+  uT2: { value: number };
   uHist1: { value: THREE_NS.Vector4 };
   uHist2: { value: THREE_NS.Vector4 };
-  uT2: { value: number };
   uBand: { value: number };
   uDolly: { value: number };
-  uBright: { value: number };
+  uPar: { value: THREE_NS.Vector2 };
+  uField: { value: number };
   uIntro: { value: number };
   uAnt: { value: number };
   uGatherT: { value: number };
   uRows: { value: THREE_NS.Vector4[] };
   uRowR: { value: number };
-  uRelease: { value: number };
   uLens: { value: THREE_NS.Vector3 };
-  uLamp: { value: THREE_NS.Vector3 };
-  uLampR: { value: THREE_NS.Vector2 };
-  uPulse: { value: number };
-  uFocus: { value: number };
   uRings: { value: THREE_NS.Vector4[] };
   uSeatC: { value: number };
   uSeatLine: { value: number };
   uBeadY: { value: number };
   uClaim: { value: THREE_NS.Vector2 };
-  uFil: { value: THREE_NS.Vector4 };
-  uFilK: { value: THREE_NS.Vector2 };
   ucWarm: { value: THREE_NS.Vector3 };
-  ucCool: { value: THREE_NS.Vector3 };
   ucGold: { value: THREE_NS.Vector3 };
-  ucEmber: { value: THREE_NS.Vector3 };
-  ucLamp: { value: THREE_NS.Vector3 };
-  ucInk: { value: THREE_NS.Vector3 };
-  ucAmber: { value: THREE_NS.Vector3 };
   ucSeat: { value: THREE_NS.Vector3 };
   ucEdge: { value: THREE_NS.Vector3 };
 };
@@ -570,12 +465,7 @@ export type FieldUniforms = {
 /** Field uniform ← world colour role (lib/theme.ts WORLD_COLORS). */
 export const FIELD_COLORS = {
   ucWarm: "speckWarm",
-  ucCool: "speckCool",
   ucGold: "match",
-  ucEmber: "ember",
-  ucLamp: "lampDust",
-  ucInk: "dustDay",
-  ucAmber: "accent",
   ucSeat: "seat",
   ucEdge: "edge",
 } as const satisfies Partial<Record<keyof FieldUniforms, WorldColorRole>>;
@@ -591,47 +481,36 @@ export function createField(THREE: Three, data: FieldData, width: number, height
   geo.setAttribute("aB", attrB);
   geo.instanceCount = data.count;
 
+  const v3 = () => new THREE.Vector3(1, 1, 1);
   const uniforms: FieldUniforms = {
     uRes: { value: new THREE.Vector2(width, height) },
     uDpr: { value: 1 },
     uTime: { value: 0 },
     uDayTop: { value: BIG },
+    uClip: { value: new THREE.Vector4(-BIG, -BIG, BIG, BIG) },
     uT1: { value: -BIG },
-    uT1Min: { value: -BIG },
-    uT1X: { value: -BIG },
+    uT2: { value: BIG },
     uHist1: { value: new THREE.Vector4(-BIG, -BIG, -BIG, -BIG) },
     uHist2: { value: new THREE.Vector4(BIG, BIG, BIG, BIG) },
-    uT2: { value: BIG },
     uBand: { value: 80 },
     uDolly: { value: 0 },
-    uBright: { value: 0.82 },
+    uPar: { value: new THREE.Vector2(0, 0) },
+    uField: { value: 1 },
     uIntro: { value: 0 },
     uAnt: { value: 0 },
     uGatherT: { value: 0 },
     uRows: { value: Array.from({ length: 12 }, () => new THREE.Vector4(0, 0, 0, 0)) },
     uRowR: { value: 12 },
-    uRelease: { value: 0 },
     uLens: { value: new THREE.Vector3(0, 0, 0) },
-    uLamp: { value: new THREE.Vector3(0, 0, 0) },
-    uLampR: { value: new THREE.Vector2(500, 500) },
-    uPulse: { value: 0 },
-    uFocus: { value: -1 },
     uRings: { value: Array.from({ length: SEATS }, () => new THREE.Vector4(0, 0, 0, 0)) },
     uSeatC: { value: 0 },
     uSeatLine: { value: BIG },
     uBeadY: { value: BIG },
     uClaim: { value: new THREE.Vector2(0, 0) },
-    uFil: { value: new THREE.Vector4(0, 0, 1, 1) },
-    uFilK: { value: new THREE.Vector2(0, 0) },
-    ucWarm: { value: new THREE.Vector3() },
-    ucCool: { value: new THREE.Vector3() },
-    ucGold: { value: new THREE.Vector3() },
-    ucEmber: { value: new THREE.Vector3() },
-    ucLamp: { value: new THREE.Vector3() },
-    ucInk: { value: new THREE.Vector3() },
-    ucAmber: { value: new THREE.Vector3() },
-    ucSeat: { value: new THREE.Vector3() },
-    ucEdge: { value: new THREE.Vector3() },
+    ucWarm: { value: v3() },
+    ucGold: { value: v3() },
+    ucSeat: { value: v3() },
+    ucEdge: { value: v3() },
   };
 
   const material = new THREE.ShaderMaterial({
@@ -651,7 +530,6 @@ export function createField(THREE: Three, data: FieldData, width: number, height
   });
   const mesh = new THREE.Mesh(geo, material);
   mesh.frustumCulled = false;
-  mesh.renderOrder = 1;
 
   const resize = (w: number, h: number) => {
     uniforms.uRes.value.set(w, h);
@@ -664,15 +542,14 @@ export function createField(THREE: Three, data: FieldData, width: number, height
   return { mesh, uniforms, resize, dispose: () => base.dispose() };
 }
 
-/* ───────────────────────────── CPU mirror, for the lens label only ── */
+/* ───────────────────────────── CPU mirror, for the pointer note only ── */
 
 export type Verdict = "unread" | "dropped1" | "kept" | "dropped2";
 const hit = { index: -1, verdict: "unread" as Verdict, kind: 0, rank: 0, seed: 0, x: 0, y: 0 };
 
 /**
- * The speck nearest to (x, y), with the state the shader shows it in. Mirrors
- * the vertex shader's position maths (drift, dolly, read, snap); the lens
- * magnification and the flight are left out, which the label never needs.
+ * The firefly nearest to (x, y) that is still in the air, with the state the shader shows
+ * it in. Mirrors the vertex shader's position maths (drift, dolly, parallax, read, settle).
  */
 export function nearestSpeck(data: FieldData, u: FieldUniforms, x: number, y: number, stick: number): typeof hit | null {
   const { count, a, b } = data;
@@ -680,7 +557,6 @@ export function nearestSpeck(data: FieldData, u: FieldUniforms, x: number, y: nu
   const h = u.uRes.value.y;
   const t = u.uTime.value;
   const band = u.uBand.value;
-  const release = u.uRelease.value;
   let best = -1;
   let bestD = LENS_RADIUS * LENS_RADIUS;
   let bx = 0;
@@ -689,33 +565,29 @@ export function nearestSpeck(data: FieldData, u: FieldUniforms, x: number, y: nu
   for (let i = 0; i < count; i++) {
     const o = i * 4;
     const z = a[o + 2];
-    const hx = w / 2 + a[o] * w * SPREAD * (1 + u.uDolly.value * (0.5 + z));
-    const hy = h / 2 + a[o + 1] * h * SPREAD * (1 + u.uDolly.value * (0.5 + z));
+    const persp = 0.5 + z;
+    const hx = w / 2 + a[o] * w * SPREAD * (1 + u.uDolly.value * persp) + u.uPar.value.x * persp;
+    const hy = h / 2 + a[o + 1] * h * SPREAD * (1 + u.uDolly.value * persp) + u.uPar.value.y * persp;
     // Cheap reject before the trigonometry (drift is under 40px).
-    if (Math.abs(hx - x) > LENS_RADIUS + 90 && b[o + 2] < 1) continue;
+    if (Math.abs(hx - x) > LENS_RADIUS + 60 && b[o + 2] < 1) continue;
     const sd = a[o + 3];
     const h1 = (sd * 17.13) % 1;
     const h2 = (sd * 91.7) % 1;
     const h3 = (sd * 263.1) % 1;
     const h4 = (sd * 571.3) % 1;
-    const amp = 5 + 20 * z;
+    const amp = 6 + 18 * z;
     const px0 = hx + (Math.sin(t * (0.1 + 0.16 * h1) + h2 * 6.283) + 0.5 * Math.sin(t * (0.23 + 0.1 * h3) + h4 * 6.283)) * amp;
     const py0 = hy + (Math.cos(t * (0.09 + 0.15 * h3) + h1 * 6.283) + 0.5 * Math.cos(t * (0.19 + 0.12 * h2) + h4 * 6.283)) * amp;
-    const r1 = Math.min(1, Math.max(0, (u.uT1.value - py0) / band)) * Math.min(1, Math.max(0, (py0 - u.uT1Min.value) / 16)) * Math.min(1, Math.max(0, (px0 - u.uT1X.value) / 40));
+    const r1 = Math.min(1, Math.max(0, (u.uT1.value - py0) / band));
     const e1 = r1 * r1 * (3 - 2 * r1);
-    let px = px0;
-    let py = py0;
-    if (b[o + 2] < 0.5) {
-      px = px0 + (w / 2 + (px0 - w / 2) * 0.955 - px0) * e1;
-      py = py0 + (h / 2 + (py0 - h / 2) * 0.955 + 7 - py0) * e1;
-    } else {
-      const yy = r1 - 1;
-      const k = (1 + 2.4 * yy * yy * yy + 1.4 * yy * yy) * (b[o + 2] < 1.5 ? 1 - release : 1);
-      px = px0 + (b[o] - px0) * k;
-      py = py0 + (b[o + 1] - py0) * k;
-    }
+    const kind = b[o + 2];
+    const r2 = kind >= 1 ? Math.min(1, Math.max(0, (b[o + 1] - u.uT2.value) / band)) * r1 : 0;
+    // Fireflies that have sunk into the grass are not there to be read.
+    if ((kind < 0.5 && r1 > 0.6) || (kind >= 0.5 && kind < 1.5 && r2 > 0.6)) continue;
+    const px = kind < 0.5 ? px0 : px0 + (b[o] - px0) * e1;
+    const py = kind < 0.5 ? py0 + e1 * (34 + 80 * h3) : py0 + (b[o + 1] - py0) * e1;
     let d = (px - x) * (px - x) + (py - y) * (py - y);
-    if (i === stick) d -= 500; // hysteresis: the label does not flicker between neighbours
+    if (i === stick) d -= 500; // hysteresis: the note does not flicker between neighbours
     if (d < bestD) {
       bestD = d;
       best = i;
@@ -726,14 +598,12 @@ export function nearestSpeck(data: FieldData, u: FieldUniforms, x: number, y: nu
   }
   if (best < 0) return null;
   const o = best * 4;
-  const kind = b[o + 2];
-  const r2 = kind >= 1 ? Math.min(1, Math.max(0, (b[o + 1] - u.uT2.value) / band)) * br1 : 0;
   hit.index = best;
-  hit.kind = kind;
+  hit.kind = b[o + 2];
   hit.rank = b[o + 3];
   hit.seed = a[o + 3];
   hit.x = bx;
   hit.y = by;
-  hit.verdict = br1 < 0.5 ? "unread" : kind < 0.5 ? "dropped1" : kind < 1.5 && r2 >= 0.5 ? "dropped2" : "kept";
+  hit.verdict = br1 < 0.5 ? "unread" : "kept";
   return hit;
 }
