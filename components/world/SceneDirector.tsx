@@ -280,7 +280,10 @@ export function SceneDirector() {
 
       /* ── Act IV: dawn below the Line, then the whole room ── */
       const mode = i >= ORDER.dawn ? (s.line.daySide === "below" ? "split" : s.chapter === "day" ? "day" : "off") : "off";
-      if (dawnWrap && mode !== dawnMode) dawnWrap.dataset.mode = dawnMode = mode;
+      if (dawnWrap && mode !== dawnMode) {
+        dawnWrap.dataset.mode = dawnMode = mode;
+        dawnWrap.style.display = mode === "off" ? "none" : "block";
+      }
       if (mode !== "off") {
         const sp = i === ORDER.dawn ? ss(0.15, 1, bp) * 0.6 : i === ORDER.seat ? 0.6 + 0.4 * ss(0, 0.5, bp) : 1;
         put(sun, sp < 1, Math.sin(Math.PI * sp) * 0.34, mix(vw * 0.02, vw * 0.4, sp), -stageH * 0.1, 1);

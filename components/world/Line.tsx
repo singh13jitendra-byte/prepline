@@ -267,7 +267,9 @@ export function Line() {
       let slot = -1;
       // The store blanks the label once the line has docked under copy; on paper it never shows.
       // Small screens: the acts already name the passes, so the note only speaks during a chapter change.
-      if (line.label !== "" && draw >= 1 && !onPaper && len > 40 && (!s.flags.small || line.sweep) && !(s.beat === "hero" && s.beatProgress < 0.2)) {
+      // It speaks while the line runs edge to edge, and as the short stub in `ranked`; never while the
+      // line rides something (the board's week strip, a rule): there is always content beside it there.
+      if (line.label !== "" && draw >= 1 && !onPaper && len > 40 && (wide || s.beat === "ranked") && (!s.flags.small || line.sweep) && !(s.beat === "hero" && s.beatProgress < 0.2)) {
         const order = line.sweep ? SWEEP_ORDER : s.beat === "hero" ? HERO_ORDER : ORDER;
         const refresh = now - place.checkedAt > 160;
         for (let k = 0; k < order.length && slot < 0; k++) {
