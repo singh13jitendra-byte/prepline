@@ -1,7 +1,9 @@
 /* ══════════════════════════════════════════════════════════════════════════
    ACT IV — SEAT (day: the sunlit wall of desk-dawn, painted by the World).
-   Night Desk: ink headline in Young Serif, Hanken text, hand-drawn seat rings,
-   the product ticket. Tokens only.
+   Night Desk: ink headline in Young Serif, one paragraph in Hanken, the product
+   ticket (the 25 seats are printed on its stub). Small copy never sits on the
+   painting: the promises and the data note are on a paper slip after the stage
+   (components/acts/after). Tokens only.
    ══════════════════════════════════════════════════════════════════════════ */
 
 .seat-panel {
@@ -78,56 +80,6 @@ html.motion .seat-ride {
   line-height: var(--leading-text);
   color: var(--c-ink);
 }
-.seat-signoff {
-  margin: 14px 0 0;
-  max-width: 62ch;
-  text-wrap: pretty;
-  font-size: var(--fs-small);
-  line-height: 1.5;
-  color: var(--c-ink-2);
-}
-.seat-signoff span {
-  display: block;
-}
-.seat-signoff b {
-  font-weight: var(--weight-strong);
-  color: var(--c-ink);
-}
-.seat-promises {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 28px;
-  margin: 24px 0 0;
-  padding: 0;
-  list-style: none;
-  max-width: 560px;
-}
-.seat-promise {
-  padding: 12px 0;
-  border-top: var(--hairline) solid var(--c-rule);
-}
-.seat-promise-t {
-  display: block;
-  font-size: var(--fs-small);
-  line-height: 1.35;
-  font-weight: var(--weight-strong);
-  color: var(--c-ink);
-}
-.seat-promise-b {
-  display: block;
-  margin-top: 2px;
-  font-size: var(--fs-micro);
-  line-height: 1.45;
-  color: var(--c-ink-2);
-}
-.seat-note {
-  margin: 14px 0 0;
-  max-width: 60ch;
-  font-size: var(--fs-micro);
-  line-height: 1.5;
-  color: var(--c-ink-2);
-}
-
 /* ── the ticket ── */
 .seat-ticket-wrap {
   width: min(100%, 520px);
@@ -142,50 +94,6 @@ html.motion .seat-ride {
   transform-origin: 50% 50%;
   transform: translate3d(0, calc(var(--lift, 0) * -10px), 0) rotate(var(--rest, -2deg)) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg));
   will-change: transform;
-}
-
-/* ── 25 hand-drawn seat rings: the fireflies settle into them ── */
-.seat-rings {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding-left: 4px;
-}
-.seat-ring-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 28px);
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.seat-ring {
-  --g: clamp(0, calc((var(--gather, 1) - var(--d, 0)) / 0.45), 1);
-  width: 28px;
-  height: 28px;
-  opacity: var(--g);
-  transform: scale(calc(0.4 + 0.6 * var(--g)));
-}
-.seat-ring-art {
-  display: block;
-  width: 28px;
-  height: 28px;
-  transform: rotate(var(--turn, 0deg));
-}
-.seat-ring[data-fresh] {
-  animation: seat-fill var(--dur-3) var(--ease-spring) both;
-}
-@keyframes seat-fill {
-  from {
-    transform: scale(0.6);
-  }
-}
-.seat-rings-caption {
-  font-size: var(--fs-small);
-  color: var(--c-ink-2);
-  white-space: nowrap;
-  /* only once the first ring exists */
-  opacity: clamp(0, calc((var(--gather, 1) - 0.03) * 8), 1);
 }
 
 /* ── static page ── */
@@ -221,60 +129,15 @@ html:not(.motion) .seat-grid {
   }
   .seat-right {
     order: 2;
+    align-self: stretch;
     gap: 12px;
-    padding-top: 16px;
+    padding-top: 20px;
     align-items: stretch;
-  }
-  .seat-left > div:not(.seat-ride) {
-    order: 3;
   }
   html.motion .seat-ride {
     --ride-d: 66svh;
   }
-  .seat-signoff {
-    display: none;
-  }
-  .seat-promises {
-    gap: 0 14px;
-    margin-top: 12px;
-  }
-  .seat-promise {
-    padding: 8px 0;
-  }
-  .seat-promise-b {
-    display: none;
-  }
-  .seat-note {
-    margin-top: 10px;
-  }
   .seat-ticket-wrap {
     width: 100%;
-  }
-  .seat-rings {
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .seat-ring-grid {
-    grid-template-columns: repeat(13, 18px);
-    gap: 3px 6px;
-  }
-  .seat-ring,
-  .seat-ring-art {
-    width: 18px;
-    height: 18px;
-  }
-  html:not(.motion) .seat-signoff,
-  html:not(.motion) .seat-promise-b {
-    display: block;
-  }
-}
-@media (max-width: 767px) and (max-height: 740px) {
-  html.motion .seat-note {
-    display: none;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .seat-ring[data-fresh] {
-    animation: none;
   }
 }

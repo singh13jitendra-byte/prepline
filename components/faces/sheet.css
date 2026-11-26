@@ -24,6 +24,53 @@
     transform: scale(1.5556);
     transform-origin: 0 0;
   }
+  /* The narrow header keeps only its "Illustrative" pill in this row; the page already says
+     "Illustrative data", and the 34px go to the questions (review 3, P1-5). */
+  .shx .pp-prep-top {
+    display: none;
+  }
+}
+
+/* Phones, from `votes` (SheetFace sets data-focus): the questions as a checklist, one line
+   each with its vote buttons, all three in view while the copy says "Go on, press one". */
+@media (max-width: 767px) {
+  html.motion .shx[data-focus="votes"] .pp-prep-sec:first-child > .pp-prep-sec-p,
+  html.motion .shx[data-focus="votes"] .pp-q-tell,
+  html.motion .shx[data-focus="votes"] .pp-q-foot .pp-src {
+    display: none;
+  }
+  html.motion .shx[data-focus="votes"] .pp-qs {
+    margin-top: 6px;
+    animation: shx-focus 0.35s var(--ease-out) both;
+  }
+  html.motion .shx[data-focus="votes"] .pp-q {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    grid-template-areas: "n q foot";
+    align-items: center;
+    row-gap: 0;
+    padding: 10px 0;
+  }
+  html.motion .shx[data-focus="votes"] .pp-q-n {
+    font-size: 18px;
+    line-height: 22px;
+  }
+  html.motion .shx[data-focus="votes"] .pp-q-text {
+    font-size: 15px;
+    line-height: 22px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  html.motion .shx[data-focus="votes"] .pp-q-foot {
+    flex-wrap: nowrap;
+    margin-top: 0;
+  }
+}
+@keyframes shx-focus {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 
 /* The story shows the questions and "Before it starts"; the full screen's other sections,

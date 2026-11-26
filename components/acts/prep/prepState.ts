@@ -75,6 +75,10 @@ export const prepState = {
   },
   /** Where the story leaves the sheet's own scroll at the end of `votes` (px), so the flying copy matches. */
   scrollEnd: 0,
+  /** The real sheet's header height, in its own layout px (0 until measured), and its bottom in face
+   *  units (of 720): the flying panels skip what they cannot show. */
+  headPx: 0,
+  headFace: 0,
   /** Ask the real buttons to play their press (demo presses). */
   burst(index: number) {
     bursts.forEach((fn) => fn(index, "demo"));

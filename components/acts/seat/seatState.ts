@@ -3,11 +3,15 @@
 /**
  * Shared state of the seat ticket (Act IV): the waitlist request status.
  * Lives outside the ticket face, because the face renders more than once (the
- * flying Actor copy and the real docked ticket), and the seat rings and the
- * line under "ready." react to a successful request too.
+ * flying Actor copy and the real docked ticket), and the seat printed on the stub
+ * and the line under "ready." react to a successful request too.
  */
 
 import { useSyncExternalStore } from "react";
+
+/** The 25 seats printed on the ticket's stub, and the one a successful request fills (the centre, 0-based). */
+export const SEATS = 25;
+export const CLAIM_RING = 12;
 
 export type SeatStatus = "idle" | "sending" | "done" | "duplicate" | "error";
 
