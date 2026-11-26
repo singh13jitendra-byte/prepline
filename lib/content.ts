@@ -183,6 +183,8 @@ export const story = {
       { href: "#join", label: "Privacy" },
     ],
     cta: "Save me a seat",
+    /** The CTA once a seat is saved this session ({seat} is the seat number). */
+    ctaSaved: "Seat {seat} saved",
     menu: "Menu",
     railLabel: "Story",
     /** Beat rail ticks: label and the beat each one scrolls to. */

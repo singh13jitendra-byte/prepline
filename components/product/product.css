@@ -2396,3 +2396,56 @@
 .pp-role[data-variant="compact"] .pp-reasons[data-kind="watch"] .pp-reason {
   border-top-style: dashed;
 }
+
+/* ── Delight 9: rows tilt like paper under a fine pointer ──────────────────
+   components/product/tilt.ts gives the row under the pointer `data-tilt` and an inline
+   transform (2.5° at most toward the pointer, lifted 1px); on leave it removes both, and the
+   row eases back flat. The lift's shadow is this theme's print: the paper under the row gains
+   a small register slip (--shadow-hover), carried by one pseudo-element that only fades
+   (opacity), so nothing is repainted while the row moves. Fine pointers only; never under
+   reduced motion (tilt.ts never sets the attribute there). */
+@media (hover: hover) and (pointer: fine) {
+  .rd-row .pp-matchrow,
+  button.pp-mrow,
+  button.pp-tile {
+    isolation: isolate;
+    transform-origin: 50% 50%;
+    transition:
+      transform var(--dur-3) var(--ease-out),
+      background-color var(--dur-1) var(--ease-out);
+  }
+  .rd-row .pp-matchrow::after,
+  button.pp-mrow::after,
+  button.pp-tile::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--pp-bg);
+    box-shadow: var(--shadow-hover);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-3) var(--ease-out);
+  }
+  .rd-row .pp-matchrow::after {
+    /* the same lit paper as row 1's face, so a lifted row matches the chosen one */
+    background: color-mix(in oklab, var(--art-glow, var(--c-paper-2)) 42%, var(--c-paper-2));
+  }
+  button.pp-tile {
+    position: relative;
+  }
+  :is(.rd-row .pp-matchrow, button.pp-mrow, button.pp-tile)[data-tilt] {
+    /* follows the pointer closely, then eases back slowly on leave (the rule above) */
+    transition:
+      transform 140ms var(--ease-out),
+      background-color var(--dur-1) var(--ease-out);
+  }
+  .rd-row .pp-matchrow[data-tilt] {
+    overflow: visible;
+  }
+  :is(.rd-row .pp-matchrow, button.pp-mrow, button.pp-tile)[data-tilt]::after {
+    opacity: 1;
+    transition-duration: var(--dur-2);
+  }
+}
