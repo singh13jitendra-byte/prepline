@@ -415,10 +415,12 @@ def main():
         check(s["beat"] == "hero" and s["chapter"] == "night", f"desktop: starts on hero at night, got {s['beat']} {s['chapter']}")
         total = page.evaluate("() => document.documentElement.scrollHeight / innerHeight")
         print(f"document height: {total:.2f} viewports")
-        check(11.5 < total < 12.3, f"desktop: the document is about 12.2 viewports tall, got {total:.2f}")
+        check(12.6 < total < 13.6, f"desktop: the document is about 13.1 viewports tall (story + founder note + footer), got {total:.2f}")
         ends = page.evaluate("() => [...document.querySelectorAll('.story-act')].map((e) => Math.round(e.getBoundingClientRect().bottom + scrollY))")
         foot = page.evaluate("() => Math.round(document.querySelector('main ~ footer, body > footer').getBoundingClientRect().top + scrollY)")
-        check(max(ends) == ends[-1] and abs(foot - ends[-1]) <= 1, f"desktop: no act section ends below the last one, and the footer follows it directly (ends {ends}, footer {foot})")
+        after = page.evaluate("() => { const a = document.querySelector('.af'); return a ? Math.round(a.getBoundingClientRect().bottom + scrollY) : null }")
+        follow = after if after is not None else ends[-1]
+        check(max(ends) == ends[-1] and abs(foot - follow) <= 1, f"desktop: no act section ends below the last one, and the footer follows the founder note (ends {ends}, after-stage {after}, footer {foot})")
         if args.shots:
             page.screenshot(path=str(args.shots / "hero.png"))
         check_beats(page, "desktop")
