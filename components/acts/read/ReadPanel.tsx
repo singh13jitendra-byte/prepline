@@ -7,7 +7,7 @@
  *   pass layer    the counter. Revealed below the rising Line at the end of `hero`
  *                 (the Line swaps the headline for the count). Scrub-exact:
  *                 2,340 → 186 over pass1, 186 → 12 over pass2, lamp at 12.
- *                 The statement swaps when the Line reaches the end of each pass.
+ *                 The statement and its detail swap together as each pass starts.
  *   ranked layer  H2 left; right, the list header on night, `ranked-rule` under it, and
  *                 the matches panel: cream paper (the product's MatchesList skin) with
  *                 the <ol> of 12 MatchRows. In the first 15% of `ranked` the counter
@@ -197,7 +197,7 @@ export function ReadPanel() {
     // Per-frame custom properties go to the few elements that read them (see read.css), never to
     // the panel root, where every node of the act would inherit and be restyled.
     const tg = (targets.current ??= {
-      k: root.querySelectorAll<HTMLElement>(".rd-detail"),
+      k: root.querySelectorAll<HTMLElement>(".rd-detail, .rd-stmt-slip"),
       fly: root.querySelectorAll<HTMLElement>(".rd-digits, .rd-stmt-fly"),
       head: root.querySelectorAll<HTMLElement>(".rd-list-head, .rd-rule"),
       digits: root.querySelectorAll<HTMLElement>(".rd-digits"),
@@ -223,9 +223,11 @@ export function ReadPanel() {
       pass.style.setProperty("-webkit-mask-image", mask);
       pass.style.setProperty("mask-image", mask);
     }
-    // 85-unit hero: the count is revealed only once the Line rises (0.5–1).
-    set(pass, "--reveal-a", revealing ? span(h, 0.5, 0.66).toFixed(4) : "1");
-    set(pass, "--reveal-y", `${(revealing ? (1 - span(h, 0.55, 1)) * 0.12 * s.viewport.h : 0).toFixed(2)}px`);
+    // 85-unit hero: the headline is gone by 0.46 and the World has handed over to the meadow (about
+    // 0.45), so the count inks in onto clear meadow once the Line rises: it starts 12vh low and is
+    // scrubbed up to its rest over 0.58–0.92 (review-3 P1-3).
+    set(pass, "--reveal-a", revealing ? span(h, 0.55, 0.72).toFixed(4) : "1");
+    set(pass, "--reveal-y", `${(revealing ? (1 - span(h, 0.58, 0.92)) * 0.12 * s.viewport.h : 0).toFixed(2)}px`);
 
     // The count, exact to the Line.
     const p1 = through(s, "pass1");
@@ -300,8 +302,9 @@ export function ReadPanel() {
     setAll(tg.reason, "--in2", span(q, 0.13, 0.27).toFixed(4));
   });
 
-  /* ── statement swaps: when the Line reaches the end of each pass ── */
-  usePerformanceAt("pass1", 0.97, (tl) => {
+  /* ── statement swaps: as each pass starts, the statement and its detail name the filter the count
+     is running through (review-3 P2-1). Both swap together, once per pass. ── */
+  usePerformanceAt("pass1", 0.06, (tl) => {
     const root = rootRef.current;
     if (!root) return;
     const out = root.querySelectorAll("[data-swap-out='1']");
@@ -313,7 +316,7 @@ export function ReadPanel() {
       0.18,
     );
   });
-  usePerformanceAt("pass2", 0.97, (tl) => {
+  usePerformanceAt("pass2", 0.03, (tl) => {
     const root = rootRef.current;
     if (!root) return;
     const out = root.querySelectorAll("[data-swap-out='2']");
@@ -377,7 +380,7 @@ export function ReadPanel() {
     <Panel beats={["hero", "pass1", "pass2", "ranked", "reason"]} className="rd-read">
       <div ref={rootRef} className="rd-read-root">
         {/* ── the counter (motion) ── */}
-        <div ref={passRef} className="rd-pass only-motion" style={style}>
+        <div ref={passRef} className="rd-pass only-motion" style={style} data-pass="0">
           <div className="rd-grid rd-pass-grid">
             <div className="rd-pass-col">
               <p className="sr-only">{storyCopy.common.figuresForScreenReaders}</p>
@@ -386,6 +389,9 @@ export function ReadPanel() {
                   {fmt(fig.read)}
                 </span>
               </p>
+              {/* The statement and its detail sit on a pine slip over the meadow (review-3 P0-2). The
+                  slip fades with the detail as the statement flies to the list header. */}
+              <div className="rd-slip rd-stmt-slip">
               <p className="rd-stmt" aria-hidden="true">
                 <span ref={stmtRef} className="rd-stmt-fly">
                   <span className="rd-swap" data-swap-out="1">
@@ -401,14 +407,19 @@ export function ReadPanel() {
                   </span>
                 </span>
               </p>
+              <div className="rd-detail-wrap">
               <p className="rd-detail" aria-hidden="true">
-                <span className="rd-swap" data-swap-out="2">
-                  {storyCopy.pass1.detail}
+                <span className="rd-swap" data-swap-in="1">
+                  <span className="rd-swap-inner" data-swap-out="2">
+                    {storyCopy.pass1.detail}
+                  </span>
                 </span>
                 <span className="rd-swap" data-swap-in="2">
                   {storyCopy.pass2.detail}
                 </span>
               </p>
+              </div>
+              </div>
             </div>
           </div>
         </div>

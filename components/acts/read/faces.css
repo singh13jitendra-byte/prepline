@@ -65,9 +65,16 @@
     transform var(--dur-3) var(--ease-out),
     background-color var(--dur-2) var(--ease-out);
 }
+/* Not yet resolved (in flight, and while the score counts): the working is there, dimmed, so the
+   travelling card is the role being read, never an empty slab (review-3 P2-8). */
 .pl-card-face .pp-reason[data-pending] {
-  opacity: 0;
-  transform: translateY(4px);
+  opacity: 0.3;
+}
+.pl-card-face .pp-role-rule {
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+.pl-card-face .pp-role-rule[data-pending] {
+  opacity: 0.35;
 }
 /* Breath: the row being read gets the highlighter, like a marker pass over the working. */
 .pl-card-face .pp-reason[data-reading] {

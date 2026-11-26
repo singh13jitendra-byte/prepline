@@ -276,14 +276,15 @@ export function BoardPanel() {
         if (el.style.getPropertyValue(prop) !== v) el.style.setProperty(prop, v);
       });
     };
-    // Hinge, sequenced (review P1-A5): the board copy is gone by 12% (power2.in, faster than
-    // any entry), the board itself steps back by 25%, then the sentence starts reading.
+    // Hinge, fully sequenced (review-3 P1-7): the board copy and the board itself are both at 0 by
+    // 12% of the hinge, and only then does the sentence start (HingePanel, from 13%). Never text
+    // over text.
     const hp = through(s, "hinge");
-    const out = span(hp, 0, 0.12);
+    const out = span(hp, 0, 0.1);
     set(tg.copy, "--copy-out", (out * out).toFixed(4));
-    // The board steps back and is gone by 20% of the hinge: the rest is the sentence and the tile.
-    const rc = span(hp, 0, 0.14);
-    const gone = span(hp, 0.02, 0.2);
+    // The board steps back and is gone by 12% of the hinge: the rest is the sentence and the tile.
+    const rc = span(hp, 0, 0.12);
+    const gone = span(hp, 0, 0.12);
     if (tg.obj) {
       const tf = `scale(${(1 - 0.08 * rc - 0.03 * hp).toFixed(4)})`;
       if (tg.obj.style.transform !== tf) tg.obj.style.transform = tf;
@@ -347,7 +348,7 @@ export function BoardPanel() {
       const v = span(ip, 0.6, 0.68).toFixed(3);
       if (tg.slot.style.opacity !== v) tg.slot.style.opacity = v;
     }
-    set(tg.glow, "--glow", (span(ip, 0.25, 1) * 0.85 * (1 - span(hp, 0, 0.15))).toFixed(4));
+    set(tg.glow, "--glow", (span(ip, 0.25, 1) * 0.85 * (1 - span(hp, 0, 0.12))).toFixed(4));
   });
 
   /* ── odometer: rolls with the wheel, rests on whole digits ── */
@@ -471,8 +472,10 @@ export function BoardPanel() {
   usePerformanceAt("saved", SAVED_AT, (tl) => {
     const root = rootRef.current;
     if (!root) return;
-    // Visual order in Saved: 1, 2, 3 (still at their start), then 4.
-    const g = [1, 2, 3, 4].map((k) => root.querySelector<HTMLElement>(`[data-ghost="${k}"] .bd-ghost`)).filter(Boolean);
+    // Visual order in Saved: 1, 2, 3 (still at their start). Ghost 4 would sit below them, past the
+    // column's floor (clipped, review-3 P2-5): it arrives in Applied's performance instead, when the
+    // other three leave and it takes the top of Saved.
+    const g = [1, 2, 3].map((k) => root.querySelector<HTMLElement>(`[data-ghost="${k}"] .bd-ghost`)).filter(Boolean);
     tl.fromTo(show, { settle: 0 }, { settle: 1, duration: 0.6, ease: "none" }, 0)
       .fromTo(g, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.6, ease: ease.out, stagger: 0.06 }, 0.08)
       .fromTo(show, { savedIn: 0 }, { savedIn: 5, duration: 0.6, ease: ease.outSoft }, 0.05);
@@ -519,7 +522,11 @@ export function BoardPanel() {
       );
     });
     const g4 = root.querySelector<HTMLElement>(`[data-ghost="4"]`);
-    if (g4) tl.fromTo(g4, { x: 0, y: 0 }, { x: d.g4.x, y: d.g4.y, duration: 0.6, ease: ease.out }, 0.4);
+    if (g4) {
+      tl.fromTo(g4, { x: 0, y: 0 }, { x: d.g4.x, y: d.g4.y, duration: 0.6, ease: ease.out }, 0.4);
+      const g4tile = g4.querySelector<HTMLElement>(".bd-ghost");
+      if (g4tile) tl.fromTo(g4tile, { opacity: 0 }, { opacity: 1, duration: 0.45, ease: ease.out }, 0.62);
+    }
     tl.fromTo(tileShow, { applied: 0 }, { applied: 1, duration: 0.36, ease: ease.inOut }, 0.42)
       .fromTo(show, { savedOut: 0, appliedIn: 0 }, { savedOut: 4, appliedIn: 4, duration: 0.5, ease: ease.outSoft }, 0.3);
     if (steps) tl.fromTo(steps, { "--sa": 0 }, { "--sa": 1, duration: 0.5, ease: ease.inOut }, 0.1);
@@ -632,7 +639,17 @@ export function BoardPanel() {
         <div className="bd-grid bd-split">
           <div className="bd-copy">
             <h2 id="board-title" className="bd-h2">
-              {copy.board.h2}
+              {/* "One board." stands on its own line; the rest balances under it (no orphaned "The"). */}
+              {(() => {
+                const at = copy.board.h2.indexOf(". ");
+                if (at < 0) return copy.board.h2;
+                return (
+                  <>
+                    <span className="bd-h2-a">{copy.board.h2.slice(0, at + 1)}</span>{" "}
+                    <span className="bd-h2-b">{copy.board.h2.slice(at + 2)}</span>
+                  </>
+                );
+              })()}
             </h2>
             <ol className="bd-steps" style={{ "--sa": 1, "--si": 1 } as CSSProperties}>
               {steps.map((st, i) => (

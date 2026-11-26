@@ -40,6 +40,11 @@
   font-weight: var(--weight-display);
   text-wrap: balance;
 }
+.bd-h2-a,
+.bd-h2-b {
+  display: block;
+  text-wrap: balance;
+}
 .bd-steps {
   margin-top: clamp(28px, 4.4svh, 44px);
   display: flex;
@@ -209,7 +214,10 @@ html.motion .bd-zero::after {
   flex-direction: column;
   height: clamp(360px, 50svh, 460px);
   padding: 4px 9px 8px;
-  overflow: clip;
+  /* Clip at the floor only: the three ghosts that live in Applied start out over Saved's placeholders
+     (translated left), and a full clip hid them there, so Saved read "5" over one tile. */
+  overflow-x: visible;
+  overflow-y: clip;
   --draw: 1;
   --hi: 0;
 }
@@ -437,20 +445,23 @@ html:not(.motion) .bd-days {
   font-weight: var(--weight-strong);
 }
 
-/* The light: a flat, slanted shaft of window light that crosses the board with the time of day
-   (printed in the highlighter ink, broken by grain), and a faint pine wash at night. No blur. */
+/* The light: soft window light that drifts across the board with the time of day, and a faint pine
+   wash at night. Both edges are feathered over about 14% of the board and the peak is a quarter
+   strength highlighter, so it reads as light on paper, not a printed band (review-3 P1-6). The
+   grain breaks it up a little; no blur. */
 .bd-sun {
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
+  --sun-ink: color-mix(in oklab, var(--art-glow, var(--c-paper-2)) calc(var(--sun-a, 0.5) * 26%), transparent);
   background:
     linear-gradient(
       104deg,
-      transparent calc(var(--sun-x, 20%) - 22%),
-      color-mix(in oklab, var(--art-glow, var(--c-paper-2)) calc(var(--sun-a, 0.5) * 70%), transparent) calc(var(--sun-x, 20%) - 22%),
-      color-mix(in oklab, var(--art-glow, var(--c-paper-2)) calc(var(--sun-a, 0.5) * 70%), transparent) calc(var(--sun-x, 20%) + 4%),
-      transparent calc(var(--sun-x, 20%) + 4%)
+      transparent calc(var(--sun-x, 20%) - 36%),
+      var(--sun-ink) calc(var(--sun-x, 20%) - 22%),
+      var(--sun-ink) calc(var(--sun-x, 20%) - 8%),
+      transparent calc(var(--sun-x, 20%) + 6%)
     ),
     linear-gradient(color-mix(in oklab, var(--c-ink) calc(var(--night, 0) * 6%), transparent), color-mix(in oklab, var(--c-ink) calc(var(--night, 0) * 6%), transparent));
   -webkit-mask-image: var(--tex-ink-mask, none);
@@ -664,6 +675,8 @@ html:not(.motion) .bd-float {
     grid-template-rows: auto auto;
     align-items: center;
     padding: 8px 4px;
+    /* Lanes grow with their content: nothing to clip, and the ghost bars start in the Saved lane. */
+    overflow: visible;
   }
   .bd-col + .bd-col {
     border-left: 0;
