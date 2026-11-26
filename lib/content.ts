@@ -561,5 +561,10 @@ export const storyActs12 = {
     daysLabel: story.board.daysLabel,
     booked: story.board.booked,
     slot: story.board.slot,
+    /**
+     * PACKAGE 2 (Acts I–II): short role names for the small tiles on the board (rank → title), so a
+     * tile never cuts a word. Product content, not voice copy; review at integration.
+     */
+    ghostTitles: { 2: "Design Systems Designer", 3: "UX Designer, Patient App", 4: "Growth Designer", 5: "Senior UX Designer" } as Record<number, string>,
   },
 } as const;
