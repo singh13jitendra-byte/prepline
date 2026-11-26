@@ -16,18 +16,14 @@
   background: var(--tex-paper), var(--c-paper);
 }
 
-/* ── promise slip: the ticket's own material (paper, pine keyline, hard lamp print) ── */
-.af-slip {
+/* ── promise slip: the shared large paper slip (.slip[data-size="l"], app/globals.css); only its
+   width and the layout of what it holds live here ── */
+.af-promises {
   width: 100%;
   max-width: 1000px;
   margin: 0 auto;
-  padding: 28px 32px 24px;
-  background: var(--c-paper-2);
-  border: 2px solid var(--c-ink);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-1);
 }
-.af-slip-h {
+.af-promises-h {
   margin: 0 0 20px;
   font-family: var(--font-display);
   font-size: var(--fs-h3);
@@ -36,7 +32,7 @@
   font-weight: var(--weight-display);
   text-wrap: balance;
 }
-.af-slip-list {
+.af-promises-list {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0 28px;
@@ -44,17 +40,17 @@
   padding: 0;
   list-style: none;
 }
-.af-slip-list li {
+.af-promises-list li {
   padding-top: 14px;
   border-top: var(--hairline) solid var(--c-rule);
 }
-.af-slip-list b {
+.af-promises-list b {
   display: block;
   font-size: var(--fs-body);
   line-height: 1.35;
   font-weight: var(--weight-strong);
 }
-.af-slip-list span {
+.af-promises-list span {
   display: block;
   margin-top: 4px;
   font-size: var(--fs-small);
@@ -62,7 +58,7 @@
   color: var(--c-ink-2);
   text-wrap: pretty;
 }
-.af-slip-note {
+.af-promises-note {
   margin: 22px 0 0;
   padding-top: 14px;
   border-top: var(--hairline) dashed var(--c-rule);
@@ -140,8 +136,9 @@
   font-weight: 500;
   color: var(--c-ink);
 }
+/* Ink, not ink-2: the grain of the paper texture under it took ink-2 below AA. */
 .af-sign span {
-  color: var(--c-ink-2);
+  color: var(--c-ink);
 }
 .af-founder-text .af-links {
   display: flex;
@@ -219,20 +216,17 @@ html.motion .af-founder[data-seen] {
 }
 
 @media (max-width: 1080px) {
-  .af-slip-list {
+  .af-promises-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px 28px;
   }
 }
 @media (max-width: 860px) {
-  .af-slip {
-    padding: 22px 20px 18px;
-  }
   .af {
     gap: 64px;
     padding: 80px 20px 96px;
   }
-  .af-slip-list {
+  .af-promises-list {
     grid-template-columns: 1fr;
     gap: 14px;
   }

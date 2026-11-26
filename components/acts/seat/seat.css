@@ -66,9 +66,8 @@
 html:not(.motion) .seat-underline {
   background: var(--c-ink);
 }
-/* It rides just under the rising dawn line (written per frame from scroll). */
+/* It rides just under the rising dawn line (ActSeat writes a whole-px transform while it moves). */
 html.motion .seat-ride {
-  --ride-d: 46svh;
   will-change: transform;
 }
 
@@ -133,9 +132,6 @@ html:not(.motion) .seat-grid {
     gap: 12px;
     padding-top: 20px;
     align-items: stretch;
-  }
-  html.motion .seat-ride {
-    --ride-d: 66svh;
   }
   .seat-ticket-wrap {
     width: 100%;

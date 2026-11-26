@@ -466,6 +466,13 @@ const RANKED_STUB = 0.82;
 const A = (anchor: AnchorId, extra: Partial<Extract<LineTarget, { anchor: AnchorId }>> = {}): LineTarget => ({ anchor, ...extra });
 const Y = (y: number): LineTarget => ({ y, weight: FULL_W });
 
+/**
+ * Where the dawn's sunrise wipe starts, as dawn beat progress (round 5b). Before it the room is in
+ * blue hour and the sheet flies into the ticket (ACTOR_TRACK.dawn); from it the Line rises and the
+ * morning comes up under it (LINE_TRACK.dawn, SCENE_TRACK.dawn). One number, so the three agree.
+ */
+export const DAWN_WIPE = 0.45;
+
 /** Scrubbed line moves per beat, transcribed from storyboard section 2. Tuned at integration against real anchors. */
 export const LINE_TRACK: Record<BeatId, readonly LineMove[]> = {
   hero: [
@@ -509,9 +516,11 @@ export const LINE_TRACK: Record<BeatId, readonly LineMove[]> = {
   q2: [{ range: [0, 0.2], from: A("sheet-q1"), to: A("sheet-q2"), label: copy.q2.lineLabel, quiet: true }],
   q3: [{ range: [0, 0.2], from: A("sheet-q2"), to: A("sheet-q3"), label: copy.q3.lineLabel, quiet: true }],
   votes: [{ range: [0, 0.4], from: A("sheet-q3"), to: A("sheet-foot"), label: copy.votes.lineLabel, quiet: true }],
+  // Round 5b: the Line drops to the floor and waits there through blue hour while the sheet flies
+  // into the ticket; only then does it rise and bring the morning (DAWN_WIPE).
   dawn: [
     { range: [0, 0.15], from: A("sheet-foot"), to: Y(1), label: copy.dawn.lineLabel },
-    { range: [0.15, 1], from: Y(1), to: Y(0), label: copy.dawn.lineLabel, sweep: true },
+    { range: [DAWN_WIPE, 1], from: Y(1), to: Y(0), label: copy.dawn.lineLabel, sweep: true },
   ],
   seat: [{ range: [0, 0.3], from: Y(0), to: A("ready-underline", { edge: "center" }), label: "", quiet: true }],
   footer: [{ range: [0, 1], from: A("ready-underline", { edge: "center" }), to: A("ready-underline", { edge: "center" }), label: "", quiet: true }],
@@ -574,7 +583,7 @@ export const SCENE_TRACK: Record<BeatId, { scene: SceneId; moves?: readonly Scen
     scene: "desk-lamp",
     moves: [
       { range: [0, 0.15], to: "desk-bluehour", kind: "fade" },
-      { range: [0.15, 1], to: "desk-dawn", kind: "wipe" },
+      { range: [DAWN_WIPE, 1], to: "desk-dawn", kind: "wipe" },
     ],
   },
   seat: { scene: "desk-dawn" },
@@ -584,7 +593,16 @@ export const SCENE_TRACK: Record<BeatId, { scene: SceneId; moves?: readonly Scen
 
 /** A value that either follows the Actor's travel or plays on its own clock. */
 export type ActorChannel =
-  | { from: number; to: number; drive: "travel" }
+  | {
+      from: number;
+      to: number;
+      drive: "travel";
+      /**
+       * Part of the travel (0..1) this channel runs over: before it the channel holds `from`, after
+       * it `to`. Default [0, 1]. Scroll-bound like the travel, so it can never be left half-played.
+       */
+      range?: [number, number];
+    }
   | {
       from: number;
       to: number;
@@ -657,13 +675,14 @@ export const ACTOR_TRACK: Partial<Record<BeatId, ActorMove>> = {
     // The tile IS the folded sheet's cover: it grows into place and the sheet takes over unseen.
     crossfade: false,
   },
+  // Scrubbed (round 5b): the sheet opens with the wheel, so a fast scroll can never skip the unfold
+  // and land on an open sheet in one frame. Done by 0.7, while the Line is still rising to the fold.
   unfold: {
     from: "sheet-folded",
     to: "sheet",
     face: "sheet",
-    mode: "timed",
-    range: [0, 1],
-    duration: 0.9,
+    mode: "scrub",
+    range: [0.04, 0.7],
     arc: 0,
     lean: 0,
     fold: { from: 0, to: 1, drive: "travel" },
@@ -674,16 +693,19 @@ export const ACTOR_TRACK: Partial<Record<BeatId, ActorMove>> = {
   q3: { from: "sheet", to: "sheet", face: "sheet", mode: "scrub", dock: true },
   votes: { from: "sheet", to: "sheet", face: "sheet", mode: "scrub", dock: true },
   // The open sheet's top panel is `sheet-folded`, so travel starts from there while the fold closes.
+  // Round 5b: every channel is scroll-bound and the whole flight happens in blue hour, before the
+  // sunrise wipe (SCENE_TRACK.dawn from DAWN_WIPE): it folds as it lifts, turns over into the
+  // ticket mid-flight and rests on the ticket's place before "Walk in / ready." comes up.
   dawn: {
     from: "sheet-folded",
     to: "ticket",
     faceFrom: "sheet",
     face: "ticket",
     mode: "scrub",
-    range: [0.15, 1],
+    range: [0.04, DAWN_WIPE - 0.03],
     rotate: [0, -2],
-    fold: { from: 1, to: 0, drive: "timed", at: 0.25, duration: 0.5 },
-    flip: { from: 0, to: 1, drive: "timed", at: 0.25, duration: 0.6, delay: 0.3 },
+    fold: { from: 1, to: 0, drive: "travel", range: [0, 0.4] },
+    flip: { from: 0, to: 1, drive: "travel", range: [0.38, 0.8] },
   },
   seat: { from: "ticket", to: "ticket", face: "ticket", mode: "scrub", dock: true },
   footer: { from: "ticket", to: "ticket", face: "ticket", mode: "scrub", dock: true },

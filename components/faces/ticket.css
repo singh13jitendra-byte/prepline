@@ -9,27 +9,32 @@
   position: absolute;
   inset: 0;
 }
+/* The face's natural size on this screen (520 x 300; phones: TicketFace's TICKET_SMALL). */
 .tkx-inner {
   position: absolute;
   left: 0;
   top: 0;
-  width: 520px;
-  height: 300px;
+  width: var(--face-w, 520px);
+  height: var(--face-h, 300px);
 }
-/* Phones: the wide layout at 468 (its content box clears the product's 459px narrow breakpoint,
-   so the stub and its seats stay), scaled to the slot. */
-@media (max-width: 767px) {
-  .tkx-inner {
-    width: 468px;
-    height: 270px;
-    transform: scale(1.1111);
-    transform-origin: 0 0;
-  }
+.tkx-inner > .pp-ticket {
+  height: 100%;
 }
-/* Phones: a narrower stub and a tighter field row, so the placeholder is never cut at 16px. */
+/* Phones: the product's narrow layout at 1:1, but the stub and its 25 seats are kept (the product
+   drops them under 459px): a narrower stub beside the stacked form. */
 @media (max-width: 767px) {
   .tkx .pp-ticket {
-    --pp-stub: 104px;
+    --pp-stub: 100px;
+  }
+  .tkx .pp-ticket-perf {
+    display: block;
+  }
+  .tkx .pp-ticket-stub {
+    display: flex;
+    padding: 16px 6px;
+  }
+  .tkx .pp-ticket-main {
+    padding: 16px 16px 14px;
   }
   .tkx .wl-input {
     padding: 0 14px;
@@ -37,6 +42,16 @@
   .tkx .wl-btn {
     gap: 6px;
     padding: 0 14px;
+  }
+  .tkx .pp-stamp {
+    right: calc(var(--pp-stub) + 12px);
+  }
+  /* The field takes the main column's full width, the button under it: the address stays legible. */
+  .tkx .wl-row {
+    flex-direction: column;
+  }
+  .tkx .wl-btn {
+    justify-content: center;
   }
 }
 /* In flight the print slips further off register. */
@@ -114,4 +129,14 @@
   .tkx-seat[data-fresh] {
     animation: none;
   }
+}
+
+/* Warm (TicketFace, flying copy): painted facing the viewer at 0.4% opacity before the dawn's turn
+   shows it. Overrides the Actor's inline display / visibility / backface only while data-warm is set. */
+html.motion .actor-face[data-face="ticket"][data-warm] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 0.004 !important;
+  backface-visibility: visible !important;
+  pointer-events: none;
 }

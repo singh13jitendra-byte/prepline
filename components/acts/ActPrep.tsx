@@ -80,13 +80,15 @@ export function ActPrep() {
         <div className="prep-grid">
           <div ref={copyRef} className="prep-copy">
             <div className="prep-group" data-state={stateOf(0, group)}>
-              <p className="prep-label">{storyCopy.unfold.label}</p>
+              <p className="prep-label slip-night" data-size="s">
+                {storyCopy.unfold.label}
+              </p>
               <h2 id="prep-title" className="prep-h">
                 {storyCopy.unfold.h2}
               </h2>
               <div className="prep-sources">
                 {SOURCES.map((s, i) => (
-                  <div key={s.left} className="prep-src" data-state={stateOf(i, source)}>
+                  <div key={s.left} className="prep-src slip-night slip-bleed" data-state={stateOf(i, source)}>
                     <p className="prep-src-lead">{s.left}</p>
                     <p className="prep-src-detail">{s.leftDetail}</p>
                   </div>
@@ -95,10 +97,15 @@ export function ActPrep() {
             </div>
 
             <div className="prep-group" data-state={stateOf(1, group)}>
-              <p className="prep-label">{storyCopy.votes.label}</p>
+              <p className="prep-label slip-night" data-size="s">
+                {storyCopy.votes.label}
+              </p>
               <h2 className="prep-h">{storyCopy.votes.h2}</h2>
-              <p className="prep-body">{storyCopy.votes.body}</p>
-              <p className="prep-hint">{storyCopy.votes.hint}</p>
+              {/* Small copy never sits on the painting: one night slip under the body and the hint. */}
+              <div className="prep-note slip-night slip-bleed">
+                <p className="prep-body">{storyCopy.votes.body}</p>
+                <p className="prep-hint">{storyCopy.votes.hint}</p>
+              </div>
             </div>
           </div>
 

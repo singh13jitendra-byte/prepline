@@ -13,8 +13,9 @@
  *   the same ticket and stub with the form drawn as text (WaitlistPrint), no live form, no
  *   anchors, so a flight carries a small tree and the hand-over is pixel-identical at rest.
  *
- * Laid out at the face's natural size, 520 x 300. On phones the ticket is laid out 468 wide
- * (still the wide layout, stub and seats included) and scaled to the slot.
+ * Laid out at the face's natural size, 520 x 300. On phones the face is registered small
+ * (TICKET_SMALL): a real narrow layout at about 1:1, the stub and its seats kept beside the form,
+ * so the smallest text stays 11px or more at 390.
  */
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
@@ -24,6 +25,7 @@ import { WaitlistForm, WaitlistPrint, type WaitlistStatus } from "@/components/W
 import { SeatTicket } from "@/components/product";
 import { ART, SEAT_RINGS } from "@/components/art";
 import { registerFace, type FaceProps } from "@/components/story/faces";
+import { story } from "@/lib/story";
 import { CLAIM_RING, SEATS, seatState, useSeatState } from "@/components/acts/seat/seatState";
 import "./ticket.css";
 
@@ -112,6 +114,17 @@ function TicketFace({ skin, host }: FaceProps) {
     setStub(rootRef.current?.querySelector<HTMLElement>(".pp-ticket-stub") ?? null);
   }, []);
 
+  // Warm (flying copy only): painted, facing the viewer, at 0.4% opacity (sheet.css) from the end of
+  // the votes until the dawn's turn is about to show it, so its first visible frame is never unpainted.
+  useEffect(() => {
+    if (live || story.reduced()) return;
+    return story.frame("line", (_t, _dt, s) => {
+      const warm = s.beat === "votes" || (s.beat === "dawn" && story.actorState().flip < 0.45);
+      const face = rootRef.current?.closest<HTMLElement>(".actor-face");
+      if (face && face.hasAttribute("data-warm") !== warm) face.toggleAttribute("data-warm", warm);
+    });
+  }, [live]);
+
   return (
     <div ref={rootRef} className="tkx" data-host={host} data-skin={skin} data-fresh={fresh ? "" : undefined}>
       <div className="tkx-inner" data-skin="day">
@@ -124,6 +137,9 @@ function TicketFace({ skin, host }: FaceProps) {
   );
 }
 
-registerFace("ticket", TicketFace, { width: 520, height: 300, chrome: false, clip: false });
+/** The phone ticket: the seat column's width at 390 (350), tall enough for the stacked form. */
+export const TICKET_SMALL = { width: 350, height: 344 };
+
+registerFace("ticket", TicketFace, { width: 520, height: 300, chrome: false, clip: false, small: TICKET_SMALL });
 
 export { TicketFace };

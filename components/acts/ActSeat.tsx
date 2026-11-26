@@ -3,9 +3,10 @@
 /**
  * ACT IV — SEAT (day, sunrise in the room). Storyboard 2.7, round-4 brief, review 3 (P0-2, P1-8).
  *
- *   dawn (wipe, prep's)  the World crossfades desk-bluehour into desk-dawn as the Line rises; the
- *                        sheet folds and flips into the ticket; "Walk in / ready." rides up under
- *                        the rising line on the sunlit wall, so the line reveals it bottom-up
+ *   dawn (wipe, prep's)  in blue hour the sheet folds, turns over into the ticket and lands on its
+ *                        place (ACTOR_TRACK.dawn); only then (DAWN_WIPE) does the Line rise, the
+ *                        World bring desk-dawn up under it, and "Walk in / ready." ride up just
+ *                        under the rising line on the sunlit wall, so the line reveals it bottom-up
  *   seat                 the Line docks under "ready." (scrubbed, the bookend) and the ticket lifts
  *                        (scrubbed). Nothing else: the headline, one paragraph and the ticket
  *                        breathe on the painting; small copy never sits on it.
@@ -23,7 +24,7 @@ import { useEffect, useRef, useState } from "react";
 import { anchorElement, useAnchor } from "@/lib/anchors";
 import { storyCopy } from "@/lib/content";
 import { gsap } from "@/lib/gsap";
-import { clamp01, story } from "@/lib/story";
+import { DAWN_WIPE, clamp01, story } from "@/lib/story";
 import { ease } from "@/lib/theme";
 import { ArtDefs } from "@/components/art";
 import { FaceFrame, FaceSlot } from "@/components/story/FaceSlot";
@@ -73,18 +74,20 @@ export function ActSeat() {
     return () => ro.disconnect();
   }, []);
 
-  // Scrubbed, every pixel (the "breath"): in dawn, "Walk in / ready." rides up just under the
-  // rising line, so the line reveals it bottom-up.
+  // Scrubbed (the "breath"): in dawn's sunrise wipe, "Walk in / ready." rides up just under the
+  // rising line, so the line reveals it bottom-up. Written in whole px, and only while it moves.
   useEffect(() => {
     const ride = rideRef.current;
     if (!ride || story.reduced()) return;
-    let last = "";
+    let last = NaN;
     return story.subscribe((s) => {
-      const rise = s.beat === "dawn" ? clamp01((s.beatProgress - 0.15) / 0.85) : s.beat === "seat" || s.beat === "footer" ? 1 : 0;
-      const key = (1 - rise).toFixed(4);
-      if (key === last) return;
-      last = key;
-      ride.style.transform = `translate3d(0, calc(${key} * var(--ride-d)), 0)`;
+      const rise = s.beat === "dawn" ? clamp01((s.beatProgress - DAWN_WIPE) / (1 - DAWN_WIPE)) : s.beat === "seat" || s.beat === "footer" ? 1 : 0;
+      // How far below its place it starts: 46% of the stage. Phones stack the headline above the
+      // ticket, so a ride would pass it behind the landed ticket: there the line reveals it in place.
+      const px = s.flags.small ? 0 : Math.round((1 - rise) * 0.46 * s.viewport.h);
+      if (px === last) return;
+      last = px;
+      ride.style.transform = px ? `translate3d(0,${px}px,0)` : "none";
     });
   }, []);
 
