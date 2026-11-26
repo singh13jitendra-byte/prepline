@@ -7,7 +7,7 @@
  *
  *   hero        desk-night at rest. From 16% of the beat the camera pushes at the window:
  *               the room scales about the window's centre until the glass fills the screen,
- *               fades, and the meadow is there. The window-frame layer flies past on the way.
+ *               (its own painted frame flying past) and only then gives way to the meadow.
  *   pass1..     meadow-night, a slow push, the foreground grass risen
  *   daybreak    the cream day rises over it from below (ChapterBackdrop)
  *   board       paper only: every painted layer is switched off
@@ -26,7 +26,7 @@ import { useEffect } from "react";
 import { registerAnchor, type AnchorId } from "@/lib/anchors";
 import { BEATS, clamp01, story, type BeatId, type StoryState } from "@/lib/story";
 import { worldBus } from "./bus";
-import { DESK, DESK_CLOSE, FOCUS, HOTSPOTS, coverBox, type HotspotId } from "./sceneGeometry";
+import { DESK, DESK_CLOSE, FOCUS, HOTSPOTS, WINDOW_SKY, coverBox, type HotspotId } from "./sceneGeometry";
 
 const ORDER = Object.fromEntries(BEATS.map((b, i) => [b.id, i])) as Record<BeatId, number>;
 const ss = (a: number, b: number, x: number) => {
@@ -38,10 +38,14 @@ const io = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
 
 /** Hero progress at which the push through the window starts. */
 export const PUSH_FROM = 0.16;
+/** How far down the foreground grass sits, as a fraction of the stage: off screen, in the meadow, under the seat act. */
+const GRASS_OFF = 0.62;
+const GRASS_LOW = 0.3;
+const GRASS_SEAT = 0.43;
 
 type Box = { x: number; y: number; w: number; h: number };
 type Put = { el: HTMLElement | null; t: string; o: string; v: string };
-const slot = (el: HTMLElement | null): Put => ({ el, t: "", o: "", v: "" });
+const slot = (el: HTMLElement | null): Put => ({ el, t: "", o: "", v: "?" });
 
 function put(p: Put, visible: boolean, opacity = 1, tx = 0, ty = 0, k = 1) {
   const el = p.el;
@@ -56,6 +60,12 @@ function put(p: Put, visible: boolean, opacity = 1, tx = 0, ty = 0, k = 1) {
 }
 
 /** The translation that puts box-point q at screen point `to` when the box is scaled by k (origin 0 0). */
+/** Wrappers are switched with display, so a visible child can never outvote a hidden parent. */
+function shown(p: Put, on: boolean) {
+  const v = on ? "block" : "none";
+  if (p.el && v !== p.v) p.el.style.display = p.v = v;
+}
+
 const tx = (box: Box, q: number, to: number, k: number) => to - box.x - k * q;
 const ty = (box: Box, q: number, to: number, k: number) => to - box.y - k * q;
 
@@ -114,7 +124,6 @@ export function SceneDirector() {
     const room = slot(q(".sc-room"));
     const meadow = slot(q(".sc-meadow"));
     const blue = slot(q(".sc-blue"));
-    const frame = slot(q(".sc-frame"));
     const washN = slot(q(".sc-wash-night"));
     const washD = slot(q(".sc-wash-day"));
     const sun = slot(q(".sc-sun"));
@@ -122,6 +131,7 @@ export function SceneDirector() {
     const grass = slot(q(".sc-grass"));
     const dawnWrap = q<HTMLElement>(".sc-dawnwrap");
     let dawnMode = "";
+    let grassNight = "?";
     const ar = (el: HTMLElement | null, fallback: number) => (el && parseFloat(el.style.getPropertyValue("--ar"))) || fallback;
     const roomAr = ar(room.el, DESK.w / DESK.h);
     const meadowAr = ar(meadow.el, 16 / 9);
@@ -148,7 +158,6 @@ export function SceneDirector() {
     const onResize = () => (stale = true);
     window.addEventListener("resize", onResize, { passive: true });
 
-    const win = HOTSPOTS["window-view"];
     const par = { x: 0, y: 0 };
     let lastKey = "";
 
@@ -178,59 +187,63 @@ export function SceneDirector() {
       scene.field = 0;
       scene.px = scene.py = 0;
 
-      /* the window's glass in the room's own box */
-      const wx = ((win.x0 + win.x1) / 2 / DESK.w) * roomBox.w;
-      const wy = ((win.y0 + win.y1) / 2 / DESK.h) * roomBox.h;
-      const ww = ((win.x1 - win.x0) / DESK.w) * roomBox.w;
-      const wh = ((win.y1 - win.y0) / DESK.h) * roomBox.h;
-
       const nightOn = i <= ORDER.daybreak || (i >= ORDER.nightfall && i <= ORDER.dawn);
-      put(night, nightOn);
+      const gn = i <= ORDER.daybreak ? "1" : "";
+      if (gn !== grassNight && grassWrap.el) {
+        grassNight = gn;
+        grassWrap.el.toggleAttribute("data-night", gn === "1");
+      }
+      shown(night, nightOn);
 
       /* ── Act I ── */
       if (i === ORDER.hero) {
         const p = io(ss(PUSH_FROM, 1, bp));
-        const S = Math.max(vw / ww, stageH / wh) * 1.14;
+        // The camera goes for the clear opening between the casements until it fills the screen;
+        // only then, with nothing of the room left in frame, does the room give way to the meadow.
+        const sx0 = roomBox.w / DESK.w;
+        const skyW = (WINDOW_SKY.x1 - WINDOW_SKY.x0) * sx0;
+        const skyH = (WINDOW_SKY.y1 - WINDOW_SKY.y0) * sx0;
+        const qx = ((WINDOW_SKY.x0 + WINDOW_SKY.x1) / 2) * sx0;
+        const qy = ((WINDOW_SKY.y0 + WINDOW_SKY.y1) / 2) * sx0;
+        const S = Math.max(vw / skyW, stageH / skyH) * 1.12;
         const kk = Math.pow(S, p);
-        const toX = mix(roomBox.x + wx, cx, p) - par.x * 12 * (1 - p);
-        const toY = mix(roomBox.y + wy, cy, p) - par.y * 8 * (1 - p);
-        const ro = 1 - ss(0.58, 0.9, p);
-        put(room, true, ro, tx(roomBox, wx, toX, kk), ty(roomBox, wy, toY, kk), kk);
-        const mk = mix(1.2, 1, p);
-        put(meadow, p > 0.3, 1, tx(meadowBox, cx - meadowBox.x, cx, mk), ty(meadowBox, cy - meadowBox.y, cy, mk), mk);
-        const fk = mix(1, 3.6, Math.pow(ss(0.4, 1, p), 2));
-        put(frame, p > 0.4, ss(0.4, 0.6, p) * (1 - ss(0.86, 1, p)), tx(roomBox, cx - roomBox.x, cx, fk), ty(roomBox, cy - roomBox.y, cy, fk), fk);
+        const toX = mix(roomBox.x + qx, cx, p) - par.x * 12 * (1 - p);
+        const toY = mix(roomBox.y + qy, cy, p) - par.y * 8 * (1 - p);
+        const ro = 1 - ss(0.8, 0.98, p);
+        const RX = tx(roomBox, qx, toX, kk);
+        const RY = ty(roomBox, qy, toY, kk);
+        put(room, true, ro, RX, RY, kk);
+        const mk = mix(1.16, 1, p);
+        put(meadow, p > 0.5, 1, tx(meadowBox, cx - meadowBox.x, cx, mk), ty(meadowBox, cy - meadowBox.y, cy, mk), mk);
         put(blue, false);
-        put(washN, true, mix(1, 0.5, ss(0.2, 0.9, p)));
+        put(washN, true, mix(1, 0.5, ss(0.15, 0.7, p)));
         // Fireflies: inside the glass while the room is there, everywhere once it has gone.
-        const gx = toX - (ww / 2) * kk;
-        const gy = toY - (wh / 2) * kk;
-        const open = 1 - ro;
-        scene.x0 = mix(gx, -200, open);
-        scene.y0 = mix(gy, -200, open);
-        scene.x1 = mix(gx + ww * kk, vw + 200, open);
-        scene.y1 = mix(gy + wh * kk, vh + 200, open);
+        const sx = sx0;
+        const open = ss(0.7, 0.96, p);
+        scene.x0 = mix(roomBox.x + RX + kk * WINDOW_SKY.x0 * sx, -200, open);
+        scene.y0 = mix(roomBox.y + RY + kk * WINDOW_SKY.y0 * sx, -200, open);
+        scene.x1 = mix(roomBox.x + RX + kk * WINDOW_SKY.x1 * sx, vw + 200, open);
+        scene.y1 = mix(roomBox.y + RY + kk * WINDOW_SKY.y1 * sx, vh + 200, open);
         scene.field = 1;
         scene.px = -par.x * 26 * (1 - p);
         scene.py = -par.y * 16 * (1 - p);
         scene.push = p;
-        put(grassWrap, p > 0.7);
-        put(grass, true, 1, 0, (1 - ss(0.7, 1, p) * 0.8) * stageH * 0.34, 1);
+        shown(grassWrap, p > 0.8);
+        put(grass, true, 1, 0, mix(GRASS_OFF, GRASS_LOW + 0.05, ss(0.8, 1, p)) * stageH, 1);
       } else if (i <= ORDER.daybreak) {
         const u = clamp01((s.pos - beatAt.pass1) / (beatAt.daybreak - beatAt.pass1 || 1));
         const mk = 1 + 0.06 * u;
         put(room, false);
-        put(frame, false);
         put(blue, false);
         put(meadow, true, 1, tx(meadowBox, cx - meadowBox.x, cx, mk), ty(meadowBox, cy - meadowBox.y, cy, mk), mk);
         put(washN, true, i >= ORDER.ranked ? mix(0.5, 0.78, i === ORDER.ranked ? ss(0, 0.5, bp) : 1) : 0.5);
         scene.field = 1;
         scene.push = 1;
         const g = i === ORDER.pass1 ? mix(0.8, 1, ss(0, 0.3, bp)) : i === ORDER.daybreak ? 1 - ss(0, 0.2, bp) : 1;
-        put(grassWrap, g > 0);
-        put(grass, true, i === ORDER.daybreak ? g : 1, 0, (1 - Math.min(1, g)) * stageH * 0.34 - u * stageH * 0.03, 1);
+        shown(grassWrap, g > 0);
+        put(grass, true, i === ORDER.daybreak ? g : 1, 0, (mix(GRASS_LOW + 0.05, GRASS_LOW, Math.min(1, (g - 0.8) * 5)) - u * 0.02) * stageH, 1);
       } else if (i < ORDER.nightfall) {
-        put(grassWrap, false);
+        shown(grassWrap, false);
       } else if (i <= ORDER.dawn) {
         /* ── Act III: close on the desk; at dawn the camera pulls back and the hour turns blue ── */
         const c = small ? DESK_CLOSE.small : DESK_CLOSE.wide;
@@ -247,9 +260,8 @@ export function SceneDirector() {
         put(room, bo < 1, 1, X, Y, kk);
         put(blue, bo > 0, bo, X, Y, kk);
         put(meadow, false);
-        put(frame, false);
         put(washN, true, mix(0.82, 0.5, back));
-        put(grassWrap, false);
+        shown(grassWrap, false);
       }
 
       /* ── Act IV: dawn below the Line, then the whole room ── */
@@ -261,8 +273,8 @@ export function SceneDirector() {
         put(washD, true, 1);
         if (i > ORDER.dawn) {
           const g = i === ORDER.seat ? ss(0.15, 0.7, bp) : 1;
-          put(grassWrap, g > 0);
-          put(grass, true, 1, 0, (1 - g * 0.7) * stageH * 0.34, 1);
+          shown(grassWrap, g > 0);
+          put(grass, true, 1, 0, mix(GRASS_OFF, GRASS_SEAT, g) * stageH, 1);
         }
       }
     };

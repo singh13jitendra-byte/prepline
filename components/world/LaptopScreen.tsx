@@ -7,7 +7,7 @@ import { MatchesList, Showcase } from "@/components/product";
  * laid out at its natural width and scaled as one picture into the `laptop-screen` hotspot.
  * Decorative: inert and hidden from assistive tech. The real, usable list is in Act I.
  */
-const SCREEN = { w: 640, h: 401 }; // the painted screen's proportions (276 : 173)
+const SCREEN = { w: 580, h: 352 }; // the painted screen's proportions (267 : 162)
 
 export function LaptopScreen() {
   return (

@@ -264,7 +264,7 @@ const vert = /* glsl */ `
     // Each firefly blinks on its own slow clock: lit for about a third of it, dark for the rest.
     float phase = fract(uTime * (0.055 + 0.07 * h1) + h2);
     float lit = smoothstep(0.0, 0.10, phase) * (1.0 - smoothstep(0.22, 0.46, phase));
-    float r0 = mix(0.9, 2.1, z) + h4 * 0.3;
+    float r0 = mix(1.3, 2.8, z) + h4 * 0.4;
     float a0 = (0.07 + 0.93 * lit) * mix(0.45, 1.0, z);
 
     vec2 P = P0;
@@ -303,14 +303,14 @@ const vert = /* glsl */ `
       float glow2 = afterglow(G.y, uT2, uHist2, -1.0) * step(0.5, r1);
       // Kept: it stops blinking, turns lamp yellow and settles on its node.
       P = mix(P0, G, e1);
-      radius = mix(radius, 1.9, e1) + flare * 0.6;
+      radius = mix(radius, 3.8, e1) + flare * 0.8;
       alpha = mix(alpha, 0.96, e1);
       col = mix(col, ucGold, e1);
       if (kind < 1.5) {
         float dim2 = e2 * (1.0 - glow2 * 0.85);
         P.y += e2 * (34.0 + 80.0 * h3);
         alpha = mix(alpha, 0.0, dim2) + glow2 * 0.3 * (1.0 - e2);
-        radius = mix(radius, 1.1, dim2);
+        radius = mix(radius, 1.4, dim2);
 
         // Dawn: 25 of them come back up, ride the Line as it brings the day, and are left
         // in the seat rings as it passes them.
@@ -332,7 +332,7 @@ const vert = /* glsl */ `
         }
       } else {
         // The twelve: lamp, a little larger, steady. No halo.
-        radius *= mix(1.0, 1.6, e2) * (1.0 + 0.3 * sin(PI * clamp(glow2 * 1.2, 0.0, 1.0)));
+        radius *= mix(1.0, 2.3, e2) * (1.0 + 0.3 * sin(PI * clamp(glow2 * 1.2, 0.0, 1.0)));
 
         // Ranked: fly an arc to the live row rect and stretch from a light into the full row.
         vec4 row = uRows[int(slot + 0.5)];
@@ -417,7 +417,7 @@ const frag = /* glsl */ `
     float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - vRad;
     float fill = 1.0 - smoothstep(-vSoft, vSoft, d);
     // A soft light falls off toward its edge; a printed shape does not.
-    fill = mix(fill * fill, fill, vFx.y);
+    fill = mix(fill * fill * (0.55 + 0.45 * fill), fill, vFx.y);
     float edge = vFx.x * (1.0 - smoothstep(0.35, 1.25, abs(d + 0.9)));
 
     float day = step(uDayTop, p.y);

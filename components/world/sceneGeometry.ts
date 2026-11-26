@@ -12,10 +12,8 @@
  * Hotspots are children of that box in percentages, so they follow resize, the cover crop
  * and every transform for free, and anchorRect() can read them like any other anchor.
  *
- * TO MEASURE once the files land: open /?scenes=debug (hotspots are outlined and labelled),
- * or read the pixel rects off public/scenes/desk-night-2400.webp, and edit HOTSPOTS, FOCUS
- * and DESK_CLOSE. Only `laptop-screen` comes from the brief; the others are estimates
- * made without seeing the painting.
+ * Measured from public/scenes/desk-night-1600.webp (x 1.28 to source pixels). To re-check
+ * after a new export: open /?scenes=debug, which outlines and labels every hotspot.
  */
 
 export const SCENE_NAMES = ["desk-night", "meadow-night", "desk-bluehour", "desk-dawn", "grass-fg", "window-frame"] as const;
@@ -57,13 +55,18 @@ export type Rect = { x0: number; y0: number; x1: number; y1: number };
 /** desk-night, source pixels (2048 x 1152). */
 export const DESK = { w: 2048, h: 1152 };
 export const HOTSPOTS = {
-  /** The laptop's blank screen. From the brief; measure precisely from the file. */
-  "laptop-screen": { x0: 1306, y0: 737, x1: 1582, y1: 910 },
-  /** The open window's glass area: the push-through aims here and fireflies live inside it. ESTIMATE. */
-  "window-view": { x0: 868, y0: 104, x1: 1716, y1: 628 },
-  /** The lamp's shade and bulb. ESTIMATE. */
-  "desk-lamp": { x0: 1040, y0: 520, x1: 1236, y1: 790 },
+  /** The laptop's blank screen (an upright rectangle, no skew). */
+  "laptop-screen": { x0: 1309, y0: 744, x1: 1576, y1: 906 },
+  /** The window opening inside its frame, casements included: the push-through aims here. */
+  "window-view": { x0: 950, y0: 83, x1: 1933, y1: 819 },
+  /** The lamp's shade. */
+  "desk-lamp": { x0: 1126, y0: 525, x1: 1261, y1: 685 },
 } as const satisfies Record<string, Rect>;
+/**
+ * The clear sky between the two open casements and above the lamp: in the hero the
+ * fireflies are drawn only inside this, so none crosses the woodwork, the lamp or the laptop.
+ */
+export const WINDOW_SKY: Rect = { x0: 1158, y0: 90, x1: 1709, y1: 538 };
 export type HotspotId = keyof typeof HOTSPOTS;
 
 /**
@@ -72,9 +75,9 @@ export type HotspotId = keyof typeof HOTSPOTS;
  * is framed on the window and the laptop, the wall is off to the left.
  */
 export const FOCUS: Record<"room" | "meadow" | "dawn", { wide: [number, number]; small: [number, number] }> = {
-  room: { wide: [0.5, 0.5], small: [0.76, 0.5] },
+  room: { wide: [0.5, 0.5], small: [0.78, 0.5] },
   meadow: { wide: [0.5, 0.5], small: [0.5, 0.5] },
-  dawn: { wide: [0.5, 0.5], small: [0.72, 0.5] },
+  dawn: { wide: [0.5, 0.5], small: [0.78, 0.5] },
 };
 
 /**
@@ -83,8 +86,8 @@ export const FOCUS: Record<"room" | "meadow" | "dawn", { wide: [number, number];
  * magnified by `scale` over the cover fit.
  */
 export const DESK_CLOSE = {
-  wide: { at: [0.66, 0.72], to: [0.7, 0.62], scale: 1.55 },
-  small: { at: [0.68, 0.72], to: [0.5, 0.7], scale: 1.35 },
+  wide: { at: [0.585, 0.56], to: [0.44, 0.4], scale: 1.36 },
+  small: { at: [0.6, 0.56], to: [0.5, 0.3], scale: 1.3 },
 } as const;
 
 /** Layout of a cover box in CSS px, for a viewport. Pure maths: no layout is read. */

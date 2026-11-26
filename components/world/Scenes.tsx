@@ -16,7 +16,8 @@ import { DESK, FOCUS, HOTSPOTS, SCENE_FALLBACK, SCENE_GROUND, SCENE_NAMES, type 
  *
  *   desk-night     the hero, and (framed close on the lamp-lit desk) the prep act
  *   meadow-night   through the window: the two reading passes, ranked, reason
- *   window-frame   flies past the camera on the way through
+ *   (window-frame is not drawn: the room's own painted window flies past as the camera
+ *    pushes through it, and a second, differently painted frame on top of it read as a prop.)
  *   grass-fg       foreground grass: parallax in the meadow, and the bottom of the seat act
  *   desk-bluehour  the same room before dawn (above the Line during the dawn wipe)
  *   desk-dawn      the same room at dawn (below the Line, then the whole seat act)
@@ -154,7 +155,6 @@ export function ScenesNight() {
         </Hotspot>
       </Layer>
       <Layer name="desk-bluehour" manifest={manifest} className="sc-blue" focus="room" />
-      <Layer name="window-frame" manifest={manifest} className="sc-frame" focus="room" />
       <div className="sc-wash sc-wash-night" />
     </div>
   );
@@ -184,9 +184,12 @@ export const SCENE_CSS = `
 @media (max-width:767px){.sc-layer{left:calc((100vw - var(--w)) * var(--fxs));top:calc((100lvh - var(--w) / var(--ar)) * var(--fys))}}
 .sc-img{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .5s linear;user-select:none}
 .sc-img[data-on]{opacity:1}
-.sc-meadow,.sc-blue,.sc-frame{visibility:hidden}
-.sc-frame,.sc-grass{background-image:none!important}
-.sc-dawnwrap,.sc-grasswrap{visibility:hidden}
+.sc-meadow,.sc-blue,.sc-grass{visibility:hidden}
+.sc-grass{background-image:none!important}
+/* The grass is painted in daylight: at night it is in shadow. */
+.sc-grasswrap[data-night] .sc-grass{filter:brightness(.42) saturate(.7) hue-rotate(28deg)}
+.sc-dawnwrap{visibility:hidden}
+.sc-grasswrap{display:none}
 .sc-dawnwrap[data-mode="day"]{visibility:visible}
 .sc-dawnwrap[data-mode="split"]{visibility:visible;clip-path:inset(var(--day-top) 0 0 0)}
 .sc-grasswrap{overflow:visible;contain:layout style}
@@ -197,8 +200,8 @@ export const SCENE_CSS = `
 /* The screen is a painted object: its UI sits a touch under the paint, and lights the desk a little. */
 .sc-hot-laptop-screen::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(160deg,color-mix(in oklab,var(--c-on-night) 10%,transparent),transparent 45%,color-mix(in oklab,var(--c-night) 16%,transparent));box-shadow:0 0 calc(var(--w) * .012) color-mix(in oklab,var(--c-paper-2) 30%,transparent)}
 .sc-wash{position:absolute;inset:0;will-change:opacity}
-.sc-wash-night{background:linear-gradient(96deg,var(--c-night) 0%,color-mix(in oklab,var(--c-night) 88%,transparent) 26%,color-mix(in oklab,var(--c-night) 40%,transparent) 46%,transparent 62%)}
-.sc-wash-day{background:linear-gradient(96deg,var(--c-paper) 0%,color-mix(in oklab,var(--c-paper) 84%,transparent) 28%,color-mix(in oklab,var(--c-paper) 30%,transparent) 48%,transparent 64%)}
+.sc-wash-night{background:linear-gradient(94deg,var(--c-night) 0%,color-mix(in oklab,var(--c-night) 92%,transparent) 18%,color-mix(in oklab,var(--c-night) 55%,transparent) 34%,transparent 47%)}
+.sc-wash-day{background:linear-gradient(94deg,color-mix(in oklab,var(--c-paper) 70%,transparent) 0%,color-mix(in oklab,var(--c-paper) 45%,transparent) 30%,transparent 48%)}
 @media (max-width:767px){
 .sc-wash-night{background:linear-gradient(180deg,var(--c-night) 0%,color-mix(in oklab,var(--c-night) 90%,transparent) 34%,color-mix(in oklab,var(--c-night) 30%,transparent) 58%,transparent 74%)}
 .sc-wash-day{background:linear-gradient(180deg,var(--c-paper) 0%,color-mix(in oklab,var(--c-paper) 88%,transparent) 36%,color-mix(in oklab,var(--c-paper) 24%,transparent) 60%,transparent 76%)}
