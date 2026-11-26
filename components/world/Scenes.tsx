@@ -208,7 +208,7 @@ export const SCENE_CSS = `
 }
 /* Sunrise: a flat rectangle of light that crosses the wall. A shape, not a glow. */
 .sc-sun{position:absolute;left:0;top:0;width:34vw;height:120%;transform-origin:0 0;opacity:0;will-change:transform,opacity;background:linear-gradient(90deg,transparent,color-mix(in oklab,var(--c-paper-2) 55%,transparent) 18%,color-mix(in oklab,var(--c-paper-2) 55%,transparent) 82%,transparent)}
-html[data-scenes-debug] .sc-hot{outline:2px solid #f0f;background:rgba(255,0,255,.12)}
-html[data-scenes-debug] .sc-hot::before{content:attr(data-hot);position:absolute;left:0;top:-18px;font:12px/1 monospace;color:#f0f;background:#000}
+html[data-scenes-debug] .sc-hot{outline:2px solid #f0f;background:rgba(255,0,255,.12)} /* token-ok: ?scenes=debug overlay only */
+html[data-scenes-debug] .sc-hot::before{content:attr(data-hot);position:absolute;left:0;top:-18px;font:12px/1 monospace;color:#f0f;background:#000} /* token-ok: ?scenes=debug overlay only */
 html[data-scenes-debug] .sc-hot-laptop-screen>*{opacity:.35}
 `;
