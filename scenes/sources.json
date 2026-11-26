@@ -1,0 +1,8 @@
+[
+  { "name": "desk-night", "url": "https://ai-thumbnails.s3.amazonaws.com/editor/78f5f87e-61ef-4158-8e8d-bc9cba1ed057/4c1ca210-6858-4a90-8f0c-ecc5cef2099e.jpeg", "note": "Hero, 11:25 PM: desk by the window, lamp on, blank laptop screen, firefly meadow. Nano Banana Pro." },
+  { "name": "meadow-night", "url": "https://ai-thumbnails.s3.amazonaws.com/editor/78f5f87e-61ef-4158-8e8d-bc9cba1ed057/94c17276-6614-4544-8322-be3fc5ca9352.png", "note": "Wide firefly meadow at night (outside). Nano Banana 2.1." },
+  { "name": "desk-bluehour", "url": "https://ai-thumbnails.s3.amazonaws.com/editor/78f5f87e-61ef-4158-8e8d-bc9cba1ed057/cab220fe-9d64-41e0-a39c-fe3bcfea364f.png", "note": "Same room, pre-dawn blue hour, lamp still on. Nano Banana 2.1." },
+  { "name": "desk-dawn", "url": "https://ai-thumbnails.s3.amazonaws.com/editor/78f5f87e-61ef-4158-8e8d-bc9cba1ed057/276b3c28-0334-47c9-974f-56106d4bfe19.jpeg", "note": "Same room, golden dawn, lamp off, laptop closed. Nano Banana Pro." },
+  { "name": "grass-fg", "url": "https://ai-thumbnails.s3.amazonaws.com/editor/78f5f87e-61ef-4158-8e8d-bc9cba1ed057/68c03e14-c531-48a6-8212-c4fd7e7b04b4.png", "alpha": true, "note": "Transparent foreground grass and wildflowers. GPT Image 2.6." },
+  { "name": "window-frame", "url": "https://ai-thumbnails.s3.amazonaws.com/editor/78f5f87e-61ef-4158-8e8d-bc9cba1ed057/7dfa0c1b-6bd6-4131-a00b-befe20420e14.png", "alpha": true, "note": "Transparent open window frame for the push-through. GPT Image 2.6." }
+]
