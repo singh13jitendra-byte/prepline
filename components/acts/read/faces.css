@@ -68,7 +68,7 @@
 /* Not yet resolved (in flight, and while the score counts): the working is there, dimmed, so the
    travelling card is the role being read, never an empty slab (review-3 P2-8). */
 .pl-card-face .pp-reason[data-pending] {
-  opacity: 0.3;
+  opacity: 0.42;
 }
 .pl-card-face .pp-role-rule {
   transition: opacity var(--dur-2) var(--ease-out);
@@ -93,7 +93,23 @@
 .actor[data-moving] .face[data-face="tile"][data-skin="day"] > .face-chrome {
   box-shadow: var(--shadow-2);
 }
+/* Nightfall's last quarter (TileFace writes --tile-cover 0 → 1 on the flying tile's chrome): the
+   keyline and the lamp print ease away, so the tile arrives as the sheet's bare paper cover. */
+.actor .face > .face-chrome[data-tile-cover] {
+  border-color: color-mix(in oklab, var(--face-border) calc((1 - var(--tile-cover, 0)) * 100%), var(--face-bg));
+  box-shadow: 12px 14px 0 0 color-mix(in oklab, var(--art-lamp) calc((1 - var(--tile-cover, 0)) * 100%), transparent);
+}
+.pl-tile-scale {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(100% / 0.77);
+  height: calc(100% / 0.77);
+  transform: scale(0.77);
+  transform-origin: 0 0;
+}
 .pl-tile-face .pp {
+  height: 100%;
   background: transparent;
 }
 .pl-tile-face .pp-tile {
@@ -130,4 +146,49 @@
  */
 html.motion:is([data-beat="ranked"], [data-beat="reason"], [data-beat="daybreak"], [data-beat="saved"], [data-beat="applied"], [data-beat="interview"], [data-beat="hinge"]) .actor-flip {
   transform-style: flat;
+}
+
+/* The flying card shrinks into the tile in `saved`: Showcase's minimum scale (Foundation round 5)
+   would re-lay it out narrower and blow its type up as it shrinks. Flying copies are decorative and
+   transient, so they keep their layout and just scale; the docked card keeps the minimum. */
+.actor .pl-card-face .pp-showcase {
+  --pp-min: 0.001;
+}
+
+/* Phones: the card is laid out at 360 x 300 (faces.ts small size). Its privacy footer repeats the
+   line already on the reason copy's slip, so it goes and the four rows of working fit. */
+@media (max-width: 767px) {
+  .pl-card-face .pp-role-f {
+    display: none;
+  }
+  /* Each row keeps its points and its claim; the per-row source line is the one thing a 300px card
+     cannot also hold (the docked desktop card and the prep sheet carry the sources). */
+  .pl-card-face .pp-reason-src {
+    display: none;
+  }
+  .pl-card-face .pp-role-h {
+    padding-top: 8px;
+    padding-bottom: 6px;
+  }
+  .pl-card-face .pp-reason {
+    padding-block: 4px;
+  }
+  .pl-card-face .pp-reason-t {
+    font-size: 13px;
+    line-height: 17px;
+  }
+}
+
+/* Row → card in `reason` (ReadPanel sets data-pl-swap on the Actor while it travels): the face
+   change is a card flip about X, so each face is drawn whole and opaque, one at a time. The engine's
+   crossfade opacities and its midpoint blur are overruled for these two faces only. */
+.actor[data-pl-swap] {
+  filter: none !important;
+}
+.actor[data-pl-swap] .actor-face:is([data-face="row"], [data-face="card"]) > .actor-skin > .face > :is(.face-chrome, .face-clip) {
+  opacity: 1 !important;
+}
+.actor[data-pl-swap="from"] .actor-face[data-face="card"],
+.actor[data-pl-swap="to"] .actor-face[data-face="row"] {
+  visibility: hidden !important;
 }

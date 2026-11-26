@@ -146,7 +146,7 @@ export function HeroPanel() {
                 {/* Small copy never sits directly on the painting (review-3 P0-2): a flat pine slip, the
                     wall's own colour, so it disappears on the wall and holds AA over the lit plaster,
                     the window frame and (on a phone) the laptop. */}
-                <div className="rd-slip rd-hero-slip">
+                <div className="slip-night slip-bleed rd-hero-slip">
                 <p className="rd-sub" data-rise>
                   {copy.sub}
                 </p>
