@@ -1,0 +1,73 @@
+/*
+ * Theme token fallback for the product screens.
+ *
+ * The token contract (research/theme-tokens.md) says app/theme.css defines these
+ * on :root. Until that file lands, this block supplies today's values, mapped
+ * to the existing @theme colours wherever one exists.
+ *
+ * It is wrapped in :where(:root), which has zero specificity, so ANY real theme
+ * rule (`:root { … }`, `[data-theme] { … }`, `[data-chapter="night"] { … }`)
+ * wins regardless of load order. Once app/theme.css ships, this file is inert
+ * and can be deleted.
+ */
+:where(:root) {
+  /* colour roles */
+  --c-paper: var(--color-canvas, #f6f4ef);
+  --c-paper-2: var(--color-surface, #ffffff);
+  --c-ink: var(--color-ink, #1b1916);
+  --c-ink-2: var(--color-muted, #5f5a53);
+  --c-ink-3: #8f887e;
+  --c-rule: var(--color-line, #e4dfd5);
+  --c-night: var(--color-night, #0a1e3c);
+  --c-night-2: #132a4d;
+  --c-on-night: #ffffff;
+  --c-on-night-2: rgba(255, 255, 255, 0.72);
+  --c-rule-night: rgba(255, 255, 255, 0.16);
+  --c-accent: var(--color-accent, #b45309);
+  --c-accent-ink: #ffffff;
+  --c-line: var(--color-gold, #ffd77a);
+  --c-line-glow: rgba(255, 215, 122, 0.45);
+  /* "fits" as text on day must pass AA, so the day value is the accent; night scopes use gold */
+  --c-match: var(--color-accent, #b45309);
+  --c-dim: rgba(255, 255, 255, 0.07);
+  --c-success: var(--color-green, #7ee2a8);
+  --c-danger: #c2410c;
+  --c-focus: var(--color-accent, #b45309);
+
+  /* type */
+  --font-display: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-text: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-accent: "Instrument Serif", ui-serif, Georgia, serif;
+  --weight-text: 400;
+  --weight-strong: 600;
+
+  /* shape and depth */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+  --hairline: 1px;
+  --shadow-1: 0 1px 2px rgba(27, 25, 22, 0.05), 0 8px 24px -16px rgba(27, 25, 22, 0.18);
+  --shadow-2: 0 40px 80px -50px rgba(27, 25, 22, 0.45), 0 2px 6px rgba(27, 25, 22, 0.06);
+  --shadow-inset: inset 0 1px 2px rgba(27, 25, 22, 0.06);
+
+  /* motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.15, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --dur-1: 120ms;
+  --dur-2: 240ms;
+  --dur-3: 480ms;
+}
+
+/* Night scopes in today's look: gold for "fits" on night. Zero specificity, like the block above. */
+:where([data-chapter="night"], [data-skin="night"]) {
+  --c-match: var(--color-gold, #ffd77a);
+  --c-accent-ink: var(--color-night, #0a1e3c);
+}
+:where([data-chapter="night"] [data-skin="day"]) {
+  --c-match: var(--color-accent, #b45309);
+  --c-accent-ink: #ffffff;
+}
