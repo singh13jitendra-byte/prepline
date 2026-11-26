@@ -368,7 +368,14 @@ export const story = {
     announceFirst: "Thanks. This is a demo, so nothing was sent.",
   },
 
-  dawn: { lineLabel: "Ready" },
+  dawn: {
+    lineLabel: "Ready",
+    /**
+     * NEW (delight 7). The story clock beside the rail, from nightfall to the seat (decorative,
+     * aria-hidden): "Thu" over "1:10 PM". Wed 2, Thu 3 (the interview), Fri 4 December.
+     */
+    clock: { days: ["Wed", "Thu", "Fri"], am: "AM", pm: "PM" },
+  },
 
   seat: {
     h2: "Walk in",
