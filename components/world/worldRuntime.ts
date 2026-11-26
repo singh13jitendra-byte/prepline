@@ -12,9 +12,9 @@ import { anchorElement, anchorRect, watchAnchors, type AnchorId } from "@/lib/an
 import { rankedRoles, storyCopy } from "@/lib/content";
 import { mountGL, type GLController } from "@/lib/gl";
 import { BEATS, clamp01, story, type BeatId, type StoryState } from "@/lib/story";
-import { labelWidth, onThemeChange, readWorld } from "@/lib/theme";
-import { worldBus } from "./bus";
-import { BIG, FIELD_COLORS, LAND_FADE, LAST_LANDING, PASS_DOLLY, ROW_IN, SEATS, STAGGER, buildField, createField, nearestSpeck, type FieldData, type FieldUniforms, type Verdict } from "./fieldScene";
+import { onThemeChange, readWorld } from "@/lib/theme";
+import { PICK_RADIUS, worldBus, type RoleTag } from "./bus";
+import { BIG, FIELD_COLORS, LAND_FADE, LAST_LANDING, PASS_DOLLY, ROW_IN, SEATS, STAGGER, buildField, createField, pickSpeck, type FieldData, type FieldUniforms, type Verdict } from "./fieldScene";
 
 const ORDER = Object.fromEntries(BEATS.map((b, i) => [b.id, i])) as Record<BeatId, number>;
 const ROW_IDS = Array.from({ length: 12 }, (_, i) => `row-${i + 1}` as AnchorId);
@@ -34,22 +34,39 @@ const pick = <T,>(list: readonly T[], seed: number, salt: number) => list[Math.f
 const JUNIOR = ["Junior UI Designer", "UX Designer", "Visual Designer"] as const;
 const AT_LEVEL = ["Senior Product Designer", "Product Designer", "Design Systems Designer", "Interaction Designer", "Senior Product Designer"] as const;
 
-/** `${title} · ${city} · ${verdict}`, deterministic per speck (copy from lib/content.ts). */
-function lensText(seed: number, kind: number, rank: number, verdict: Verdict) {
+/**
+ * What a firefly says when the lantern names it, deterministic per firefly (copy from
+ * lib/content.ts; the twelve are the ranked roles of components/product/data.ts, so the tag
+ * agrees with the list they become). A role has a score only once pass 2 has read it against
+ * the portfolio; pass 1 sets aside on level, city and office days, before any scoring.
+ */
+function roleTag(seed: number, kind: number, rank: number, verdict: Verdict): RoleTag {
   const lens = storyCopy.lens;
+  const t = storyCopy.lantern;
   if (kind > 1.5) {
     const role = rankedRoles[Math.round(rank)] ?? rankedRoles[0];
-    return `${role.title} · ${role.city} · ${verdict === "unread" ? lens.unread : lens.kept}`;
+    const read = verdict === "kept2";
+    return {
+      role: `${role.title} · ${role.city}`,
+      score: read ? `${role.score}${storyCopy.ranked.scoreSuffix}` : "",
+      verdict: verdict === "unread" ? "unread" : "kept",
+      note: verdict === "unread" ? lens.unread : read ? t.keptFit : t.keptLevel,
+    };
   }
   const reason1 = pick(lens.droppedPass1, seed, 31.7);
   let title: string = pick(lens.titles, seed, 7.3);
   if (kind > 0.5) title = pick(AT_LEVEL, seed, 7.3);
   else if (reason1 === "too junior") title = pick(JUNIOR, seed, 7.3);
   else if (reason1 === "too senior") title = "Design Lead";
-  const city = pick(lens.cities, seed, 13.9);
-  const word =
-    verdict === "unread" ? lens.unread : verdict === "dropped1" ? reason1 : verdict === "dropped2" ? pick(lens.droppedPass2, seed, 53.1) : lens.kept;
-  return `${title} · ${city} · ${word}`;
+  const role = `${title} · ${pick(lens.cities, seed, 13.9)}`;
+  if (verdict === "unread") return { role, score: "", verdict: "unread", note: lens.unread };
+  if (verdict === "dropped1") return { role, score: "", verdict: "aside", note: `${t.aside} · ${reason1}` };
+  if (verdict === "dropped2") {
+    // Read for fit and below the bar: 3 to 5 out of 10.
+    const score = 3 + Math.floor(((seed * 97.1) % 1) * 3);
+    return { role, score: `${score}${storyCopy.ranked.scoreSuffix}`, verdict: "aside", note: `${t.aside} · ${pick(lens.droppedPass2, seed, 53.1)}` };
+  }
+  return { role, score: "", verdict: "kept", note: t.keptLevel };
 }
 
 /** Mount the world into `host`. Resolves to its dispose function (a no-op when WebGL is unavailable). */
@@ -154,8 +171,18 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
   watchFor(story.get().beat);
   offs.push(story.onBeatChange(watchFor), () => unwatch?.());
 
-  /* ── the pointer's note ── */
-  const lens = { x: -999, y: -999, k: 0, label: "", focus: -1, w: 0 };
+  /* ── the lantern's tag: the firefly being named ── */
+  const focus = { id: -1, x: 0, y: 0, k: 0, tryAt: 0, pos: -1 };
+  /** How far the resting pointer may wander from a named firefly before its tag goes. */
+  const KEEP = PICK_RADIUS + 16;
+  const release = () => {
+    const p = worldBus.pick;
+    if (p.id < 0) return;
+    p.id = -1;
+    p.tag = null;
+    p.seq++;
+  };
+  offs.push(release);
   // The Line's thresholds over the last half second, for the afterglow.
   const HN = 48;
   const hist = { t: new Float32Array(HN), a: new Float32Array(HN), b: new Float32Array(HN), i: 0, n: 0 };
@@ -316,45 +343,41 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     }
     fu.uClaim.value.set(claim.seat, claim.t);
 
-    /* the pointer: nearby fireflies light up, and a note names the nearest role (meadow only) */
-    const fine = s.pointer.fine && !s.flags.small;
-    const lensOn = fine && worldBus.pointerMoved && s.pointer.inside && (i === ORDER.pass1 || i === ORDER.pass2) && !worldBus.overControl;
-    if (fine && s.pointer.inside) {
-      if (lens.k === 0) {
-        lens.x = s.pointer.x;
-        lens.y = s.pointer.y;
+    /* the lantern: nearby fireflies brighten and drift toward it; a resting pointer names one */
+    const L = worldBus.lantern;
+    fu.uLens.value.set(L.x, L.y, L.k);
+    const nameable = L.names && (i === ORDER.hero || i === ORDER.pass1 || i === ORDER.pass2) && outdoors > 0.5;
+    const pk = worldBus.pick;
+    if (pk.id >= 0) {
+      // A tag holds while the pointer stays by its firefly and the page does not scroll under it.
+      if (!nameable || pos !== focus.pos || Math.hypot(L.px - pk.x, L.py - pk.y) > KEEP) release();
+    } else if (nameable && L.rest >= 0.25 && focus.k < 0.02 && clock >= focus.tryAt) {
+      // One search when the pointer comes to rest, then a few a second while fireflies drift in.
+      focus.tryAt = clock + 0.2;
+      const hit = pickSpeck(data, fu, L.px, L.py, PICK_RADIUS);
+      if (hit) {
+        pk.id = focus.id = hit.index;
+        pk.x = focus.x = hit.x;
+        pk.y = focus.y = hit.y;
+        pk.tag = roleTag(hit.seed, hit.kind, hit.rank, hit.verdict);
+        pk.seq++;
+        focus.pos = pos;
       }
-      const k = 1 - Math.pow(1 - 0.18, dt * 60);
-      lens.x += (s.pointer.x - lens.x) * k;
-      lens.y += (s.pointer.y - lens.y) * k;
     }
-    lens.k = damp(lens.k, lensOn ? 1 : 0, lensOn ? 9 : 6, dt);
-    if (lens.k < 0.003) lens.k = 0;
-    fu.uLens.value.set(lens.x, lens.y, lens.k);
-    const label = worldBus.lensLabel;
-    if (label) {
-      if (lens.k > 0) {
-        const hit = nearestSpeck(data, fu, lens.x, lens.y, lens.focus);
-        const text = hit ? lensText(hit.seed, hit.kind, hit.rank, hit.verdict) : "";
-        lens.focus = hit ? hit.index : -1;
-        if (text !== lens.label) {
-          lens.label = text;
-          if (text) {
-            label.textContent = text;
-            lens.w = labelWidth(label, text, 6.7) + 18;
-          }
-        }
-        const flip = lens.x + 18 + lens.w > vw - 8;
-        label.style.transform = `translate3d(${(flip ? lens.x - 16 - lens.w : lens.x + 16).toFixed(1)}px,${(lens.y + 18).toFixed(1)}px,0)`;
-      } else lens.focus = -1;
-      const lo = (lens.label ? lens.k : 0).toFixed(3);
-      if (label.style.opacity !== lo) label.style.opacity = lo;
+    if (L.rest < 0.25) focus.tryAt = 0;
+    // The named firefly glides to its hold and back (about 0.3s each way).
+    focus.k = damp(focus.k, pk.id >= 0 ? 1 : 0, pk.id >= 0 ? 14 : 10, dt);
+    if (focus.k < 0.004 && pk.id < 0) {
+      focus.k = 0;
+      focus.id = -1;
     }
+    fu.uFocus.value.set(focus.id, focus.x, focus.y, focus.k);
+    if (L.k > 0 && L.k < 1) live = true;
 
     /* draw only when it matters: fireflies blink, so outdoors at night is always live */
     const fieldOn = outdoors > 0 && dayTop > 0;
-    if (fieldOn || lens.k > 0) live = true;
-    const key = `${pos.toFixed(3)}|${dayTop.toFixed(1)}|${line.y.toFixed(1)}|${scene.x0.toFixed(1)}|${scene.y0.toFixed(1)}|${scene.px.toFixed(2)}|${ringKey.toFixed(1)}|${fieldOn ? 1 : 0}${seats ? 1 : 0}`;
+    if (fieldOn || focus.k > 0) live = true;
+    const key = `${L.x.toFixed(1)}|${L.y.toFixed(1)}|${pos.toFixed(3)}|${dayTop.toFixed(1)}|${line.y.toFixed(1)}|${scene.x0.toFixed(1)}|${scene.y0.toFixed(1)}|${scene.px.toFixed(2)}|${ringKey.toFixed(1)}|${fieldOn ? 1 : 0}${seats ? 1 : 0}`;
     if (key !== lastKey) {
       lastKey = key;
       needs = true;

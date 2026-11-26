@@ -529,6 +529,19 @@ export const story = {
     /** The lens fills the nearest ring in Act IV. */
     ring: "open seat",
   },
+
+  /**
+   * The lantern cursor (components/world/Lantern.tsx; decorative, aria-hidden). A resting pointer
+   * names the nearest firefly: `${role} · ${score}` over one of these notes. The reasons a role
+   * was set aside come from `lens.droppedPass1` / `lens.droppedPass2`.
+   */
+  lantern: {
+    keptFit: "kept · fits your portfolio",
+    keptLevel: "kept · at your level, in your city",
+    aside: "set aside",
+    /** Once per session, after a still moment in the meadow. */
+    hint: "hover a firefly",
+  },
 } as const;
 
 /** The copy, under a name that does not collide with the `story` store. */
