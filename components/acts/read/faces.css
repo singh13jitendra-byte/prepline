@@ -1,461 +1,126 @@
 /* ══════════════════════════════════════════════════════════════════════════
-   FACES — row (440x44), card (520x320), tile (154x92). Package 2.
-   Drawn at natural size and scaled by the engine / slot. Colours only from
-   the --face-* variables, so the night and day skins lay out identically.
+   FACES (round 4, Night Desk): row, card and tile are the product's own screens
+   (components/product: MatchRow, RoleDetail compact, Board's Tile), placed with
+   <Showcase> at their natural size. The engine paints each face's box from the
+   --face-* roles set here (fill, keyline, print offset); the screens inside are
+   bare. Theme tokens only.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* ── shared ── */
-.pl-row,
-.pl-card,
-.pl-tile {
+.pl-row-face,
+.pl-card-face,
+.pl-tile-face {
   position: absolute;
   inset: 0;
-  color: var(--face-fg);
-  font-family: var(--font-text);
-  font-kerning: normal;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-[data-skin="night"] {
-  --face-chip: color-mix(in oklab, var(--c-on-night) 7%, transparent);
-  --face-chip-line: color-mix(in oklab, var(--c-on-night) 16%, transparent);
-  --face-tile: color-mix(in oklab, var(--c-on-night) 10%, transparent);
-  --face-spec: color-mix(in oklab, var(--c-on-night) 16%, transparent);
-}
-[data-skin="day"] {
-  --face-chip: var(--c-chip);
-  --face-chip-line: var(--c-chip-line);
-  --face-tile: var(--c-tile);
-  --face-spec: color-mix(in oklab, var(--c-on-night) 60%, transparent);
 }
 
-/* ── row ── */
-.pl-row {
-  display: flex;
-  align-items: center;
-  padding: 0 16px 0 12px;
-  white-space: nowrap;
+/* ── row: rank 1 of the matches panel. Paper in both skins (it belongs to the panel),
+      selected: the highlight tint under a 2px keyline. No print offset (the panel has one). ── */
+.face[data-face="row"][data-skin] {
+  --face-bg: color-mix(in oklab, var(--art-glow, var(--c-paper-2)) 42%, var(--c-paper-2));
+  --face-fg: var(--c-ink);
+  --face-border: var(--c-ink);
+  --face-shadow: none;
 }
-.pl-row-dot {
-  flex: none;
-  width: 5px;
-  height: 5px;
-  border-radius: var(--r-round);
-  background: var(--face-accent);
-  margin-right: 9px;
+.face[data-face="row"] > .face-chrome {
+  border-width: 2px;
 }
-.pl-row-rank {
-  flex: none;
-  width: 20px;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: calc(0.02em * var(--mono-tracking));
-  font-variant-numeric: tabular-nums;
-  color: var(--face-muted);
+.pl-row-face .pp-matchrow {
+  background: transparent;
 }
-.pl-row-ini {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  margin-left: 4px;
-  border-radius: calc(var(--r-xs) * 7 / 6);
-  background: var(--face-tile);
-  font-family: var(--font-mono);
-  font-variant-numeric: var(--mono-numeric);
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: calc(0.04em * var(--mono-tracking));
-  font-feature-settings: "case";
+.pl-row-face[data-hover] .pp-matchrow-id b {
+  text-decoration: underline;
+  text-decoration-thickness: var(--hairline);
+  text-underline-offset: 3px;
 }
-.pl-row-main {
-  flex: 1;
-  min-width: 0;
-  margin-left: 11px;
-  display: flex;
-  flex-direction: column;
+
+/* ── card: RoleDetail compact. Night: the pine card with a cream keyline at 40%.
+      Day: paper with a pine keyline. Both carry the print offset (--shadow-1 per skin). ── */
+.face[data-face="card"][data-skin="night"] {
+  --face-bg: var(--c-night-2);
+  --face-fg: var(--c-on-night);
+  --face-border: color-mix(in oklab, var(--c-on-night) 40%, var(--c-night-2));
+  --face-shadow: var(--shadow-1);
 }
-.pl-row-title {
-  font-size: 13.5px;
-  line-height: 16px;
-  font-weight: 560;
-  letter-spacing: -0.012em;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.face[data-face="card"][data-skin="day"] {
+  --face-bg: var(--c-paper-2);
+  --face-fg: var(--c-ink);
+  --face-border: var(--c-ink);
+  --face-shadow: var(--shadow-1);
 }
-.pl-row-sub {
-  position: relative;
-  display: block;
-  height: 14px;
-  overflow: hidden;
+.face[data-face="card"] > .face-chrome,
+.face[data-face="tile"] > .face-chrome {
+  border-width: 2px;
 }
-.pl-row-meta,
-.pl-row-reason {
-  position: absolute;
-  inset: 0 auto auto 0;
-  max-width: 100%;
-  font-size: 11.5px;
-  line-height: 14px;
-  letter-spacing: -0.003em;
-  color: var(--face-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
+.pl-card-face .pp-role {
+  background: transparent;
+}
+/* The rule is written every frame by the performance: no transition on its fill. */
+.pl-card-face .pp-rule-fill {
+  transition: none;
+}
+/* Rows of working resolve one after another (cardShow.rows). */
+.pl-card-face .pp-reason {
   transition:
-    transform 0.4s var(--ease-out),
-    opacity 0.4s var(--ease-out);
+    opacity var(--dur-2) var(--ease-out),
+    transform var(--dur-3) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
 }
-.pl-row-reason {
-  transform: translateY(100%);
+.pl-card-face .pp-reason[data-pending] {
   opacity: 0;
-  color: var(--face-fg);
+  transform: translateY(4px);
 }
-.pl-row[data-hover] .pl-row-meta,
-.rd-row:hover .pl-row-meta {
-  transform: translateY(-100%);
-  opacity: 0;
-  transition-duration: 0.22s;
-}
-.pl-row[data-hover] .pl-row-reason,
-.rd-row:hover .pl-row-reason {
-  transform: none;
-  opacity: 1;
-  transition-duration: 0.22s;
-}
-.pl-row-score {
-  flex: none;
-  margin-left: 14px;
-  font-variant-numeric: tabular-nums;
-}
-.pl-row-score b {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.pl-row-of {
-  font-size: 11px;
-  color: var(--face-muted);
-  margin-left: 1px;
+/* Breath: the row being read gets the highlighter, like a marker pass over the working. */
+.pl-card-face .pp-reason[data-reading] {
+  background: var(--pp-highlight);
 }
 
-/* ── card ── */
-.pl-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 26px 28px 28px;
+/* ── tile: the board's Tile. Paper with a pine keyline; the print offset only while it
+      travels (the board already carries one: one offset per stack). Night (nightfall) is
+      the prep sheet's lamp-lit cover and stays defined in globals.css. ── */
+.face[data-face="tile"][data-skin="day"] {
+  --face-bg: var(--c-paper-2);
+  --face-fg: var(--c-ink);
+  --face-border: var(--c-ink);
+  --face-shadow: none;
 }
-.pl-card-spec {
-  position: absolute;
-  inset: 0;
+.actor[data-moving] .face[data-face="tile"][data-skin="day"] > .face-chrome {
+  box-shadow: var(--shadow-2);
+}
+.pl-tile-face .pp {
+  background: transparent;
+}
+.pl-tile-face .pp-tile {
+  height: 100%;
+  background: transparent;
+  border: 0;
   pointer-events: none;
-  background: radial-gradient(260px circle at var(--spec-x, 50%) var(--spec-y, 0%), var(--face-spec), transparent 70%);
-  opacity: var(--spec-a, 0);
 }
-.pl-card-top {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
-.pl-card-ini {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: calc(var(--r-sm) * 6 / 5);
-  background: var(--face-tile);
-  font-family: var(--font-mono);
-  font-variant-numeric: var(--mono-numeric);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: calc(0.04em * var(--mono-tracking));
-  font-feature-settings: "case";
-}
-.pl-card-id {
-  flex: 1;
-  min-width: 0;
-  padding-top: 1px;
-}
-.pl-card-title {
-  font-size: 22px;
-  line-height: 1.12;
-  font-weight: 560;
-  letter-spacing: -0.024em;
-}
-.pl-card-meta {
-  margin-top: 6px;
-  font-size: 14px;
-  line-height: 1.3;
-  letter-spacing: -0.005em;
-  color: var(--face-muted);
-}
-.pl-card-ring {
-  position: relative;
-  flex: none;
-  width: 64px;
-  height: 64px;
-  margin: -4px -4px 0 0;
-}
-.pl-card-ring svg {
-  display: block;
-  overflow: visible;
-}
-.pl-card-ring-track,
-.pl-card-ring-prog {
-  fill: none;
-  stroke-width: 3;
-}
-.pl-card-ring-track {
-  stroke: var(--face-border);
-}
-.pl-card-ring-prog {
-  stroke: var(--face-accent);
-  stroke-linecap: round;
-}
-.pl-card-ring-tick {
-  stroke: var(--face-muted);
-  stroke-width: 1;
-  opacity: 0.45;
-}
-.pl-card-num {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 24px;
-  font-weight: 560;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  padding-bottom: 1px;
-}
-.pl-card-label {
-  font-family: var(--font-mono);
-  font-variant-numeric: var(--mono-numeric);
-  font-size: 10.5px;
-  line-height: 1;
-  font-weight: 500;
-  letter-spacing: calc(0.1em * var(--mono-tracking));
-  text-transform: var(--mono-case);
-  font-feature-settings: "case";
-  color: var(--face-muted);
-}
-.pl-card-chips {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  height: 32px;
-}
-.pl-card-chip {
-  display: inline-flex;
-  align-items: center;
-  height: 32px;
-  padding: 0 13px;
-  border-radius: var(--r-pill);
-  background: var(--face-chip);
-  border: 1px solid var(--face-chip-line);
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: -0.006em;
-  white-space: nowrap;
-  opacity: 0;
-  transform: translateY(3px);
-  transition:
-    opacity 0.18s ease-out,
-    transform 0.4s var(--ease-out);
-}
-.pl-card-chip[data-on] {
-  opacity: 1;
-  transform: none;
-}
-/* Breath: the chip being read gets a hairline that runs under its words, and its border warms. */
-.pl-card-chip {
-  position: relative;
-  --read: 0;
-}
-.pl-card-chip::after {
-  content: "";
-  position: absolute;
-  left: 13px;
-  right: 13px;
-  bottom: 7px;
-  height: 1px;
-  background: var(--face-accent);
-  transform-origin: 0 50%;
-  transform: scaleX(var(--read));
-  opacity: calc(var(--read) * (1 - var(--read)) * 4);
-}
-.pl-card-chip[data-reading] {
-  border-color: color-mix(in srgb, var(--face-accent) 55%, transparent);
-}
-.pl-card-caret {
-  display: none;
-  width: 1.5px;
-  height: 14px;
-  margin-left: 2px;
-  background: var(--face-accent);
-}
-.pl-card-chip[data-typing] .pl-card-caret {
-  display: inline-block;
-}
-.pl-card-score {
-  font-size: 14px;
-  line-height: 1;
-  font-weight: 560;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-}
-.pl-card-track {
-  position: relative;
-  height: 3px;
-  margin-top: 12px;
-  border-radius: calc(var(--r-2xs) * 3 / 2);
-  background: var(--face-border);
-}
-.pl-card-fill {
-  position: absolute;
-  inset: 0;
-  border-radius: calc(var(--r-2xs) * 3 / 2);
-  background: var(--face-accent);
-  transform-origin: 0 50%;
-}
-
-/* ── tile ── */
-.pl-tile {
-  display: flex;
-  flex-direction: column;
-  padding: 10px 10px 9px 11px;
-}
-.pl-tile-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.pl-tile-ini {
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: var(--r-xs);
-  background: var(--face-tile);
-  font-family: var(--font-mono);
-  font-variant-numeric: var(--mono-numeric);
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: calc(0.04em * var(--mono-tracking));
-}
-.pl-tile-score {
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-.pl-tile-score b {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.pl-tile-of {
-  font-size: 9px;
-  color: var(--face-muted);
-}
-.pl-tile-title {
-  margin-top: 7px;
-  font-size: 11px;
-  line-height: 13px;
-  font-weight: 600;
-  letter-spacing: -0.012em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.pl-tile-meta {
-  font-size: 10px;
-  line-height: 12px;
-  color: var(--face-muted);
-}
-.pl-tile-foot {
-  position: relative;
-  margin-top: auto;
-  display: flex;
-  align-items: center;
-  perspective: 240px;
-}
-.pl-tile-chip {
-  display: inline-flex;
-  align-items: center;
-  height: 18px;
-  padding: 0 7px 0 6px;
-  border-radius: var(--r-pill);
-  background: var(--face-chip);
-  border: 1px solid var(--face-chip-line);
-  font-size: 9.5px;
-  font-weight: 520;
-  letter-spacing: -0.004em;
-  white-space: nowrap;
+.pl-tile-face .pp-tag {
   transform-origin: 50% 50%;
   backface-visibility: hidden;
 }
-.pl-tile-chip-b {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.pl-tile-face .pp-tile-foot {
+  perspective: 240px;
 }
-.pl-tile-chip[data-state="2"] {
-  color: var(--face-fg);
-  border-color: color-mix(in srgb, var(--face-accent) 35%, transparent);
-  font-weight: 600;
+.pl-tile-face[data-state="2"] .pp-tag {
+  font-weight: var(--weight-strong);
   font-variant-numeric: tabular-nums;
-}
-.pl-tile-spark {
-  width: 4px;
-  height: 4px;
-  border-radius: var(--r-round);
-  background: var(--face-accent);
-}
-.pl-tile-cal {
-  color: var(--face-accent);
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.2;
-  stroke-linecap: round;
 }
 .pl-tile-tick {
   position: absolute;
-  right: -1px;
-  top: 50%;
-  margin-top: -8px;
+  right: 7px;
+  bottom: 6px;
   fill: none;
-  stroke: var(--face-accent);
+  stroke: var(--c-ink);
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-/* Glass: the night card is a dense, tinted pane that blurs what is behind it (the list, the field). */
-.face[data-face="card"][data-skin="night"] {
-  --face-bg: linear-gradient(160deg in srgb, color-mix(in oklab, var(--art-card-glass-a) 72%, transparent), color-mix(in oklab, var(--art-card-glass-b) 78%, transparent));
-  --face-border: color-mix(in oklab, var(--c-on-night) 22%, transparent);
-}
-.face[data-face="card"][data-skin="night"] .face-chrome,
-[data-skin="night"] .face[data-face="card"] .face-chrome {
-  -webkit-backdrop-filter: blur(32px) saturate(1.25);
-  backdrop-filter: blur(32px) saturate(1.25);
-  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--c-on-night) 12%, transparent);
-}
 /*
- * The Actor's flip layer is preserve-3d (for the dawn flip), which disables
- * backdrop-filter inside it. In Package 2 beats there is no flip: keep it flat
- * so the glass blurs. Pointer tilt still renders in 3D through the Actor's perspective.
+ * The Actor's flip layer is preserve-3d (for the dawn flip). In Acts I–II there is no flip:
+ * keep it flat so pointer tilt and the dolly composite as one plane.
  */
 html.motion:is([data-beat="ranked"], [data-beat="reason"], [data-beat="daybreak"], [data-beat="saved"], [data-beat="applied"], [data-beat="interview"], [data-beat="hinge"]) .actor-flip {
   transform-style: flat;
-}
-/* While the line splits the card, its clip stops the blur: use the blurred glass's own colour. */
-html[data-wipe="daybreak"] .face[data-face="card"][data-skin="night"] {
-  --face-bg: linear-gradient(160deg, var(--art-card-solid-a), var(--art-card-solid-b));
-}
-
-/* In flight the engine turns backdrop-filter off: the glass card takes its blurred colour as a fill. */
-.actor[data-moving] .face[data-face="card"][data-skin="night"] {
-  --face-bg: linear-gradient(160deg, var(--art-card-solid-a), var(--art-card-solid-b));
 }

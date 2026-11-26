@@ -27,6 +27,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { FaceSlot } from "@/components/story/FaceSlot";
 import { Panel } from "@/components/story/Stage";
 import { rankedRoles, storyActs12, storyCopy } from "@/lib/content";
+import { productData } from "@/components/product";
 import { useAnchor, type AnchorId } from "@/lib/anchors";
 import { ACTOR_TRACK, BEATS, story, travelEase, type BeatId, type StoryState } from "@/lib/story";
 import { offsetIn, setMask, softBelow, span, tileShow, useActorExtra, usePerformanceAt, useScrub } from "../read/runtime";
@@ -47,6 +48,12 @@ function through(s: Readonly<StoryState>, id: BeatId) {
 
 /** Ghosts: the other roles you saved. 1–3 follow the Role to Applied; 4 stays in Saved. */
 const ghosts = rankedRoles.slice(1, 5);
+/** The board's own row data for a ghost (the product Tile's date chip), by company. */
+const ghostItem = (rank: number, stage: "saved" | "applied") => {
+  const role = productData.roles[rank - 1];
+  const known = productData.boardItems.find((b) => b.role.company === role.company);
+  return { role, stage, date: known?.date ?? (stage === "saved" ? "Saved Mon" : "Applied Tue") };
+};
 const steps = [copy.saved.step, copy.applied.step, copy.interview.step].map((t) => {
   const cut = t.indexOf(". ");
   return { lead: t.slice(0, cut + 1), rest: t.slice(cut + 2) };
@@ -71,20 +78,27 @@ const END = { ranked: L.interview.ranked, saved: L.interview.saved, applied: L.i
 const settleCurve = (x: number) => (x <= 0 || x >= 1 ? 0 : 3.2 * Math.sin(3 * Math.PI * x) * (1 - x) * (1 - x));
 
 function Ghost({ role, k }: { role: (typeof ghosts)[number]; k: number }) {
+  const item = ghostItem(role.rank, k === 4 ? "saved" : "applied");
+  const title = storyActs12.board.ghostTitles[role.rank] ?? item.role.title;
   return (
     <li className="bd-ghost-li" data-ghost={k}>
       <div className="bd-ghost-shift">
-      <div className="bd-ghost">
-        <span className="bd-ghost-main">
-          <span className="bd-ghost-title">{role.title}</span>
-          <span className="bd-ghost-co">{role.company}</span>
-        </span>
-        <span className="bd-ghost-score">
-          <span className="sr-only">, scored </span>
-          {role.score}
-          {copy.ranked.scoreSuffix}
-        </span>
-      </div>
+        <div className="bd-ghost">
+          <span className="sr-only">
+            {item.role.title}, {item.role.company}. {item.date}. {item.role.score} out of 10 fit.
+          </span>
+          {/* The board's Tile at its small size, in the product's own classes: short title, company,
+              numeral. A picture here: the list item carries the full text above. */}
+          <div className="pp" data-skin="day" data-bare="" aria-hidden="true">
+            <span className="pp-tile" data-kind={item.stage}>
+              <span className="pp-tile-l1">
+                <span className="pp-tile-title">{title}</span>
+                <span className="pp-tile-n pp-num">{item.role.score}</span>
+              </span>
+              <span className="pp-tile-co">{item.role.company}</span>
+            </span>
+          </div>
+        </div>
       </div>
     </li>
   );
@@ -509,7 +523,8 @@ export function BoardPanel() {
     tl.fromTo(tileShow, { applied: 0 }, { applied: 1, duration: 0.36, ease: ease.inOut }, 0.42)
       .fromTo(show, { savedOut: 0, appliedIn: 0 }, { savedOut: 4, appliedIn: 4, duration: 0.5, ease: ease.outSoft }, 0.3);
     if (steps) tl.fromTo(steps, { "--sa": 0 }, { "--sa": 1, duration: 0.5, ease: ease.inOut }, 0.1);
-    if (zero) tl.fromTo(zero, { "--pulse": 0 }, { "--pulse": 1, duration: 0.18, ease: ease.outSoft }, 0.72).to(zero, { "--pulse": 0, duration: 0.5, ease: ease.in }, ">");
+    // "0 sent by Prepline": a pine underline is drawn under it once, and stays.
+    if (zero) tl.fromTo(zero, { "--pulse": 0 }, { "--pulse": 1, duration: 0.35, ease: ease.inOut }, 0.72);
   }, [layout]);
 
   /* ── interview: the tile carries, the chip becomes a booking ── */
@@ -622,9 +637,7 @@ export function BoardPanel() {
             <ol className="bd-steps" style={{ "--sa": 1, "--si": 1 } as CSSProperties}>
               {steps.map((st, i) => (
                 <li key={i} className="bd-step" data-step={i + 1}>
-                  <span className="bd-step-n" aria-hidden="true">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
+                  <span className="bd-step-n" aria-hidden="true" />
                   <p className="bd-step-t">
                     <b>{st.lead}</b> {st.rest}
                   </p>
@@ -696,7 +709,7 @@ export function BoardPanel() {
                   </li>
                 </Col>
                 <Col col={COLS[3]} count={0}>
-                  <li className="bd-empty" aria-hidden="true" />
+                  <li className="bd-empty">{productData.stages[3].empty}</li>
                 </Col>
               </ul>
             </div>

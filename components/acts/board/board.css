@@ -1,11 +1,14 @@
 /* ══════════════════════════════════════════════════════════════════════════
-   ACT II — BOARD (day). Package 2.
+   ACT II — BOARD (day). Package 2, round 4: the Night Desk by day.
+   The board is the product's Board on cream paper with riso grain; light is a
+   flat, grain-broken shape, never a glow. Theme tokens only.
    Scrubbed values arrive as custom properties: --draw (per column), --rc
    (hinge recede), --in (sentence), --sa / --si (steps), --hi, --pulse.
    ══════════════════════════════════════════════════════════════════════════ */
 
 .bd-stage {
   color: var(--c-ink);
+  font-family: var(--font-text);
 }
 .bd-grid {
   display: grid;
@@ -30,10 +33,11 @@
 
 /* ── copy ── */
 .bd-h2 {
-  font-size: clamp(34px, 4vw, 60px);
-  line-height: 1.02;
-  letter-spacing: -0.04em;
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  line-height: 1.04;
+  letter-spacing: var(--tracking-display);
+  font-weight: var(--weight-display);
   text-wrap: balance;
 }
 .bd-steps {
@@ -41,57 +45,49 @@
   display: flex;
   flex-direction: column;
   max-width: 25em;
-  border-top: 1px solid var(--c-rule);
+  border-top: var(--hairline) solid var(--c-rule);
 }
 .bd-step {
   position: relative;
   display: grid;
-  grid-template-columns: 34px 1fr;
+  grid-template-columns: 26px 1fr;
   gap: 4px;
   padding: 16px 0 17px;
-  border-bottom: 1px solid var(--c-rule);
+  border-bottom: var(--hairline) solid var(--c-rule);
   --on: 1;
 }
-/* The active step is marked with a dot (the page's "current" vocabulary), never a second amber rule:
-   the Line is the only line. */
-.bd-step::before {
+/* Steps are marked with dots (the page's "current" vocabulary): a hollow pine ring each, filled
+   for the active step. Never a second rule: the Line is the only line. */
+.bd-step-n {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  margin-top: 7px;
+  border-radius: var(--r-pill);
+  border: var(--hairline) solid var(--c-ink-2);
+}
+.bd-step-n::after {
   content: "";
   position: absolute;
-  left: -15px;
-  top: 21px;
-  width: 5px;
-  height: 5px;
-  border-radius: var(--r-round);
-  background: var(--c-accent);
+  inset: calc(var(--hairline) * -1);
+  border-radius: inherit;
+  background: var(--c-ink);
   transform: scale(var(--on));
   opacity: var(--on);
 }
-.bd-step-n {
-  padding-top: 3px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.2;
-  font-weight: 500;
-  letter-spacing: calc(0.06em * var(--mono-tracking));
-  font-variant-numeric: tabular-nums;
-  color: var(--c-ink-2);
-}
 .bd-step-t {
-  font-size: clamp(15px, 1.2vw, 17px);
-  line-height: 1.5;
+  font-size: var(--fs-body);
+  line-height: var(--leading-text);
   color: var(--c-ink-2);
   text-wrap: pretty;
 }
 .bd-step-t b {
-  font-weight: 560;
+  font-weight: var(--weight-strong);
   color: var(--c-ink);
 }
 /* Active step: ink. The others: muted (still AA). */
 html.motion .bd-step-t {
   color: color-mix(in srgb, var(--c-ink) calc(var(--on) * 100%), var(--c-ink-2));
-}
-html.motion .bd-step-n {
-  color: color-mix(in srgb, var(--c-accent) calc(var(--on) * 100%), var(--c-ink-2));
 }
 html.motion .bd-step[data-step="1"] {
   --on: calc(1 - var(--sa, 0));
@@ -107,27 +103,24 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
 }
 
 /* ── ledger ── */
+/* The ledger: Hanken, sentence case, tabular figures (the product's own ledger voice). */
 .bd-ledger {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 10px;
-  margin: 0 0 14px 4px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.2;
-  font-weight: 500;
-  letter-spacing: calc(0.08em * var(--mono-tracking));
-  text-transform: var(--mono-case);
-  font-feature-settings: "case";
-  font-variant-numeric: tabular-nums;
+  margin: 0 0 16px 2px;
+  font-size: var(--fs-small);
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums lining-nums;
   color: var(--c-ink-2);
 }
-.bd-ledger-i [data-l] {
+.bd-ledger .bd-odo {
+  font-weight: var(--weight-strong);
   color: var(--c-ink);
 }
 .bd-dot {
-  opacity: 0.6;
+  color: var(--c-ink-3);
 }
 .bd-br {
   display: none;
@@ -147,25 +140,35 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   opacity: 0;
   transition-duration: 0.25s;
 }
+/* "0 sent by Prepline": pine and strong; at `applied` a pine underline is drawn under it and stays. */
 .bd-zero {
   position: relative;
   color: var(--c-ink);
-  padding: 4px 8px;
-  margin: -4px -8px;
-  border-radius: var(--r-pill);
-  background: color-mix(in srgb, var(--c-accent-soft) calc(var(--pulse, 0) * 100%), transparent);
-  box-shadow: 0 0 0 calc(var(--pulse, 0) * 1px) var(--c-accent-line);
+  font-weight: var(--weight-strong);
+}
+.bd-zero::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: var(--hairline);
+  background: var(--c-ink);
+  transform-origin: 0 50%;
+  transform: scaleX(var(--pulse, 1));
+}
+html.motion .bd-zero::after {
+  transform: scaleX(var(--pulse, 0));
 }
 
 /* ── board ── */
+/* The board: the product's paper card (2px pine keyline, large radius, the lamp printed off register). */
 .bd-board {
   position: relative;
-  padding: 18px 16px 16px;
-  border-radius: var(--r-xl);
-  box-shadow:
-    var(--shadow-contact),
-    var(--shadow-1);
-  border: 1px solid color-mix(in oklab, var(--c-ink) 6%, transparent);
+  padding: 14px 12px 12px;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+  border: 2px solid var(--c-ink);
 }
 /* The white surface is its own leaf so it can open a window: full, minus a rectangle over the
    Interview column whose strength (--win, 0..0.72) is scrubbed while the tile lands. */
@@ -173,7 +176,8 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--c-surface);
+  /* Cream paper with riso grain. */
+  background: var(--tex-paper), var(--c-paper-2);
   pointer-events: none;
   --win: 0;
   -webkit-mask-image: linear-gradient(black, black), linear-gradient(color-mix(in srgb, black calc(var(--win) * 100%), transparent), color-mix(in srgb, black calc(var(--win) * 100%), transparent));
@@ -188,44 +192,61 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   mask-composite: exclude;
 }
 .bd-board-title {
-  padding: 0 4px 14px;
-  font-size: 15px;
+  padding: 0 6px 12px;
+  font-size: 16px;
   line-height: 1.2;
-  font-weight: 560;
-  letter-spacing: -0.012em;
+  font-weight: var(--weight-strong);
 }
+/* Columns, as in the product: no lanes, a pine hairline between columns. */
 .bd-cols {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 0;
 }
 .bd-col {
   position: relative;
   display: flex;
   flex-direction: column;
-  height: clamp(340px, 46svh, 420px);
-  padding: 12px 8px 8px;
-  border-radius: calc(var(--r-md) * 9 / 8);
-  background: var(--c-board-col);
+  height: clamp(360px, 50svh, 460px);
+  padding: 4px 9px 8px;
+  overflow: clip;
   --draw: 1;
   --hi: 0;
 }
+.bd-col + .bd-col {
+  border-left: var(--hairline) solid var(--c-ink);
+}
 .bd-col-h {
+  position: relative;
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  padding: 0 3px;
-  font-size: 13px;
-  line-height: 1.2;
-  font-weight: 560;
-  letter-spacing: -0.01em;
-  color: color-mix(in srgb, var(--c-accent) calc(var(--hi) * 100%), var(--c-ink));
+  gap: 8px;
+  padding: 6px 4px 0;
+  font-size: var(--fs-small);
+  line-height: 20px;
+  font-weight: var(--weight-strong);
+  color: var(--c-ink);
+}
+/* Booked: the Interview header gets the highlighter box behind it (not a colour change). */
+.bd-col-name {
+  position: relative;
+}
+.bd-col-name::before {
+  content: "";
+  position: absolute;
+  inset: -1px -6px;
+  border-radius: var(--r-xs);
+  background: var(--art-glow, var(--c-paper-2));
+  opacity: var(--hi);
+  z-index: -1;
+}
+html:not(.motion) .bd-col[data-col="interview"] .bd-col-name::before {
+  opacity: 1;
 }
 .bd-count {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: var(--weight-text);
+  font-variant-numeric: tabular-nums lining-nums;
   color: var(--c-ink-2);
 }
 .bd-col-hair,
@@ -234,8 +255,9 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   height: 2px;
   margin-top: 10px;
 }
+/* The rule under each header, drawn in left to right as the board arrives. */
 .bd-col-hair {
-  height: 1px;
+  height: var(--hairline);
   background: var(--c-rule);
   transform-origin: 0 50%;
 }
@@ -253,101 +275,44 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   justify-content: center;
 }
 .bd-ph {
-  height: 58px;
+  height: 84px;
   flex: none;
 }
 .bd-ghost-li {
   flex: none;
 }
+/* A ghost is the product's Tile, compact: title (two lines at most, never cut mid-word),
+   company and numeral; the date chip is left out at this size. */
 .bd-ghost {
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 58px;
-  padding: 0 10px 0 11px;
-  border-radius: calc(var(--r-sm) * 6 / 5);
-  background: var(--c-paper-2);
-  border: 1px solid var(--c-rule);
-  color: var(--c-ink);
-  transition:
-    box-shadow 0.45s var(--ease-out),
-    border-color 0.45s var(--ease-out);
 }
-.bd-ghost-ini {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: var(--r-xs);
-  background: var(--c-tile);
-  font-family: var(--font-mono);
-  font-variant-numeric: var(--mono-numeric);
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: calc(0.04em * var(--mono-tracking));
-  color: var(--c-ink-2);
+.bd-ghost .pp {
+  height: auto;
+  background: transparent;
 }
-.bd-ghost-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
+.bd-ghost .pp-tile {
+  height: 84px;
+  justify-content: flex-start;
+  cursor: default;
 }
-.bd-ghost-co {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-/* Titles wrap to two lines at word boundaries; they never cut mid-word. */
-.bd-ghost-title {
+.bd-ghost .pp-tile-title {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  white-space: normal;
   overflow: hidden;
   overflow-wrap: normal;
   word-break: normal;
   hyphens: none;
+  padding: 0;
 }
-.bd-ghost-title {
-  font-size: 11px;
-  line-height: 13px;
-  font-weight: 560;
-  letter-spacing: -0.01em;
+.bd-ghost .pp-tile-co {
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
 }
-.bd-ghost-co {
-  font-size: 10px;
-  line-height: 12px;
-  color: var(--c-ink-2);
-}
-.bd-ghost-score {
-  position: absolute;
-  right: 9px;
-  bottom: 8px;
-  opacity: 0;
-  transform: translateY(3px);
-  padding: 1px 5px;
-  border-radius: var(--r-pill);
-  background: var(--c-paper-2);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  transition:
-    transform 0.45s var(--ease-out),
-    opacity 0.45s var(--ease-out);
-}
-@media (hover: hover) {
-  .bd-ghost:hover {
-    border-color: var(--c-ghost-line-hover);
-    box-shadow: var(--shadow-hover);
-    transition-duration: 0.2s;
-  }
-  .bd-ghost:hover .bd-ghost-score {
-    transform: none;
-    opacity: 1;
-    transition-duration: 0.2s;
-  }
+.bd-ghost .pp-tile-foot {
+  display: none;
 }
 
 /* motion: the board draws in, then recedes at the hinge */
@@ -391,20 +356,16 @@ html.motion .bd-ghost {
 }
 .bd-days-now {
   position: relative;
-  height: 16px;
+  height: 22px;
 }
 .bd-days-clock {
   position: absolute;
-  bottom: 3px;
+  bottom: 4px;
   left: clamp(0px, calc(var(--now) * 100% - 4ch), calc(100% - 9ch));
-  font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 13px;
   line-height: 1;
-  font-weight: 500;
-  letter-spacing: calc(0.06em * var(--mono-tracking));
-  text-transform: var(--mono-case);
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "case";
+  font-weight: var(--weight-strong);
+  font-variant-numeric: tabular-nums lining-nums;
   white-space: nowrap;
   color: var(--c-ink);
 }
@@ -418,32 +379,20 @@ html:not(.motion) .bd-days-clock {
   right: calc(100% - var(--now) * 100% - 1ch);
 }
 /* The booked slot: a small flag on the axis at Thursday 11:40. */
+/* The booked slot: pine type on the highlighter, like a calendar block. */
 .bd-days-slot {
   position: absolute;
-  bottom: 3px;
+  bottom: 2px;
   transform: translateX(-50%);
-  padding: 0 0 0 9px;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  line-height: 1;
-  font-weight: 500;
-  letter-spacing: calc(0.06em * var(--mono-tracking));
-  text-transform: var(--mono-case);
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "case";
+  padding: 2px 6px;
+  border-radius: var(--r-xs);
+  background: var(--art-glow, var(--c-paper-2));
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: var(--weight-strong);
+  font-variant-numeric: tabular-nums lining-nums;
   white-space: nowrap;
-  color: var(--c-accent);
-}
-.bd-days-slot::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 5px;
-  height: 5px;
-  margin-top: -3px;
-  border-radius: var(--r-round);
-  background: var(--c-accent);
+  color: var(--c-ink);
 }
 html.motion .bd-days-slot {
   opacity: 0;
@@ -458,7 +407,7 @@ html:not(.motion) .bd-days {
   left: calc(var(--now) * 100% - 3.5px);
   width: 7px;
   height: 7px;
-  border-radius: var(--r-round);
+  border-radius: var(--r-pill);
   background: var(--c-ink);
   box-shadow: 0 0 0 3px var(--c-paper);
 }
@@ -467,23 +416,17 @@ html:not(.motion) .bd-days {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   /* The bottom edge is the time axis: hairline, a tick at every day, small ticks every 6h. */
-  border-bottom: 1px solid var(--c-rule);
+  border-bottom: var(--hairline) solid var(--c-rule);
   background:
-    repeating-linear-gradient(to right, var(--c-rule) 0 1px, transparent 1px 20%) 0 100% / 100% 7px no-repeat,
-    repeating-linear-gradient(to right, color-mix(in oklab, var(--c-ink) 10%, transparent) 0 1px, transparent 1px 5%) 0 100% / 100% 4px no-repeat;
+    repeating-linear-gradient(to right, var(--c-rule) 0 1.5px, transparent 1.5px 20%) 0 100% / 100% 8px no-repeat,
+    repeating-linear-gradient(to right, color-mix(in oklab, var(--c-ink) 14%, transparent) 0 1px, transparent 1px 5%) 0 100% / 100% 4px no-repeat;
 }
 .bd-day {
-  padding: 0 0 9px 5px;
-  font-family: var(--font-mono);
-  font-variant-numeric: var(--mono-numeric);
-  font-size: 10.5px;
+  padding: 0 0 10px 6px;
+  font-size: 13px;
   line-height: 1;
-  font-weight: 500;
-  letter-spacing: calc(0.08em * var(--mono-tracking));
-  text-transform: var(--mono-case);
-  font-feature-settings: "case";
   color: var(--c-ink-2);
-  transition: color 0.4s var(--ease-out);
+  transition: color var(--dur-3) var(--ease-out);
 }
 .bd-root[data-today="0"] .bd-day[data-day="0"],
 .bd-root[data-today="1"] .bd-day[data-day="1"],
@@ -491,26 +434,35 @@ html:not(.motion) .bd-days {
 .bd-root[data-today="3"] .bd-day[data-day="3"],
 .bd-root[data-today="4"] .bd-day[data-day="4"] {
   color: var(--c-ink);
+  font-weight: var(--weight-strong);
 }
 
-/* The light: a warm pool that crosses the board with the time of day, cooler at night. */
+/* The light: a flat, slanted shaft of window light that crosses the board with the time of day
+   (printed in the highlighter ink, broken by grain), and a faint pine wash at night. No blur. */
 .bd-sun {
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
   background:
-    radial-gradient(70% 120% at var(--sun-x, 20%) var(--sun-y, 60%) in srgb, color-mix(in oklab, var(--art-lamp) calc((0.36 * var(--sun-a, 0.5)) * 100%), transparent), color-mix(in oklab, var(--art-sun-haze) calc((0.12 * var(--sun-a, 0.5)) * 100%), transparent) 45%, transparent 75%),
-    linear-gradient(color-mix(in oklab, var(--art-board-dusk) calc((0.07 * var(--night, 0)) * 100%), transparent), color-mix(in oklab, var(--art-board-dusk) calc((0.07 * var(--night, 0)) * 100%), transparent));
+    linear-gradient(
+      104deg,
+      transparent calc(var(--sun-x, 20%) - 22%),
+      color-mix(in oklab, var(--art-glow, var(--c-paper-2)) calc(var(--sun-a, 0.5) * 70%), transparent) calc(var(--sun-x, 20%) - 22%),
+      color-mix(in oklab, var(--art-glow, var(--c-paper-2)) calc(var(--sun-a, 0.5) * 70%), transparent) calc(var(--sun-x, 20%) + 4%),
+      transparent calc(var(--sun-x, 20%) + 4%)
+    ),
+    linear-gradient(color-mix(in oklab, var(--c-ink) calc(var(--night, 0) * 6%), transparent), color-mix(in oklab, var(--c-ink) calc(var(--night, 0) * 6%), transparent));
+  -webkit-mask-image: var(--tex-ink-mask, none);
+  mask-image: var(--tex-ink-mask, none);
+  -webkit-mask-size: 260px;
+  mask-size: 260px;
 }
 .bd-board-title,
 .bd-cols {
   position: relative;
 }
-/* Column floors are a tint over the lit board, and warm as the tile passes over them. */
-.bd-col {
-  background: color-mix(in oklab, var(--c-ink) 3.5%, transparent);
-}
+/* Column floors warm as the tile passes over them: a flat highlighter tint, broken by grain. */
 .bd-col > * {
   position: relative;
 }
@@ -524,11 +476,15 @@ html:not(.motion) .bd-days {
   pointer-events: none;
 }
 .bd-col > .bd-col-warm {
-  background: linear-gradient(to top in srgb, color-mix(in oklab, var(--art-col-warm) 30%, transparent), color-mix(in oklab, var(--art-col-warm-2) 8%, transparent) 55%, transparent 85%);
+  background: color-mix(in oklab, var(--art-glow, var(--c-paper-2)) 40%, transparent);
+  -webkit-mask-image: var(--tex-ink-mask, none);
+  mask-image: var(--tex-ink-mask, none);
+  -webkit-mask-size: 260px;
+  mask-size: 260px;
   opacity: 0;
 }
 .bd-col > .bd-col-breath {
-  background: linear-gradient(to top, color-mix(in oklab, var(--art-col-breath) 22%, transparent), transparent 70%);
+  background: linear-gradient(to top, color-mix(in oklab, var(--art-glow, var(--c-paper-2)) 38%, transparent) 0 28%, transparent 28%);
   transform-origin: 50% 100%;
   transform: scaleY(var(--b, 0));
   opacity: var(--b, 0);
@@ -545,12 +501,17 @@ html:not(.motion) .bd-col > :is(.bd-col-warm, .bd-col-breath) {
 .bd-col[data-col="interview"] > .bd-col-breath {
   --b: var(--breath-interview, 0);
 }
-/* The Interview glow: amber from the `col-interview` rule down. Outside the board's fade. */
+/* The Interview window: the column fills with the lamp's colour as the booking lands (a flat print,
+   grain-broken), from the `col-interview` rule down. Outside the board's fade; the World takes the
+   warmth from here into the Act III lamp. */
 .bd-glow {
   position: absolute;
   pointer-events: none;
-  border-radius: calc(var(--r-md) * 9 / 8);
-  background: radial-gradient(90% 70% at 50% 8% in srgb, color-mix(in oklab, var(--art-board-glow) 50%, transparent), color-mix(in oklab, var(--art-lamp) 18%, transparent) 45%, transparent 75%);
+  background: color-mix(in oklab, var(--art-lamp, var(--c-paper-2)) 26%, transparent);
+  -webkit-mask-image: var(--tex-ink-mask, none);
+  mask-image: var(--tex-ink-mask, none);
+  -webkit-mask-size: 260px;
+  mask-size: 260px;
   opacity: var(--glow, 0);
   mix-blend-mode: multiply;
 }
@@ -588,10 +549,11 @@ html:not(.motion) .bd-col > :is(.bd-col-warm, .bd-col-breath) {
 }
 .bd-sentence {
   position: relative;
-  font-size: clamp(40px, 5vw, 76px);
-  line-height: 1.04;
-  letter-spacing: -0.045em;
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: calc(var(--fs-h2) * 1.25);
+  line-height: 1.08;
+  letter-spacing: var(--tracking-display);
+  font-weight: var(--weight-display);
   text-align: center;
   text-wrap: balance;
 }
@@ -622,7 +584,7 @@ html.motion .bd-sentence {
   opacity: var(--in, 0);
 }
 html.motion .bd-word {
-  opacity: 0.25;
+  opacity: 0.35;
 }
 html.motion .bd-float {
   position: absolute;
@@ -680,9 +642,8 @@ html:not(.motion) .bd-float {
     display: none;
   }
   .bd-ledger {
-    gap: 3px 7px;
-    font-size: 9.5px;
-    letter-spacing: 0.06em;
+    gap: 2px 7px;
+    font-size: 13px;
     margin: 0 0 10px 2px;
   }
   .bd-board {
@@ -702,8 +663,11 @@ html:not(.motion) .bd-float {
     grid-template-columns: 76px 1fr;
     grid-template-rows: auto auto;
     align-items: center;
-    padding: 8px 10px;
-    border-radius: calc(var(--r-md) * 7 / 8);
+    padding: 8px 4px;
+  }
+  .bd-col + .bd-col {
+    border-left: 0;
+    border-top: var(--hairline) solid var(--c-ink);
   }
   .bd-col-h {
     grid-column: 1;
@@ -755,9 +719,9 @@ html:not(.motion) .bd-float {
     min-height: 0;
     width: 34px;
     padding: 0;
-    border-radius: calc(var(--r-2xs) * 3 / 2);
+    border-radius: var(--r-pill);
     border: 0;
-    background: var(--c-ghost);
+    background: var(--c-rule);
     overflow: hidden;
   }
   .bd-ghost > * {
@@ -774,10 +738,9 @@ html:not(.motion) .bd-float {
     height: auto;
   }
   html:not(.motion) .bd-ghost {
-    height: 52px;
-    padding: 0 10px;
-    border: 1px solid var(--c-rule);
-    background: var(--c-paper-2);
+    height: auto;
+    padding: 0;
+    background: transparent;
   }
   html:not(.motion) .bd-ghost > * {
     display: revert;
@@ -823,8 +786,23 @@ html:not(.motion) .bd-float {
 
 @media (prefers-reduced-motion: reduce) {
   .bd-ghost,
-  .bd-ghost-score,
   .bd-lbl > * {
     transition: none;
+  }
+}
+
+/* The empty Offer column: the product's own empty state (dashed, quiet, human). */
+.bd-empty {
+  margin-top: 4px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--c-ink-2);
+  border: var(--hairline) dashed var(--c-ink-3);
+  border-radius: var(--r-md);
+}
+@media (max-width: 767px) {
+  .bd-empty {
+    display: none;
   }
 }

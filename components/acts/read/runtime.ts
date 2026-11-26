@@ -130,8 +130,9 @@ export const softAbove = (y: number) => `linear-gradient(to bottom, black ${(y -
  * point, so the eye follows one title down into the tile. Positions are the faces' own layout
  * constants (faces.css): card block at (86, 27) of 520x320, tile block at (11, 37) of 154x92.
  */
-const CARD_ID = { x: 86, y: 27 };
-const TILE_ID = { x: 11, y: 37 };
+/** Title block's top-left in card units (RoleDetail compact: 16px, 12px) and in tile units (Tile at 0.77: 12px, 10px). */
+const CARD_ID = { x: 16, y: 12 };
+const TILE_ID = { x: 9.2, y: 7.7 };
 const smooth = (x: number) => x * x * (3 - 2 * x);
 export function titleHandOver(s: Readonly<StoryState>, face: "card" | "tile"): string {
   const a = s.actor;
@@ -139,9 +140,8 @@ export function titleHandOver(s: Readonly<StoryState>, face: "card" | "tile"): s
   const sc = a.w / 520;
   const st = a.h / 92;
   const mx = (CARD_ID.x * sc + TILE_ID.x * st) / 2;
-  // Vertically they meet just above the tile's own place (7 tile-units up), so the arriving title
-  // never crosses the tile's top row (initials and score).
-  const my = (TILE_ID.y - 7) * st;
+  // Vertically they meet at the tile's own title line (the tile's top row is the title).
+  const my = TILE_ID.y * st;
   if (face === "card") {
     const k = smooth(span(a.travel, 0.28, 0.5));
     return k <= 0 ? "" : `translate3d(${(((mx - CARD_ID.x * sc) / sc) * k).toFixed(2)}px,${(((my - CARD_ID.y * sc) / sc) * k).toFixed(2)}px,0)`;
@@ -280,7 +280,7 @@ export function useActorExtra(fn: Contributor, deps: DependencyList = []) {
  * Server and reduced-motion markup show the end state; in motion mode these
  * start at zero and the performance fills them.
  */
-export const cardShow = { score: 0, meter: 0, c0: 0, c1: 0, c2: 0, caret: 0, focus: -1 };
+export const cardShow = { score: 0, meter: 0, rows: 0, focus: -1 };
 /** The end state, for markup that renders before any frame runs. */
 export const CARD_FULL = { score: 9, meter: 0.9 };
 
