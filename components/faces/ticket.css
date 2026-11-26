@@ -92,7 +92,7 @@
 }
 /* Claimed: the seat fills with the stamp, a beat after it lands. */
 .tkx-seat[data-fresh] {
-  animation: tkx-seat 0.5s 0.55s var(--ease-spring) both;
+  animation: tkx-seat 0.4s 0.45s var(--ease-spring) both;
 }
 @keyframes tkx-seat {
   0% {

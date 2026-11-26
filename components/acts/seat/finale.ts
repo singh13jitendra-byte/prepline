@@ -7,12 +7,12 @@
  *   120     the stamp head appears above the ticket, falling (TicketFace: playStamp)
  *   380     impact: the head squashes, the ticket stage shakes 2-3px for 120ms, the ink is left
  *   640     the head lifts away
- *   1150    the ticket tears along the perforation (tearAndFly): the stub hinges off its bottom
- *           corner, ragged edges on both pieces, then flies a curved path (900ms) into the nav's
- *           "Save me a seat" and docks there
- *   2330    arrival: `prepline:seat-docked` (cancelable). If nothing handles it (Nav calls
- *           preventDefault() once it shows its own seated state), a pine ring pulses round the CTA
- *           and a lamp badge "Seat 13 saved ✓" covers it for 3s (the fallback).
+ *   960     the ticket tears along the perforation (tearAndFly): the stub hinges off its bottom
+ *           corner, ragged edges on both pieces (`prepline:seat-flight` { seat, eta }), then flies
+ *           a curved path (900ms) into the nav's "Save me a seat" and docks there
+ *   2100    arrival: `prepline:seat-docked` { seat }. Nav ignites its CTA and shows the seat
+ *           (Delight 9). Nav falls back to `prepline:seat-claimed` 2.4s after the claim, so the
+ *           whole sequence stays well inside that window.
  *
  * Motion is WAAPI on transform and opacity only, so nothing is restyled per frame: no inline style
  * is written while it plays. The flight is one sampled keyframe list (a cubic Bézier path).
@@ -21,15 +21,14 @@
  */
 
 import { SEATS, SEAT_NO, seatState } from "./seatState";
-import { stampCopy } from "./Stamp";
 
 /* ── timing (ms from the success) ── */
 export const T_HEAD = 120;
 export const T_FALL = 260;
 export const T_IMPACT = T_HEAD + T_FALL;
 export const T_LIFT = 640;
-export const T_TEAR = 1150;
-const D_TEAR = 280;
+export const T_TEAR = 960;
+const D_TEAR = 240;
 const D_FLY = 900;
 const D_SETTLE = 520;
 
@@ -67,9 +66,12 @@ const rot = (v: V, deg: number): V => {
   return { x: v.x * Math.cos(r) - v.y * Math.sin(r), y: v.x * Math.sin(r) + v.y * Math.cos(r) };
 };
 
-/** The nav's "Save me a seat", if it is on screen (found at runtime: Nav is not ours to edit). */
+/** The nav's "Save me a seat" (its wrap, Delight 9), if it is on screen. Found at runtime: Nav is not ours to edit. */
 export function findNavCta(): HTMLElement | null {
-  const el = document.querySelector<HTMLElement>(".nav-base .nav-cta") ?? document.querySelector<HTMLElement>('header a[href="#join"]');
+  const el =
+    document.querySelector<HTMLElement>(".nav-base [data-cta-wrap]") ??
+    document.querySelector<HTMLElement>(".nav-base .nav-cta") ??
+    document.querySelector<HTMLElement>('header a[href="#join"]');
   if (!el) return null;
   const nav = el.closest<HTMLElement>(".nav");
   if (nav?.hasAttribute("data-hidden")) return null;
@@ -140,82 +142,14 @@ function buildStub(tkx: HTMLElement) {
   return { root, x0, w, H };
 }
 
-let badge: { el: HTMLElement; timer: number } | null = null;
-function dropBadge() {
-  if (!badge) return;
-  clearTimeout(badge.timer);
-  badge.el.remove();
-  badge = null;
-}
-
-/**
- * Arrival in the nav: tell the page (Nav listens and shows its seated state), and if nothing took
- * the event, pulse a ring round the CTA and lay the fallback badge over it for 3s.
- */
+/** Arrival in the nav: Nav listens (Delight 9) and ignites its CTA with the seat. */
 export function dock(opts: { reduced: boolean }) {
-  const ev = new CustomEvent("prepline:seat-docked", {
-    cancelable: true,
-    detail: { ring: SEAT_NO, seat: SEAT_NO, of: SEATS, label: stampCopy.docked, reduced: opts.reduced },
-  });
-  window.dispatchEvent(ev);
-  if (ev.defaultPrevented) return;
-  const cta = findNavCta();
-  if (!cta) return;
-  const r = cta.getBoundingClientRect();
-  const cs = getComputedStyle(cta);
-
-  if (!opts.reduced) {
-    const ring = document.createElement("span");
-    ring.className = "tkx-dock-ring";
-    ring.setAttribute("aria-hidden", "true");
-    Object.assign(ring.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
-    document.body.appendChild(ring);
-    const a = ring.animate(
-      [
-        { transform: "scale(1)", opacity: 1 },
-        { transform: "scale(1.1, 1.32)", opacity: 0 },
-      ],
-      { duration: 620, easing: "cubic-bezier(0.2, 0.7, 0.3, 1)", fill: "forwards" },
-    );
-    a.onfinish = () => ring.remove();
-  }
-
-  dropBadge();
-  const el = document.createElement("span");
-  el.className = "tkx-dock-badge";
-  el.setAttribute("aria-hidden", "true");
-  el.style.height = `${r.height}px`;
-  el.style.minWidth = `${r.width}px`;
-  el.style.fontSize = cs.fontSize;
-  el.style.top = `${r.top}px`;
-  el.innerHTML = `<span></span><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.75 10.5l3.25 3.25 7.25-7.5"/></svg>`;
-  (el.firstChild as HTMLElement).textContent = stampCopy.docked;
-  document.body.appendChild(el);
-  el.style.left = `${Math.round(r.right - Math.max(el.offsetWidth, r.width))}px`;
-  el.animate(
-    opts.reduced
-      ? [{ opacity: 0 }, { opacity: 1 }]
-      : [
-          { opacity: 0, transform: "scale(0.86)" },
-          { opacity: 1, transform: "scale(1.06)", offset: 0.6 },
-          { opacity: 1, transform: "scale(1)" },
-        ],
-    { duration: opts.reduced ? 160 : 300, easing: "cubic-bezier(0.2, 0.7, 0.3, 1)" },
-  );
-  const timer = window.setTimeout(() => {
-    const out = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, easing: "ease-out", fill: "forwards" });
-    out.onfinish = () => {
-      if (badge?.el === el) badge = null;
-      el.remove();
-    };
-  }, 3000);
-  badge = { el, timer };
+  window.dispatchEvent(new CustomEvent("prepline:seat-docked", { detail: { ring: SEAT_NO, seat: SEAT_NO, of: SEATS, reduced: opts.reduced } }));
 }
 
-/** The visitor edited their address: the seat is open again. */
+/** The visitor chose Edit it.: the ticket is whole again. Informational for listeners. */
 export function release() {
-  dropBadge();
-  window.dispatchEvent(new CustomEvent("prepline:seat-released", { detail: { ring: SEAT_NO } }));
+  window.dispatchEvent(new CustomEvent("prepline:seat-released", { detail: { ring: SEAT_NO, seat: SEAT_NO } }));
 }
 
 /**
@@ -285,9 +219,11 @@ export function tearAndFly(tkx: HTMLElement): () => void {
   // A curved path: up and out first, then in to the button from below-left.
   const dx = end.x - c1.x;
   const dy = end.y - c1.y;
-  const side = dx > 0 ? -1 : 1;
-  const p1 = { x: c1.x + side * Math.min(160, Math.abs(dy) * 0.32) + dx * 0.1, y: c1.y + dy * 0.18 - 40 };
-  const p2 = { x: end.x + side * Math.min(140, Math.abs(dy) * 0.28), y: end.y + Math.max(80, Math.abs(dy) * 0.3) };
+  // Bow toward the middle of the screen, so on a phone the arc never leaves the glass.
+  const side = c1.x > window.innerWidth / 2 ? -1 : 1;
+  const inX = (x: number) => Math.min(window.innerWidth - 40, Math.max(40, x));
+  const p1 = { x: inX(c1.x + side * Math.min(160, Math.abs(dy) * 0.32) + dx * 0.1), y: c1.y + dy * 0.18 - 40 };
+  const p2 = { x: inX(end.x + side * Math.min(140, Math.abs(dy) * 0.28)), y: end.y + Math.max(80, Math.abs(dy) * 0.3) };
 
   const frames: Keyframe[] = [];
   const N = Math.round(total / 16);
@@ -310,7 +246,10 @@ export function tearAndFly(tkx: HTMLElement): () => void {
       // A little spin through the air, square again as it lands.
       a = k < 0.55 ? lerp(a0 + tearTurn, -9, easeInOut(k / 0.55)) : lerp(-9, 0, easeInOut((k - 0.55) / 0.45));
       s = lerp(s0, s1, easeInOut(Math.min(1, k * 1.15)));
-      o = k < 0.84 ? 1 : 1 - (k - 0.84) / 0.16;
+      // It slots into the button: the last stretch shrinks it away at full ink (never a ghost),
+      // and only the final frame lets go.
+      if (k > 0.82) s *= 1 - 0.85 * Math.pow((k - 0.82) / 0.18, 2);
+      o = i === N ? 0 : 1;
     }
     frames.push({
       transform: `translate(${c.x.toFixed(2)}px, ${c.y.toFixed(2)}px) rotate(${a.toFixed(3)}deg) scale(${s.toFixed(4)}) translate(${(-w / 2).toFixed(2)}px, ${(-H / 2).toFixed(2)}px)`,
@@ -320,6 +259,7 @@ export function tearAndFly(tkx: HTMLElement): () => void {
   root.style.transform = String(frames[0].transform);
   document.body.appendChild(root);
   mark("torn");
+  window.dispatchEvent(new CustomEvent("prepline:seat-flight", { detail: { seat: SEAT_NO, eta: total } }));
   const anim = root.animate(frames, { duration: total, easing: "linear", fill: "forwards" });
   let done = false;
   anim.onfinish = () => {

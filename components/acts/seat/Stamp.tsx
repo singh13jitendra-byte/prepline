@@ -24,7 +24,6 @@ export const stampCopy = {
   saved: storyCopy.seat.stampSaved,
   seat: fill(storyCopy.seat.stampSeat),
   already: storyCopy.seat.stampAlready,
-  docked: fill(storyCopy.seat.seatDocked),
   live: fill(storyCopy.seat.stampLive),
 };
 

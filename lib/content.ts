@@ -395,8 +395,6 @@ export const story = {
     stampSeat: "Nº {n} of {total}",
     /** A gentler stamp when the API says the address is already on the list. */
     stampAlready: "Already saved",
-    /** The nav CTA once the stub has docked in it (Nav listens for `prepline:seat-docked`). */
-    seatDocked: "Seat {n} saved",
     /** Live region, after the success line: what the stamp says, for screen readers. */
     stampLive: "Stamped: seat saved, number {n} of {total}.",
     rings: "25 seats",
