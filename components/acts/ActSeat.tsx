@@ -26,6 +26,7 @@ import { Panel, Stage } from "@/components/story/Stage";
 import "@/components/faces/TicketFace";
 import { seatState, useSeatState } from "./seat/seatState";
 import "./seat/seat.css";
+import { ease } from "@/lib/theme";
 
 const idx = (b: string) => BEATS.findIndex((x) => x.id === b);
 const RINGS = storyCopy.seat.ringCount;
@@ -247,10 +248,10 @@ export function ActSeat() {
     tl.to(rest, {
       r: 0,
       duration: 0.75,
-      ease: "back.out(1.6)",
+      ease: ease.springSoft,
       onUpdate: () => tilt.style.setProperty("--rest", `${rest.r.toFixed(3)}deg`),
     });
-    if (rows.length) tl.fromTo(rows, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: "expo.out", stagger: 0.06 }, 0.16);
+    if (rows.length) tl.fromTo(rows, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: ease.out, stagger: 0.06 }, 0.16);
     // The field invites typing once everything has landed (visual only, never a programmatic focus).
     const invite = { k: 0 };
     tl.to(invite, {
@@ -273,7 +274,7 @@ export function ActSeat() {
       tilt.style.setProperty("--hx", `${v.hx.toFixed(1)}%`);
       tilt.style.setProperty("--hy", `${v.hy.toFixed(1)}%`);
     };
-    const to = (vars: Partial<typeof v>, duration: number) => gsap.to(v, { ...vars, duration, ease: "power3.out", overwrite: "auto", onUpdate: write });
+    const to = (vars: Partial<typeof v>, duration: number) => gsap.to(v, { ...vars, duration, ease: ease.outFirm, overwrite: "auto", onUpdate: write });
     const move = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return;
       const r = wrap.getBoundingClientRect();
@@ -297,7 +298,7 @@ export function ActSeat() {
     return seatState.subscribe(() => {
       const now = seatState.get().status;
       if (now === "done" && was !== "done" && underlineEl.current && !story.reduced()) {
-        gsap.fromTo(underlineEl.current, { scaleX: 0 }, { scaleX: 1, duration: 0.9, ease: "power3.inOut", delay: 0.2, clearProps: "transform" });
+        gsap.fromTo(underlineEl.current, { scaleX: 0 }, { scaleX: 1, duration: 0.9, ease: ease.inOutFirm, delay: 0.2, clearProps: "transform" });
       }
       was = now;
     });

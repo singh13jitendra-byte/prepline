@@ -11,22 +11,22 @@
   position: absolute;
   inset: 0;
   color: var(--face-fg);
-  font-family: var(--font-sans);
+  font-family: var(--font-text);
   font-kerning: normal;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 [data-skin="night"] {
-  --face-chip: rgba(255, 255, 255, 0.07);
-  --face-chip-line: rgba(255, 255, 255, 0.16);
-  --face-tile: rgba(255, 255, 255, 0.1);
-  --face-spec: rgba(255, 255, 255, 0.16);
+  --face-chip: color-mix(in oklab, var(--c-on-night) 7%, transparent);
+  --face-chip-line: color-mix(in oklab, var(--c-on-night) 16%, transparent);
+  --face-tile: color-mix(in oklab, var(--c-on-night) 10%, transparent);
+  --face-spec: color-mix(in oklab, var(--c-on-night) 16%, transparent);
 }
 [data-skin="day"] {
-  --face-chip: #f4efe6;
-  --face-chip-line: #e8e1d4;
-  --face-tile: #f1ece3;
-  --face-spec: rgba(255, 255, 255, 0.6);
+  --face-chip: var(--c-chip);
+  --face-chip-line: var(--c-chip-line);
+  --face-tile: var(--c-tile);
+  --face-spec: color-mix(in oklab, var(--c-on-night) 60%, transparent);
 }
 
 /* ── row ── */
@@ -40,7 +40,7 @@
   flex: none;
   width: 5px;
   height: 5px;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   background: var(--face-accent);
   margin-right: 9px;
 }
@@ -50,7 +50,7 @@
   font-family: var(--font-mono);
   font-size: 10.5px;
   font-weight: 500;
-  letter-spacing: 0.02em;
+  letter-spacing: calc(0.02em * var(--mono-tracking));
   font-variant-numeric: tabular-nums;
   color: var(--face-muted);
 }
@@ -61,12 +61,13 @@
   width: 26px;
   height: 26px;
   margin-left: 4px;
-  border-radius: 7px;
+  border-radius: calc(var(--r-xs) * 7 / 6);
   background: var(--face-tile);
   font-family: var(--font-mono);
+  font-variant-numeric: var(--mono-numeric);
   font-size: 9.5px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: calc(0.04em * var(--mono-tracking));
   font-feature-settings: "case";
 }
 .pl-row-main {
@@ -102,8 +103,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   transition:
-    transform 0.4s var(--ease-out-expo),
-    opacity 0.4s var(--ease-out-expo);
+    transform 0.4s var(--ease-out),
+    opacity 0.4s var(--ease-out);
 }
 .pl-row-reason {
   transform: translateY(100%);
@@ -163,12 +164,13 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: calc(var(--r-sm) * 6 / 5);
   background: var(--face-tile);
   font-family: var(--font-mono);
+  font-variant-numeric: var(--mono-numeric);
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: calc(0.04em * var(--mono-tracking));
   font-feature-settings: "case";
 }
 .pl-card-id {
@@ -230,11 +232,12 @@
 }
 .pl-card-label {
   font-family: var(--font-mono);
+  font-variant-numeric: var(--mono-numeric);
   font-size: 10.5px;
   line-height: 1;
   font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: calc(0.1em * var(--mono-tracking));
+  text-transform: var(--mono-case);
   font-feature-settings: "case";
   color: var(--face-muted);
 }
@@ -249,7 +252,7 @@
   align-items: center;
   height: 32px;
   padding: 0 13px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--face-chip);
   border: 1px solid var(--face-chip-line);
   font-size: 13px;
@@ -260,7 +263,7 @@
   transform: translateY(3px);
   transition:
     opacity 0.18s ease-out,
-    transform 0.4s var(--ease-out-expo);
+    transform 0.4s var(--ease-out);
 }
 .pl-card-chip[data-on] {
   opacity: 1;
@@ -307,13 +310,13 @@
   position: relative;
   height: 3px;
   margin-top: 12px;
-  border-radius: 3px;
+  border-radius: calc(var(--r-2xs) * 3 / 2);
   background: var(--face-border);
 }
 .pl-card-fill {
   position: absolute;
   inset: 0;
-  border-radius: 3px;
+  border-radius: calc(var(--r-2xs) * 3 / 2);
   background: var(--face-accent);
   transform-origin: 0 50%;
 }
@@ -334,12 +337,13 @@
   place-items: center;
   width: 20px;
   height: 20px;
-  border-radius: 6px;
+  border-radius: var(--r-xs);
   background: var(--face-tile);
   font-family: var(--font-mono);
+  font-variant-numeric: var(--mono-numeric);
   font-size: 8px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: calc(0.04em * var(--mono-tracking));
 }
 .pl-tile-score {
   font-variant-numeric: tabular-nums;
@@ -381,7 +385,7 @@
   align-items: center;
   height: 18px;
   padding: 0 7px 0 6px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--face-chip);
   border: 1px solid var(--face-chip-line);
   font-size: 9.5px;
@@ -405,7 +409,7 @@
 .pl-tile-spark {
   width: 4px;
   height: 4px;
-  border-radius: 50%;
+  border-radius: var(--r-round);
   background: var(--face-accent);
 }
 .pl-tile-cal {
@@ -429,14 +433,14 @@
 
 /* Glass: the night card is a dense, tinted pane that blurs what is behind it (the list, the field). */
 .face[data-face="card"][data-skin="night"] {
-  --face-bg: linear-gradient(160deg, rgba(40, 64, 104, 0.72), rgba(16, 36, 68, 0.78));
-  --face-border: rgba(255, 255, 255, 0.22);
+  --face-bg: linear-gradient(160deg in srgb, color-mix(in oklab, var(--art-card-glass-a) 72%, transparent), color-mix(in oklab, var(--art-card-glass-b) 78%, transparent));
+  --face-border: color-mix(in oklab, var(--c-on-night) 22%, transparent);
 }
 .face[data-face="card"][data-skin="night"] .face-chrome,
 [data-skin="night"] .face[data-face="card"] .face-chrome {
   -webkit-backdrop-filter: blur(32px) saturate(1.25);
   backdrop-filter: blur(32px) saturate(1.25);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--c-on-night) 12%, transparent);
 }
 /*
  * The Actor's flip layer is preserve-3d (for the dawn flip), which disables
@@ -448,10 +452,10 @@ html.motion:is([data-beat="ranked"], [data-beat="reason"], [data-beat="daybreak"
 }
 /* While the line splits the card, its clip stops the blur: use the blurred glass's own colour. */
 html[data-wipe="daybreak"] .face[data-face="card"][data-skin="night"] {
-  --face-bg: linear-gradient(160deg, rgb(36, 59, 97), rgb(18, 38, 70));
+  --face-bg: linear-gradient(160deg, var(--art-card-solid-a), var(--art-card-solid-b));
 }
 
 /* In flight the engine turns backdrop-filter off: the glass card takes its blurred colour as a fill. */
 .actor[data-moving] .face[data-face="card"][data-skin="night"] {
-  --face-bg: linear-gradient(160deg, rgb(36, 59, 97), rgb(18, 38, 70));
+  --face-bg: linear-gradient(160deg, var(--art-card-solid-a), var(--art-card-solid-b));
 }

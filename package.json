@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "check:tokens": "node scripts/check-tokens.mjs"
   },
   "dependencies": {
     "@fontsource/instrument-serif": "^5.2.8",

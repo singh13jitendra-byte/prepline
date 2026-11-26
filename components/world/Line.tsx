@@ -34,10 +34,12 @@
 import { useEffect, useRef } from "react";
 import { anchorRect } from "@/lib/anchors";
 import { clamp01, story, type StoryState } from "@/lib/story";
+import { cssToken, labelWidth, onThemeChange, toRGBA } from "@/lib/theme";
 import { worldBus } from "./bus";
 
-const GOLD = "#ffd77a";
-const AMBER = "#b45309";
+/** The Line's two colours are theme roles: --c-line on night, --c-accent on day and on paper. */
+const GOLD = "var(--c-line)";
+const AMBER = "var(--c-accent)";
 const f = (n: number) => n.toFixed(1);
 const io = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -113,6 +115,16 @@ export function Line() {
     let px1 = 0;
     let py = 0;
     let draw = 0; // the load: the underline draws left to right
+    // Theme: an alpha-0 --c-line-glow (or --art-line-core) turns that layer off, not just invisible.
+    let glowOn = true;
+    let coreOn = true;
+    const readTheme = () => {
+      glowOn = (toRGBA(cssToken("--c-line-glow"))?.[3] ?? 1) > 0;
+      coreOn = (toRGBA(cssToken("--art-line-core"))?.[3] ?? 1) > 0;
+      last.co = last.go = "";
+      if (shownLabel.label && label.current) labelW = labelWidth(label.current, shownLabel.label, 7.5);
+    };
+    const shownLabel = { label: "" };
 
     const frame = (_t: number, dt: number, s: Readonly<StoryState>) => {
       const path = body.current;
@@ -284,9 +296,9 @@ export function Line() {
         last.color = color;
         root.style.color = color;
       }
-      const co = color === GOLD ? "0.92" : "0";
+      const co = color === GOLD && coreOn ? "0.92" : "0";
       if (co !== last.co) hot.style.opacity = last.co = co;
-      const go = color === GOLD && !worldBus.glReady ? "0.24" : "0";
+      const go = color === GOLD && glowOn && !worldBus.glReady ? "0.24" : "0";
       if (go !== last.go) soft.style.opacity = last.go = go;
 
       /* label */
@@ -294,7 +306,8 @@ export function Line() {
         last.label = line.label;
         if (line.label) {
           tag.textContent = line.label;
-          labelW = line.label.length * 7.5;
+          labelW = labelWidth(tag, line.label, 7.5);
+          shownLabel.label = line.label;
         }
         place.checkedAt = 0;
       }
@@ -337,9 +350,12 @@ export function Line() {
       const vis = len < 0.5 ? "hidden" : "visible";
       if (vis !== last.vis) root.style.visibility = last.vis = vis;
     };
+    readTheme();
     const off = story.frame("line", frame);
+    const offTheme = onThemeChange(readTheme);
     return () => {
       off();
+      offTheme();
       worldBus.line.set = false;
       worldBus.demo.on = false;
     };
@@ -348,9 +364,9 @@ export function Line() {
   return (
     <>
       <svg ref={svg} aria-hidden="true" data-world-line className="world-line only-motion" style={{ color: GOLD, visibility: "hidden" }}>
-        <path ref={glow} className="world-line-glow" fill="none" stroke="#ffb84a" strokeLinecap="round" style={{ opacity: 0 }} />
+        <path ref={glow} className="world-line-glow" fill="none" strokeLinecap="round" style={{ stroke: "var(--c-line-glow)", opacity: 0 }} />
         <path ref={body} data-line-core fill="none" stroke="currentColor" strokeLinecap="round" />
-        <path ref={core} fill="none" stroke="#fffaf0" strokeLinecap="round" style={{ opacity: 0.92 }} />
+        <path ref={core} fill="none" strokeLinecap="round" style={{ stroke: "var(--art-line-core)", opacity: 0.92 }} />
       </svg>
       <div ref={label} aria-hidden="true" data-line-label className="world-line-label type-mono only-motion" style={{ opacity: 0 }} />
     </>

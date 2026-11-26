@@ -5,7 +5,7 @@
    ══════════════════════════════════════════════════════════════════════════ */
 
 .bd-stage {
-  color: var(--color-ink);
+  color: var(--c-ink);
 }
 .bd-grid {
   display: grid;
@@ -41,7 +41,7 @@
   display: flex;
   flex-direction: column;
   max-width: 25em;
-  border-top: 1px solid var(--color-line);
+  border-top: 1px solid var(--c-rule);
 }
 .bd-step {
   position: relative;
@@ -49,7 +49,7 @@
   grid-template-columns: 34px 1fr;
   gap: 4px;
   padding: 16px 0 17px;
-  border-bottom: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--c-rule);
   --on: 1;
 }
 /* The active step is marked with a dot (the page's "current" vocabulary), never a second amber rule:
@@ -61,8 +61,8 @@
   top: 21px;
   width: 5px;
   height: 5px;
-  border-radius: 50%;
-  background: var(--color-accent);
+  border-radius: var(--r-round);
+  background: var(--c-accent);
   transform: scale(var(--on));
   opacity: var(--on);
 }
@@ -72,26 +72,26 @@
   font-size: 11px;
   line-height: 1.2;
   font-weight: 500;
-  letter-spacing: 0.06em;
+  letter-spacing: calc(0.06em * var(--mono-tracking));
   font-variant-numeric: tabular-nums;
-  color: var(--color-muted);
+  color: var(--c-ink-2);
 }
 .bd-step-t {
   font-size: clamp(15px, 1.2vw, 17px);
   line-height: 1.5;
-  color: var(--color-muted);
+  color: var(--c-ink-2);
   text-wrap: pretty;
 }
 .bd-step-t b {
   font-weight: 560;
-  color: var(--color-ink);
+  color: var(--c-ink);
 }
 /* Active step: ink. The others: muted (still AA). */
 html.motion .bd-step-t {
-  color: color-mix(in srgb, var(--color-ink) calc(var(--on) * 100%), var(--color-muted));
+  color: color-mix(in srgb, var(--c-ink) calc(var(--on) * 100%), var(--c-ink-2));
 }
 html.motion .bd-step-n {
-  color: color-mix(in srgb, var(--color-accent) calc(var(--on) * 100%), var(--color-muted));
+  color: color-mix(in srgb, var(--c-accent) calc(var(--on) * 100%), var(--c-ink-2));
 }
 html.motion .bd-step[data-step="1"] {
   --on: calc(1 - var(--sa, 0));
@@ -117,14 +117,14 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   font-size: 11px;
   line-height: 1.2;
   font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: calc(0.08em * var(--mono-tracking));
+  text-transform: var(--mono-case);
   font-feature-settings: "case";
   font-variant-numeric: tabular-nums;
-  color: var(--color-muted);
+  color: var(--c-ink-2);
 }
 .bd-ledger-i [data-l] {
-  color: var(--color-ink);
+  color: var(--c-ink);
 }
 .bd-dot {
   opacity: 0.6;
@@ -139,8 +139,8 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   overflow: clip;
   max-width: 8ch;
   transition:
-    max-width 0.6s var(--ease-out-expo),
-    opacity 0.4s var(--ease-out-expo);
+    max-width 0.6s var(--ease-out),
+    opacity 0.4s var(--ease-out);
 }
 .bd-root[data-applied-by-you="0"] .bd-lbl-b {
   max-width: 0;
@@ -149,23 +149,23 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
 }
 .bd-zero {
   position: relative;
-  color: var(--color-ink);
+  color: var(--c-ink);
   padding: 4px 8px;
   margin: -4px -8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-accent-soft) calc(var(--pulse, 0) * 100%), transparent);
-  box-shadow: 0 0 0 calc(var(--pulse, 0) * 1px) var(--color-accent-line);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--c-accent-soft) calc(var(--pulse, 0) * 100%), transparent);
+  box-shadow: 0 0 0 calc(var(--pulse, 0) * 1px) var(--c-accent-line);
 }
 
 /* ── board ── */
 .bd-board {
   position: relative;
   padding: 18px 16px 16px;
-  border-radius: 28px;
+  border-radius: var(--r-xl);
   box-shadow:
-    0 1px 0 rgba(27, 25, 22, 0.04),
-    0 40px 80px -50px rgba(27, 25, 22, 0.45);
-  border: 1px solid rgba(27, 25, 22, 0.06);
+    var(--shadow-contact),
+    var(--shadow-1);
+  border: 1px solid color-mix(in oklab, var(--c-ink) 6%, transparent);
 }
 /* The white surface is its own leaf so it can open a window: full, minus a rectangle over the
    Interview column whose strength (--win, 0..0.72) is scrubbed while the tile lands. */
@@ -173,11 +173,11 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--color-surface);
+  background: var(--c-surface);
   pointer-events: none;
   --win: 0;
-  -webkit-mask-image: linear-gradient(#000, #000), linear-gradient(rgba(0, 0, 0, var(--win)), rgba(0, 0, 0, var(--win)));
-  mask-image: linear-gradient(#000, #000), linear-gradient(rgba(0, 0, 0, var(--win)), rgba(0, 0, 0, var(--win)));
+  -webkit-mask-image: linear-gradient(black, black), linear-gradient(color-mix(in srgb, black calc(var(--win) * 100%), transparent), color-mix(in srgb, black calc(var(--win) * 100%), transparent));
+  mask-image: linear-gradient(black, black), linear-gradient(color-mix(in srgb, black calc(var(--win) * 100%), transparent), color-mix(in srgb, black calc(var(--win) * 100%), transparent));
   -webkit-mask-size: auto, var(--ww, 0px) var(--wh, 0px);
   mask-size: auto, var(--ww, 0px) var(--wh, 0px);
   -webkit-mask-position: 0 0, var(--wx, 0px) var(--wy, 0px);
@@ -205,8 +205,8 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   flex-direction: column;
   height: clamp(340px, 46svh, 420px);
   padding: 12px 8px 8px;
-  border-radius: 18px;
-  background: #f7f5f0;
+  border-radius: calc(var(--r-md) * 9 / 8);
+  background: var(--c-board-col);
   --draw: 1;
   --hi: 0;
 }
@@ -219,14 +219,14 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   line-height: 1.2;
   font-weight: 560;
   letter-spacing: -0.01em;
-  color: color-mix(in srgb, var(--color-accent) calc(var(--hi) * 100%), var(--color-ink));
+  color: color-mix(in srgb, var(--c-accent) calc(var(--hi) * 100%), var(--c-ink));
 }
 .bd-count {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-  color: var(--color-muted);
+  color: var(--c-ink-2);
 }
 .bd-col-hair,
 .bd-col-rule {
@@ -236,7 +236,7 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
 }
 .bd-col-hair {
   height: 1px;
-  background: var(--color-line);
+  background: var(--c-rule);
   transform-origin: 0 50%;
 }
 .bd-col-rule {
@@ -266,13 +266,13 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   gap: 8px;
   height: 58px;
   padding: 0 10px 0 11px;
-  border-radius: 12px;
-  background: var(--color-paper);
-  border: 1px solid var(--color-line);
-  color: var(--color-ink);
+  border-radius: calc(var(--r-sm) * 6 / 5);
+  background: var(--c-paper-2);
+  border: 1px solid var(--c-rule);
+  color: var(--c-ink);
   transition:
-    box-shadow 0.45s var(--ease-out-expo),
-    border-color 0.45s var(--ease-out-expo);
+    box-shadow 0.45s var(--ease-out),
+    border-color 0.45s var(--ease-out);
 }
 .bd-ghost-ini {
   flex: none;
@@ -280,13 +280,14 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   place-items: center;
   width: 20px;
   height: 20px;
-  border-radius: 6px;
-  background: #f1ece3;
+  border-radius: var(--r-xs);
+  background: var(--c-tile);
   font-family: var(--font-mono);
+  font-variant-numeric: var(--mono-numeric);
   font-size: 8px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--color-muted);
+  letter-spacing: calc(0.04em * var(--mono-tracking));
+  color: var(--c-ink-2);
 }
 .bd-ghost-main {
   flex: 1;
@@ -318,7 +319,7 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
 .bd-ghost-co {
   font-size: 10px;
   line-height: 12px;
-  color: var(--color-muted);
+  color: var(--c-ink-2);
 }
 .bd-ghost-score {
   position: absolute;
@@ -327,19 +328,19 @@ html:not(.motion) .bd-step:not([data-step="3"]) {
   opacity: 0;
   transform: translateY(3px);
   padding: 1px 5px;
-  border-radius: 999px;
-  background: var(--color-paper);
+  border-radius: var(--r-pill);
+  background: var(--c-paper-2);
   font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   transition:
-    transform 0.45s var(--ease-out-expo),
-    opacity 0.45s var(--ease-out-expo);
+    transform 0.45s var(--ease-out),
+    opacity 0.45s var(--ease-out);
 }
 @media (hover: hover) {
   .bd-ghost:hover {
-    border-color: #d9d1c3;
-    box-shadow: 0 12px 24px -16px rgba(27, 25, 22, 0.35);
+    border-color: var(--c-ghost-line-hover);
+    box-shadow: var(--shadow-hover);
     transition-duration: 0.2s;
   }
   .bd-ghost:hover .bd-ghost-score {
@@ -400,12 +401,12 @@ html.motion .bd-ghost {
   font-size: 10.5px;
   line-height: 1;
   font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: calc(0.06em * var(--mono-tracking));
+  text-transform: var(--mono-case);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "case";
   white-space: nowrap;
-  color: var(--color-ink);
+  color: var(--c-ink);
 }
 /* Booked: the clock's text ends at the "now" dot, leaving the axis ahead of it clear for the slot flag. */
 .bd-days-clock[data-booked] {
@@ -426,12 +427,12 @@ html:not(.motion) .bd-days-clock {
   font-size: 10.5px;
   line-height: 1;
   font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: calc(0.06em * var(--mono-tracking));
+  text-transform: var(--mono-case);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "case";
   white-space: nowrap;
-  color: var(--color-accent);
+  color: var(--c-accent);
 }
 .bd-days-slot::before {
   content: "";
@@ -441,8 +442,8 @@ html:not(.motion) .bd-days-clock {
   width: 5px;
   height: 5px;
   margin-top: -3px;
-  border-radius: 50%;
-  background: var(--color-accent);
+  border-radius: var(--r-round);
+  background: var(--c-accent);
 }
 html.motion .bd-days-slot {
   opacity: 0;
@@ -457,38 +458,39 @@ html:not(.motion) .bd-days {
   left: calc(var(--now) * 100% - 3.5px);
   width: 7px;
   height: 7px;
-  border-radius: 50%;
-  background: var(--color-ink);
-  box-shadow: 0 0 0 3px var(--color-canvas);
+  border-radius: var(--r-round);
+  background: var(--c-ink);
+  box-shadow: 0 0 0 3px var(--c-paper);
 }
 .bd-days-list {
   position: relative;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   /* The bottom edge is the time axis: hairline, a tick at every day, small ticks every 6h. */
-  border-bottom: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--c-rule);
   background:
-    repeating-linear-gradient(to right, var(--color-line) 0 1px, transparent 1px 20%) 0 100% / 100% 7px no-repeat,
-    repeating-linear-gradient(to right, rgba(27, 25, 22, 0.1) 0 1px, transparent 1px 5%) 0 100% / 100% 4px no-repeat;
+    repeating-linear-gradient(to right, var(--c-rule) 0 1px, transparent 1px 20%) 0 100% / 100% 7px no-repeat,
+    repeating-linear-gradient(to right, color-mix(in oklab, var(--c-ink) 10%, transparent) 0 1px, transparent 1px 5%) 0 100% / 100% 4px no-repeat;
 }
 .bd-day {
   padding: 0 0 9px 5px;
   font-family: var(--font-mono);
+  font-variant-numeric: var(--mono-numeric);
   font-size: 10.5px;
   line-height: 1;
   font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: calc(0.08em * var(--mono-tracking));
+  text-transform: var(--mono-case);
   font-feature-settings: "case";
-  color: var(--color-muted);
-  transition: color 0.4s var(--ease-out-expo);
+  color: var(--c-ink-2);
+  transition: color 0.4s var(--ease-out);
 }
 .bd-root[data-today="0"] .bd-day[data-day="0"],
 .bd-root[data-today="1"] .bd-day[data-day="1"],
 .bd-root[data-today="2"] .bd-day[data-day="2"],
 .bd-root[data-today="3"] .bd-day[data-day="3"],
 .bd-root[data-today="4"] .bd-day[data-day="4"] {
-  color: var(--color-ink);
+  color: var(--c-ink);
 }
 
 /* The light: a warm pool that crosses the board with the time of day, cooler at night. */
@@ -498,8 +500,8 @@ html:not(.motion) .bd-days {
   border-radius: inherit;
   pointer-events: none;
   background:
-    radial-gradient(70% 120% at var(--sun-x, 20%) var(--sun-y, 60%), rgba(255, 186, 102, calc(0.36 * var(--sun-a, 0.5))), rgba(255, 214, 160, calc(0.12 * var(--sun-a, 0.5))) 45%, transparent 75%),
-    linear-gradient(rgba(36, 52, 92, calc(0.07 * var(--night, 0))), rgba(36, 52, 92, calc(0.07 * var(--night, 0))));
+    radial-gradient(70% 120% at var(--sun-x, 20%) var(--sun-y, 60%) in srgb, color-mix(in oklab, var(--art-lamp) calc((0.36 * var(--sun-a, 0.5)) * 100%), transparent), color-mix(in oklab, var(--art-sun-haze) calc((0.12 * var(--sun-a, 0.5)) * 100%), transparent) 45%, transparent 75%),
+    linear-gradient(color-mix(in oklab, var(--art-board-dusk) calc((0.07 * var(--night, 0)) * 100%), transparent), color-mix(in oklab, var(--art-board-dusk) calc((0.07 * var(--night, 0)) * 100%), transparent));
 }
 .bd-board-title,
 .bd-cols {
@@ -507,7 +509,7 @@ html:not(.motion) .bd-days {
 }
 /* Column floors are a tint over the lit board, and warm as the tile passes over them. */
 .bd-col {
-  background: rgba(27, 25, 22, 0.035);
+  background: color-mix(in oklab, var(--c-ink) 3.5%, transparent);
 }
 .bd-col > * {
   position: relative;
@@ -522,11 +524,11 @@ html:not(.motion) .bd-days {
   pointer-events: none;
 }
 .bd-col > .bd-col-warm {
-  background: linear-gradient(to top, rgba(255, 176, 92, 0.3), rgba(255, 196, 128, 0.08) 55%, transparent 85%);
+  background: linear-gradient(to top in srgb, color-mix(in oklab, var(--art-col-warm) 30%, transparent), color-mix(in oklab, var(--art-col-warm-2) 8%, transparent) 55%, transparent 85%);
   opacity: 0;
 }
 .bd-col > .bd-col-breath {
-  background: linear-gradient(to top, rgba(255, 170, 84, 0.22), transparent 70%);
+  background: linear-gradient(to top, color-mix(in oklab, var(--art-col-breath) 22%, transparent), transparent 70%);
   transform-origin: 50% 100%;
   transform: scaleY(var(--b, 0));
   opacity: var(--b, 0);
@@ -547,8 +549,8 @@ html:not(.motion) .bd-col > :is(.bd-col-warm, .bd-col-breath) {
 .bd-glow {
   position: absolute;
   pointer-events: none;
-  border-radius: 18px;
-  background: radial-gradient(90% 70% at 50% 8%, rgba(255, 168, 64, 0.5), rgba(255, 186, 102, 0.18) 45%, transparent 75%);
+  border-radius: calc(var(--r-md) * 9 / 8);
+  background: radial-gradient(90% 70% at 50% 8% in srgb, color-mix(in oklab, var(--art-board-glow) 50%, transparent), color-mix(in oklab, var(--art-lamp) 18%, transparent) 45%, transparent 75%);
   opacity: var(--glow, 0);
   mix-blend-mode: multiply;
 }
@@ -685,7 +687,7 @@ html:not(.motion) .bd-float {
   }
   .bd-board {
     padding: 12px 10px 10px;
-    border-radius: 22px;
+    border-radius: calc(var(--r-lg) * 11 / 12);
   }
   .bd-board-title {
     display: none;
@@ -701,7 +703,7 @@ html:not(.motion) .bd-float {
     grid-template-rows: auto auto;
     align-items: center;
     padding: 8px 10px;
-    border-radius: 14px;
+    border-radius: calc(var(--r-md) * 7 / 8);
   }
   .bd-col-h {
     grid-column: 1;
@@ -753,9 +755,9 @@ html:not(.motion) .bd-float {
     min-height: 0;
     width: 34px;
     padding: 0;
-    border-radius: 3px;
+    border-radius: calc(var(--r-2xs) * 3 / 2);
     border: 0;
-    background: #e4ddd0;
+    background: var(--c-ghost);
     overflow: hidden;
   }
   .bd-ghost > * {
@@ -774,8 +776,8 @@ html:not(.motion) .bd-float {
   html:not(.motion) .bd-ghost {
     height: 52px;
     padding: 0 10px;
-    border: 1px solid var(--color-line);
-    background: var(--color-paper);
+    border: 1px solid var(--c-rule);
+    background: var(--c-paper-2);
   }
   html:not(.motion) .bd-ghost > * {
     display: revert;

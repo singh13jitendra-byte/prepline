@@ -120,9 +120,9 @@ export function offsetIn(el: HTMLElement, root: HTMLElement): { x: number; y: nu
 }
 
 /** Mask that keeps what is below viewport y, with a 24px soft edge (for copy the Line is wiping). */
-export const softBelow = (y: number) => `linear-gradient(to bottom, transparent ${y.toFixed(1)}px, #000 ${(y + 24).toFixed(1)}px)`;
+export const softBelow = (y: number) => `linear-gradient(to bottom, transparent ${y.toFixed(1)}px, black ${(y + 24).toFixed(1)}px)`;
 /** Mask that keeps what is above viewport y, with a 24px soft edge. */
-export const softAbove = (y: number) => `linear-gradient(to bottom, #000 ${(y - 24).toFixed(1)}px, transparent ${y.toFixed(1)}px)`;
+export const softAbove = (y: number) => `linear-gradient(to bottom, black ${(y - 24).toFixed(1)}px, transparent ${y.toFixed(1)}px)`;
 /**
  * Card → tile (the `saved` beat): the title block is handed over, not swapped. On the card it sits
  * right of the initials; on the tile, under them. While the Actor shrinks, the card's block slides

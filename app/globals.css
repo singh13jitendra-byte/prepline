@@ -1,33 +1,61 @@
+/* Theme first: every colour, font, radius, shadow, texture and easing is a token in app/theme.css. */
+@import "./theme.css";
+/* Directions: add `@import "./themes/<name>.css";` here (after theme.css), then applyTheme("<name>"). */
 @import "tailwindcss";
 
-/* Prepline tokens: map these to Pulse semantic tokens when you wire the design system in. */
-@theme {
-  --color-canvas: #f6f4ef;
-  --color-surface: #ffffff;
-  --color-sunk: #efece5;
-  --color-line: #e4dfd5;
-  --color-ink: #1b1916;
-  --color-muted: #5f5a53;
-  --color-accent: #b45309;
-  --color-accent-soft: #fdf0dc;
-  --color-accent-line: #f1cf9c;
-  --color-night: #0a1e3c;
-  --color-night-2: #061226;
-  --color-paper: #fffdf8;
-  --color-gold: #ffd77a;
-  --color-green: #7ee2a8;
+/* Tailwind utilities speak the theme's role names (bg-paper, text-ink, border-rule, font-display ...).
+   `inline` makes each utility read the role token itself, so a theme swap restyles them too. */
+@theme inline {
+  --color-paper: var(--c-paper);
+  --color-paper-2: var(--c-paper-2);
+  --color-paper-sunk: var(--c-paper-sunk);
+  --color-surface: var(--c-surface);
+  --color-ink: var(--c-ink);
+  --color-ink-2: var(--c-ink-2);
+  --color-ink-3: var(--c-ink-3);
+  --color-rule: var(--c-rule);
+  --color-night: var(--c-night);
+  --color-night-2: var(--c-night-2);
+  --color-on-night: var(--c-on-night);
+  --color-on-night-2: var(--c-on-night-2);
+  --color-rule-night: var(--c-rule-night);
+  --color-accent: var(--c-accent);
+  --color-accent-ink: var(--c-accent-ink);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-accent-line: var(--c-accent-line);
+  --color-accent-night: var(--c-accent-night);
+  --color-line: var(--c-line);
+  --color-line-glow: var(--c-line-glow);
+  --color-match: var(--c-match);
+  --color-dim: var(--c-dim);
+  --color-success: var(--c-success);
+  --color-danger: var(--c-danger);
+  --color-focus: var(--c-focus);
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: var(--font-display);
+  --font-text: var(--font-text);
+  --font-mono: var(--font-mono);
+  --font-accent: var(--font-accent);
+  /* Tailwind's preflight and `font-sans` / `font-serif` read these. */
+  --font-sans: var(--font-text);
+  --font-serif: var(--font-accent);
+
+  --radius-xs: var(--r-xs);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-pill: var(--r-pill);
+
+  --shadow-1: var(--shadow-1);
+  --shadow-2: var(--shadow-2);
+  --shadow-field: var(--shadow-field);
 
   /* Motion (storyboard 4). Travel: 0.8s. Entrances: expo.out 0.7 to 0.9s. Exits: power2.in 0.25s. */
-  --ease-travel: cubic-bezier(0.65, 0, 0.15, 1);
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-quad: cubic-bezier(0.5, 0, 0.75, 0);
-
-  --radius-card: 1.25rem;
-  --radius-panel: 1.75rem;
+  --ease-out: var(--ease-out);
+  --ease-in: var(--ease-in);
+  --ease-in-out: var(--ease-in-out);
+  --ease-spring: var(--ease-spring);
 }
 
 html {
@@ -41,8 +69,9 @@ html.lenis {
 }
 
 body {
-  background: var(--color-canvas);
-  color: var(--color-ink);
+  background: var(--c-paper);
+  color: var(--c-ink);
+  font-family: var(--font-text);
 }
 
 /* Hero pieces wait (invisible) until GSAP has set their starting positions. */
@@ -52,12 +81,12 @@ html.hp [data-hero-hide] {
 /* Headline letters lift a little under the pointer once they've landed. */
 .hchar {
   display: inline-block;
-  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), color 0.3s;
+  transition: transform 0.45s var(--ease-out-soft), color 0.3s;
 }
 @media (hover: hover) {
   .hchar:hover {
     transform: translateY(-0.07em) rotate(-3deg);
-    color: #ffd77a;
+    color: var(--c-accent-night);
   }
 }
 
@@ -133,61 +162,67 @@ html.hp [data-hero-hide] {
 
 /* ── type scale (storyboard 4) ── */
 @utility type-display-xl {
-  font-size: clamp(72px, 10.5vw, 168px);
-  line-height: 0.88;
-  letter-spacing: -0.055em;
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: var(--fs-display-xl);
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-display);
+  font-weight: var(--weight-display);
 }
 @utility type-display-l {
-  font-size: clamp(54px, 7.2vw, 118px);
-  line-height: 0.9;
-  letter-spacing: -0.055em;
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: var(--fs-display-l);
+  line-height: var(--leading-display-l);
+  letter-spacing: var(--tracking-display);
+  font-weight: var(--weight-display);
 }
 @utility type-counter {
-  font-size: clamp(96px, 15vw, 240px);
-  line-height: 0.85;
-  letter-spacing: -0.06em;
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: var(--fs-counter);
+  line-height: var(--leading-counter);
+  letter-spacing: var(--tracking-counter);
+  font-weight: var(--weight-display);
   font-variant-numeric: tabular-nums;
 }
 @utility type-sentence {
-  font-size: clamp(40px, 5vw, 76px);
-  line-height: 1.02;
-  letter-spacing: -0.045em;
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: var(--fs-sentence);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-sentence);
+  font-weight: var(--weight-display);
 }
 @utility type-h2 {
-  font-size: clamp(34px, 4vw, 60px);
-  line-height: 1.02;
-  letter-spacing: -0.04em;
-  font-weight: 500;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-h2);
+  font-weight: var(--weight-display);
 }
 @utility type-lead {
-  font-size: 20px;
-  line-height: 1.45;
-  letter-spacing: -0.01em;
-  font-weight: 400;
+  font-size: var(--fs-lead);
+  line-height: var(--leading-lead);
+  letter-spacing: var(--tracking-lead);
+  font-weight: var(--weight-text);
 }
 @utility type-body {
-  font-size: clamp(15px, 1.2vw, 17px);
-  line-height: 1.55;
-  letter-spacing: 0;
-  font-weight: 400;
+  font-size: var(--fs-body);
+  line-height: var(--leading-text);
+  letter-spacing: var(--tracking-text);
+  font-weight: var(--weight-text);
 }
 @utility type-mono {
   font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.2;
-  letter-spacing: 0.08em;
-  font-weight: 500;
-  text-transform: uppercase;
+  font-variant-numeric: var(--mono-numeric);
+  font-size: var(--fs-micro);
+  line-height: var(--leading-micro);
+  letter-spacing: calc(var(--tracking-micro) * var(--mono-tracking));
+  font-weight: var(--weight-label);
+  text-transform: var(--mono-case);
 }
 @utility type-card {
-  font-size: 15px;
-  line-height: 1.35;
-  letter-spacing: -0.005em;
-  font-weight: 400;
+  font-size: var(--fs-small);
+  line-height: var(--leading-small);
+  letter-spacing: var(--tracking-small);
+  font-weight: var(--weight-text);
 }
 
 /* Line scope wrapper: no box, no stacking context, only inheritance. */
@@ -202,11 +237,12 @@ html.hp [data-hero-hide] {
   bottom: clamp(16px, 2.6vh, 28px);
   z-index: 2;
   font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.2;
-  letter-spacing: 0.08em;
-  font-weight: 500;
-  text-transform: uppercase;
+  font-variant-numeric: var(--mono-numeric);
+  font-size: var(--fs-micro);
+  line-height: var(--leading-micro);
+  letter-spacing: calc(var(--tracking-micro) * var(--mono-tracking));
+  font-weight: var(--weight-label);
+  text-transform: var(--mono-case);
   opacity: 0.6;
   pointer-events: none;
 }
@@ -271,46 +307,53 @@ html.motion .story-panel[data-focusable]:not([data-current]) {
 /* Static page: chapters are plain blocks, night ones as rounded panels on cream. */
 html:not(.motion) .story-stage[data-chapter="night"] {
   margin: 12px;
-  border-radius: 28px;
-  background: radial-gradient(120% 90% at 50% 0%, var(--color-night) 0%, var(--color-night-2) 100%);
-  color: #fff;
+  border-radius: var(--r-xl);
+  background: radial-gradient(120% 90% at 50% 0%, var(--c-night) 0%, var(--c-night-2) 100%);
+  color: var(--c-on-night);
   overflow: clip;
 }
 
 /* ── faces and the Actor (components/story/Actor.tsx, FaceSlot.tsx) ── */
 [data-skin="night"] {
-  --face-bg: rgba(255, 255, 255, 0.08);
-  --face-fg: #ffffff;
-  --face-muted: rgba(255, 255, 255, 0.7);
-  --face-border: rgba(255, 255, 255, 0.2);
-  --face-accent: var(--color-gold);
+  --face-bg: color-mix(in oklab, var(--c-on-night) 8%, transparent);
+  --face-fg: var(--c-on-night);
+  --face-muted: color-mix(in oklab, var(--c-on-night) 70%, transparent);
+  --face-border: color-mix(in oklab, var(--c-on-night) 20%, transparent);
+  --face-accent: var(--c-accent-night);
   --face-shadow: none;
 }
 [data-skin="day"] {
-  --face-bg: var(--color-paper);
-  --face-fg: var(--color-ink);
-  --face-muted: var(--color-muted);
-  --face-border: var(--color-line);
-  --face-accent: var(--color-accent);
+  --face-bg: var(--c-paper-2);
+  --face-fg: var(--c-ink);
+  --face-muted: var(--c-ink-2);
+  --face-border: var(--c-rule);
+  --face-accent: var(--c-accent);
   /* Warm and long. */
-  --face-shadow: 0 40px 80px -50px rgba(27, 25, 22, 0.45);
+  --face-shadow: var(--shadow-1);
 }
-/* It deepens while the Actor is in flight. --lift (0, 1, 0) is written on the chrome itself, a leaf. */
-.face[data-skin="day"] > .face-chrome {
-  box-shadow: 0 calc(40px + 16px * var(--lift, 0)) 80px -50px rgba(27, 25, 22, calc(0.45 + 0.2 * var(--lift, 0)));
+/* It deepens while the Actor is in flight: --shadow-1 at rest, --shadow-2 in flight. */
+.actor[data-moving] .face[data-skin="day"] > .face-chrome {
+  box-shadow: var(--shadow-2);
+}
+/* The default theme blends continuously: --lift (0, 1, 0) is written on the chrome itself, a leaf,
+   and a custom property resolves where it is declared, so the blend is spelled here from the
+   theme's --shadow-* parts. Named themes (html[data-theme]) get the two steps above. */
+:root:not([data-theme]) .face[data-skin="day"] > .face-chrome {
+  box-shadow: 0 calc(var(--shadow-y) + var(--shadow-dy) * var(--lift, 0)) var(--shadow-blur) var(--shadow-spread)
+    color-mix(in oklab, var(--c-shadow) calc(var(--shadow-a) + var(--shadow-da) * var(--lift, 0)), transparent);
 }
 /* The tile at night (nightfall only) is already the prep sheet's cover: lamp-lit paper, not glass.
    Same paper as .sh-face-back in sheet.css, so the sheet can take over without a visible change. */
 .face[data-face="tile"][data-skin="night"] {
-  --face-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 40%), #f8f3e8;
-  --face-fg: var(--color-ink);
-  --face-muted: var(--color-muted);
-  --face-border: rgba(255, 238, 206, 0.22);
-  --face-accent: var(--color-accent);
-  --face-chip: #f4efe6;
-  --face-chip-line: #e8e1d4;
-  --face-tile: #f1ece3;
-  --face-shadow: 0 30px 120px -30px rgba(255, 186, 102, 0.38), 0 0 60px -10px rgba(255, 210, 150, 0.12);
+  --face-bg: linear-gradient(180deg, color-mix(in oklab, var(--art-highlight) 50%, transparent), color-mix(in oklab, var(--art-highlight) 0%, transparent) 40%), var(--c-paper-lamp);
+  --face-fg: var(--c-ink);
+  --face-muted: var(--c-ink-2);
+  --face-border: color-mix(in oklab, var(--art-lamp-edge) 22%, transparent);
+  --face-accent: var(--c-accent);
+  --face-chip: var(--c-chip);
+  --face-chip-line: var(--c-chip-line);
+  --face-tile: var(--c-tile);
+  --face-shadow: var(--shadow-lamp);
 }
 .face {
   position: absolute;
@@ -320,7 +363,7 @@ html:not(.motion) .story-stage[data-chapter="night"] {
 .face-chrome {
   position: absolute;
   inset: 0;
-  border-radius: var(--face-radius, 16px);
+  border-radius: var(--face-radius, var(--r-md));
   background: var(--face-bg);
   border: 1px solid var(--face-border);
   box-shadow: var(--face-shadow);
@@ -328,7 +371,7 @@ html:not(.motion) .story-stage[data-chapter="night"] {
 .face-clip {
   position: absolute;
   inset: 0;
-  border-radius: var(--face-radius, 16px);
+  border-radius: var(--face-radius, var(--r-md));
 }
 .face-clip[data-clip] {
   overflow: clip;
@@ -346,11 +389,12 @@ html:not(.motion) .story-stage[data-chapter="night"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: repeating-linear-gradient(135deg, rgba(128, 128, 128, 0.28) 0 10px, rgba(128, 128, 128, 0.16) 10px 20px);
+  background: repeating-linear-gradient(135deg, color-mix(in oklab, var(--art-placeholder) 28%, transparent) 0 10px, color-mix(in oklab, var(--art-placeholder) 16%, transparent) 10px 20px);
   font-family: var(--font-mono);
+  font-variant-numeric: var(--mono-numeric);
   font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: calc(0.08em * var(--mono-tracking));
+  text-transform: var(--mono-case);
   color: var(--face-fg);
 }
 

@@ -33,12 +33,20 @@ import { useEffect, useRef, useSyncExternalStore, type CSSProperties, type React
 import { registerAnchor, type AnchorId } from "@/lib/anchors";
 import type { FaceId, Skin } from "@/lib/story";
 import { facesVersion, getFace, subscribeFaces, type FaceProps } from "./faces";
+import { faceRadius, onThemeChange } from "@/lib/theme";
+
+/**
+ * Paper objects stay paper whatever the chapter's light: the tile, the sheet and the ticket in both
+ * skins, the row and the card by day. `[data-paper]` is the theme scope for them (app/themes/_template.css);
+ * no default style uses it.
+ */
+const isPaper = (face: FaceId, skin: Skin) => skin === "day" || face === "tile" || face === "sheet" || face === "ticket";
 
 export function FaceFrame({ face, skin, fold, progress, host }: { face: FaceId } & FaceProps) {
   useSyncExternalStore(subscribeFaces, facesVersion, () => 0);
   const { Component, meta } = getFace(face);
   return (
-    <div className="face" data-face={face} data-skin={skin} data-chrome={meta.chrome ? "" : undefined}>
+    <div className="face" data-face={face} data-skin={skin} data-paper={isPaper(face, skin) ? "" : undefined} data-chrome={meta.chrome ? "" : undefined}>
       {meta.chrome ? <div className="face-chrome" /> : null}
       <div className="face-clip" data-clip={meta.clip ? "" : undefined}>
         <div className="face-content" style={{ width: meta.width, height: meta.height }}>
@@ -75,16 +83,18 @@ export function FaceSlot({ anchor, face, skin, fold = 1, showWhenStatic = true, 
     const apply = () => {
       const scale = el.clientWidth / meta.width || 1;
       el.style.setProperty("--face-scale", scale.toFixed(4));
-      el.style.setProperty("--face-radius", `${(meta.radius * scale).toFixed(2)}px`);
+      el.style.setProperty("--face-radius", `${(faceRadius(face, meta.radius) * scale).toFixed(2)}px`);
     };
     apply();
     const ro = new ResizeObserver(apply);
     ro.observe(el);
+    const offTheme = onThemeChange(apply);
     return () => {
       ro.disconnect();
+      offTheme();
       off();
     };
-  }, [anchor, meta.width, meta.radius]);
+  }, [anchor, face, meta.width, meta.radius]);
 
   return (
     <div
@@ -94,7 +104,7 @@ export function FaceSlot({ anchor, face, skin, fold = 1, showWhenStatic = true, 
       style={
         {
           "--slot-w": `${meta.width}px`,
-          "--face-radius": `${meta.radius}px`,
+          "--face-radius": `var(--r-face-${face}, ${meta.radius}px)`,
           "--fold": fold,
           "--progress": 1,
           "--flip": 0,

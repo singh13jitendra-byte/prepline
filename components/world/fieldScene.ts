@@ -1,5 +1,6 @@
 import type * as THREE_NS from "three";
 import type { Three } from "@/lib/gl";
+import type { WorldColorRole } from "@/lib/theme";
 import { LENS_RADIUS } from "./bus";
 
 /**
@@ -220,15 +221,26 @@ const vert = /* glsl */ `
   varying vec4 vFx;   // halo, border, top edge, halo reach
   varying vec3 vEdge; // border colour
 
+  // Colours come from the theme (lib/theme.ts readWorld, set in worldRuntime.ts): no literals here.
+  uniform vec3 ucWarm;  // --art-speck-warm
+  uniform vec3 ucCool;  // --art-speck-cool
+  uniform vec3 ucGold;  // --c-match
+  uniform vec3 ucEmber; // --art-ember
+  uniform vec3 ucLamp;  // --art-lamp-dust
+  uniform vec3 ucInk;   // --art-dust-day
+  uniform vec3 ucAmber; // --c-accent
+  uniform vec3 ucSeat;  // --art-seat
+  uniform vec3 ucEdge;  // --c-on-night
+  #define WARM ucWarm
+  #define COOL ucCool
+  #define GOLD ucGold
+  #define EMBER ucEmber
+  #define LAMP ucLamp
+  #define INK ucInk
+  #define AMBER ucAmber
+  #define SEAT ucSeat
+
   const float PI = 3.14159265;
-  const vec3 WARM = vec3(1.0, 0.94, 0.82);
-  const vec3 COOL = vec3(0.80, 0.89, 1.0);
-  const vec3 GOLD = vec3(1.0, 0.843, 0.478);
-  const vec3 EMBER = vec3(1.0, 0.74, 0.38);
-  const vec3 LAMP = vec3(1.0, 0.80, 0.56);
-  const vec3 INK = vec3(0.106, 0.098, 0.086);
-  const vec3 AMBER = vec3(0.706, 0.325, 0.035);
-  const vec3 SEAT = vec3(0.96, 0.66, 0.16);
 
   float backOut(float x) {
     float s = 1.4;
@@ -381,7 +393,7 @@ const vert = /* glsl */ `
         // Landed: the gold glass turns into the row's own glass as the DOM row fades in over it.
         float landed = clamp((t0 - ${ROW_IN.toFixed(2)}) / ${LAND_FADE.toFixed(2)}, 0.0, 1.0);
         border = shape;
-        edgeCol = mix(GOLD, vec3(1.0), landed);
+        edgeCol = mix(GOLD, ucEdge, landed);
         alpha = mix(1.0, 0.34, shape);
         halo *= 1.0 - shape;
         gone = mix(landed, clamp(uGatherT / 0.3, 0.0, 1.0), 1.0 - has);
@@ -544,7 +556,29 @@ export type FieldUniforms = {
   uClaim: { value: THREE_NS.Vector2 };
   uFil: { value: THREE_NS.Vector4 };
   uFilK: { value: THREE_NS.Vector2 };
+  ucWarm: { value: THREE_NS.Vector3 };
+  ucCool: { value: THREE_NS.Vector3 };
+  ucGold: { value: THREE_NS.Vector3 };
+  ucEmber: { value: THREE_NS.Vector3 };
+  ucLamp: { value: THREE_NS.Vector3 };
+  ucInk: { value: THREE_NS.Vector3 };
+  ucAmber: { value: THREE_NS.Vector3 };
+  ucSeat: { value: THREE_NS.Vector3 };
+  ucEdge: { value: THREE_NS.Vector3 };
 };
+
+/** Field uniform ← world colour role (lib/theme.ts WORLD_COLORS). */
+export const FIELD_COLORS = {
+  ucWarm: "speckWarm",
+  ucCool: "speckCool",
+  ucGold: "match",
+  ucEmber: "ember",
+  ucLamp: "lampDust",
+  ucInk: "dustDay",
+  ucAmber: "accent",
+  ucSeat: "seat",
+  ucEdge: "edge",
+} as const satisfies Partial<Record<keyof FieldUniforms, WorldColorRole>>;
 
 export function createField(THREE: Three, data: FieldData, width: number, height: number) {
   const base = new THREE.PlaneGeometry(2, 2);
@@ -589,6 +623,15 @@ export function createField(THREE: Three, data: FieldData, width: number, height
     uClaim: { value: new THREE.Vector2(0, 0) },
     uFil: { value: new THREE.Vector4(0, 0, 1, 1) },
     uFilK: { value: new THREE.Vector2(0, 0) },
+    ucWarm: { value: new THREE.Vector3() },
+    ucCool: { value: new THREE.Vector3() },
+    ucGold: { value: new THREE.Vector3() },
+    ucEmber: { value: new THREE.Vector3() },
+    ucLamp: { value: new THREE.Vector3() },
+    ucInk: { value: new THREE.Vector3() },
+    ucAmber: { value: new THREE.Vector3() },
+    ucSeat: { value: new THREE.Vector3() },
+    ucEdge: { value: new THREE.Vector3() },
   };
 
   const material = new THREE.ShaderMaterial({

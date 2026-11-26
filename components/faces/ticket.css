@@ -16,14 +16,14 @@
   --tk-foot: 13px;
   --tk-success: 17px;
   --tk-ring: 54px;
-  --tk-ink: #1b1916;
-  --tk-muted: #5f5a53;
-  --tk-rule: #e4ddd0;
-  --tk-accent: #b45309;
+  --tk-ink: var(--c-ink);
+  --tk-muted: var(--c-ink-2);
+  --tk-rule: var(--c-ghost);
+  --tk-accent: var(--c-accent);
   position: absolute;
   inset: 0;
   color: var(--tk-ink);
-  font-family: var(--font-sans);
+  font-family: var(--font-text);
 }
 @media (max-width: 767px) {
   .tk-root {
@@ -45,13 +45,20 @@
 .tk-plate {
   position: absolute;
   inset: 0;
-  border-radius: 24px;
+  border-radius: var(--r-lg);
   pointer-events: none;
 }
 .tk-root[data-skin="day"] .tk-plate {
+  box-shadow: var(--shadow-1);
+}
+.actor[data-moving] .tk-root[data-skin="day"] .tk-plate {
+  box-shadow: var(--shadow-2);
+}
+/* Default theme: the ticket's own warm cast shadow, deepening with --lift (see app/theme.css). */
+:root:not([data-theme]) .tk-root[data-skin="day"] .tk-plate {
   box-shadow:
-    0 30px 46px -26px rgba(60, 40, 16, calc(0.34 + 0.12 * var(--lift, 0))),
-    0 2px 4px rgba(27, 25, 22, 0.06);
+    var(--shadow-plate-geo) color-mix(in oklab, var(--art-plate-shadow) calc(var(--shadow-plate-a) + var(--shadow-plate-da) * var(--lift, 0)), transparent),
+    var(--shadow-plate-contact);
 }
 /* Two papers meeting at the perforation: the main ticket and the stub, which tears away with scroll. */
 .tk-paper {
@@ -60,21 +67,21 @@
   bottom: 0;
   overflow: hidden;
   background:
-    radial-gradient(90% 120% at 100% 0%, rgba(255, 215, 122, 0.16) 0%, rgba(255, 215, 122, 0) 55%),
-    linear-gradient(180deg, #fffefa 0%, #fdf8ee 100%);
+    radial-gradient(90% 120% at 100% 0%, color-mix(in oklab, var(--c-line) 16%, transparent) 0%, color-mix(in oklab, var(--c-line) 0%, transparent) 55%),
+    linear-gradient(180deg, var(--c-ticket-top) 0%, var(--c-ticket-bottom) 100%);
   background-size: 520px 100%;
 }
 .tk-paper-main {
   left: 0;
   width: var(--tk-perf);
-  border-radius: 24px 0 0 24px;
+  border-radius: var(--r-lg) 0 0 var(--r-lg);
   background-position: 0 0;
   -webkit-mask:
-    radial-gradient(circle at 100% 0, transparent 11px, #000 11.5px) top / 100% 51% no-repeat,
-    radial-gradient(circle at 100% 100%, transparent 11px, #000 11.5px) bottom / 100% 51% no-repeat;
+    radial-gradient(circle at 100% 0, transparent 11px, black 11.5px) top / 100% 51% no-repeat,
+    radial-gradient(circle at 100% 100%, transparent 11px, black 11.5px) bottom / 100% 51% no-repeat;
   mask:
-    radial-gradient(circle at 100% 0, transparent 11px, #000 11.5px) top / 100% 51% no-repeat,
-    radial-gradient(circle at 100% 100%, transparent 11px, #000 11.5px) bottom / 100% 51% no-repeat;
+    radial-gradient(circle at 100% 0, transparent 11px, black 11.5px) top / 100% 51% no-repeat,
+    radial-gradient(circle at 100% 100%, transparent 11px, black 11.5px) bottom / 100% 51% no-repeat;
 }
 .tk-tear {
   position: absolute;
@@ -87,14 +94,14 @@
 }
 .tk-paper-stub {
   inset: 0;
-  border-radius: 0 24px 24px 0;
+  border-radius: 0 var(--r-lg) var(--r-lg) 0;
   background-position: calc(-1 * var(--tk-perf)) 0;
   -webkit-mask:
-    radial-gradient(circle at 0 0, transparent 11px, #000 11.5px) top / 100% 51% no-repeat,
-    radial-gradient(circle at 0 100%, transparent 11px, #000 11.5px) bottom / 100% 51% no-repeat;
+    radial-gradient(circle at 0 0, transparent 11px, black 11.5px) top / 100% 51% no-repeat,
+    radial-gradient(circle at 0 100%, transparent 11px, black 11.5px) bottom / 100% 51% no-repeat;
   mask:
-    radial-gradient(circle at 0 0, transparent 11px, #000 11.5px) top / 100% 51% no-repeat,
-    radial-gradient(circle at 0 100%, transparent 11px, #000 11.5px) bottom / 100% 51% no-repeat;
+    radial-gradient(circle at 0 0, transparent 11px, black 11.5px) top / 100% 51% no-repeat,
+    radial-gradient(circle at 0 100%, transparent 11px, black 11.5px) bottom / 100% 51% no-repeat;
 }
 /* The torn edge darkens a little as the stub comes away. */
 .tk-paper-stub::before {
@@ -104,7 +111,7 @@
   top: 0;
   bottom: 0;
   width: 10px;
-  background: linear-gradient(90deg, rgba(80, 56, 24, 0.1), rgba(80, 56, 24, 0));
+  background: linear-gradient(90deg, color-mix(in oklab, var(--art-shade) 10%, transparent), color-mix(in oklab, var(--art-shade) 0%, transparent));
   opacity: var(--tear, 0);
   pointer-events: none;
 }
@@ -114,12 +121,12 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: inset 0 0 0 1px rgba(27, 25, 22, 0.07);
+  box-shadow: var(--shadow-inset);
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .36  0 0 0 0 .25  0 0 0 .05 0'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>");
   pointer-events: none;
 }
 .tk-root[data-skin="night"] .tk-paper::after {
-  box-shadow: inset 0 0 0 1px rgba(255, 238, 206, 0.35);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--art-lamp-edge) 35%, transparent);
 }
 .tk-paper-main::after {
   border-right: 0;
@@ -131,7 +138,7 @@
   bottom: 16px;
   left: calc(var(--tk-perf) - 1px);
   width: 2px;
-  background: radial-gradient(circle, rgba(27, 25, 22, 0.22) 0 1px, transparent 1.4px) 0 0 / 2px 8px repeat-y;
+  background: radial-gradient(circle, color-mix(in oklab, var(--c-ink) 22%, transparent) 0 1px, transparent 1.4px) 0 0 / 2px 8px repeat-y;
   pointer-events: none;
 }
 
@@ -149,11 +156,12 @@
 .tk-head,
 .tk-stub-label {
   font-family: var(--font-mono);
+  font-variant-numeric: var(--mono-numeric);
   font-size: var(--tk-label);
   line-height: 1.2;
-  letter-spacing: 0.08em;
+  letter-spacing: calc(0.08em * var(--mono-tracking));
   font-weight: 500;
-  text-transform: uppercase;
+  text-transform: var(--mono-case);
   color: var(--tk-muted);
 }
 .tk-head {
@@ -166,7 +174,7 @@
   display: block;
   width: 7px;
   height: 7px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--tk-accent);
 }
 .tk-body {
@@ -207,7 +215,7 @@
   caret-color: var(--tk-accent);
 }
 .tk-input::placeholder {
-  color: rgba(95, 90, 83, 0.62);
+  color: color-mix(in oklab, var(--c-ink-2) 62%, transparent);
   transition: color 0.3s ease;
 }
 /* The printed rule under the field; it turns amber and thickens when the field is live. */
@@ -217,7 +225,7 @@
   right: 0;
   bottom: 4px;
   height: 1px;
-  background: rgba(27, 25, 22, 0.16);
+  background: color-mix(in oklab, var(--c-ink) 16%, transparent);
   pointer-events: none;
 }
 .tk-underline::after {
@@ -230,7 +238,7 @@
   background: var(--tk-accent);
   transform: scaleX(0);
   transform-origin: 0 50%;
-  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.45s var(--ease-out);
 }
 .tk-field:focus-within .tk-underline::after {
   transform: scaleX(1);
@@ -238,7 +246,7 @@
 }
 .tk-form[data-status="error"] .tk-underline,
 .tk-form[data-status="error"] .tk-underline::after {
-  background: #b42318;
+  background: var(--c-danger);
 }
 .tk-form[data-status="error"] .tk-underline::after {
   transform: scaleX(1);
@@ -248,9 +256,9 @@
   content: "";
   position: absolute;
   inset: 4px -10px 0;
-  border-radius: 10px;
-  background: rgba(180, 83, 9, 0.05);
-  box-shadow: 0 0 0 1.5px rgba(180, 83, 9, 0.45);
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--c-accent) 5%, transparent);
+  box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--c-accent) 45%, transparent);
   pointer-events: none;
 }
 /* A visual invitation to type (never a programmatic focus): a caret that blinks a few times. */
@@ -260,8 +268,8 @@
   top: calc(50% - 2px - var(--tk-input) * 0.6);
   width: 2px;
   height: calc(var(--tk-input) * 1.2);
-  border-radius: 1px;
-  background: rgba(27, 25, 22, 0.55);
+  border-radius: calc(var(--r-2xs) / 2);
+  background: color-mix(in oklab, var(--c-ink) 55%, transparent);
   opacity: 0;
   pointer-events: none;
 }
@@ -285,7 +293,7 @@
   margin: 4px 0 0;
   font-size: var(--tk-msg);
   line-height: 1.35;
-  color: #b42318;
+  color: var(--c-danger);
 }
 .tk-actions {
   margin-top: 6px;
@@ -323,21 +331,21 @@
   justify-content: center;
   width: calc(var(--tk-success) * 1.75);
   height: calc(var(--tk-success) * 1.75);
-  border-radius: 999px;
-  background: #dcf5e6;
-  color: #0f6a3a;
-  box-shadow: inset 0 0 0 1px #7ee2a8;
+  border-radius: var(--r-pill);
+  background: var(--c-success-soft);
+  color: var(--c-success-ink);
+  box-shadow: inset 0 0 0 1px var(--c-success-line);
 }
 .tk-check svg {
   width: 52%;
   height: 52%;
 }
 .tk-root[data-fresh] .tk-success {
-  animation: tk-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: tk-rise 0.7s var(--ease-out) both;
 }
 .tk-root[data-fresh] .tk-check path {
   stroke-dasharray: 24;
-  animation: tk-draw 0.5s 0.25s cubic-bezier(0.65, 0, 0.35, 1) both;
+  animation: tk-draw 0.5s 0.25s var(--ease-in-out-sym) both;
 }
 @keyframes tk-rise {
   from {
@@ -363,14 +371,15 @@
   align-items: center;
   gap: 8px;
   padding: 7px 12px 7px 10px;
-  border: 2px solid rgba(180, 83, 9, 0.88);
-  border-radius: 9px;
-  color: rgba(180, 83, 9, 0.92);
+  border: 2px solid color-mix(in oklab, var(--c-accent) 88%, transparent);
+  border-radius: calc(var(--r-sm) * 9 / 10);
+  color: color-mix(in oklab, var(--c-accent) 92%, transparent);
   font-family: var(--font-mono);
+  font-variant-numeric: var(--mono-numeric);
   font-size: calc(var(--tk-label) * 1.05);
-  letter-spacing: 0.12em;
+  letter-spacing: calc(0.12em * var(--mono-tracking));
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: var(--mono-case);
   transform: rotate(-8deg);
   mix-blend-mode: multiply;
   pointer-events: none;
@@ -382,7 +391,7 @@
   height: 1.2em;
 }
 .tk-root[data-fresh] .tk-stamp {
-  animation: tk-stamp 0.42s 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  animation: tk-stamp 0.42s 0.35s var(--ease-spring-soft) both;
 }
 @keyframes tk-stamp {
   0% {
@@ -412,12 +421,12 @@
   position: relative;
   width: var(--tk-ring);
   height: var(--tk-ring);
-  border-radius: 999px;
-  box-shadow: inset 0 0 0 1.5px rgba(27, 25, 22, 0.32);
+  border-radius: var(--r-pill);
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--c-ink) 32%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--c-accent-ink);
   transition: background-color 0.5s ease, box-shadow 0.5s ease;
 }
 .tk-ring::after {
@@ -425,8 +434,8 @@
   content: "";
   width: 18%;
   height: 18%;
-  border-radius: 999px;
-  background: rgba(27, 25, 22, 0.22);
+  border-radius: var(--r-pill);
+  background: color-mix(in oklab, var(--c-ink) 22%, transparent);
   transition: opacity 0.3s ease;
 }
 .tk-root[data-status="done"] .tk-ring {
@@ -446,7 +455,7 @@
   display: block;
 }
 .tk-root[data-fresh] .tk-ring {
-  animation: tk-pop 0.6s 0.2s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+  animation: tk-pop 0.6s 0.2s var(--ease-spring) both;
 }
 @keyframes tk-pop {
   from {
@@ -462,7 +471,7 @@
   left: 0;
   width: 520px;
   pointer-events: none;
-  background: radial-gradient(260px 220px at var(--hx, 50%) var(--hy, 30%), rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 70%);
+  background: radial-gradient(260px 220px at var(--hx, 50%) var(--hy, 30%), color-mix(in oklab, var(--art-highlight) 70%, transparent), color-mix(in oklab, var(--art-highlight) 0%, transparent) 70%);
   opacity: calc(var(--hl, 0) * 0.65);
   mix-blend-mode: soft-light;
 }
@@ -483,7 +492,7 @@
   position: absolute;
   inset: -20%;
   pointer-events: none;
-  background: linear-gradient(105deg, rgba(255, 255, 255, 0) 35%, rgba(255, 250, 235, 0.85) 50%, rgba(255, 255, 255, 0) 65%);
+  background: linear-gradient(105deg, color-mix(in oklab, var(--art-highlight) 0%, transparent) 35%, color-mix(in oklab, var(--art-sheen) 85%, transparent) 50%, color-mix(in oklab, var(--art-highlight) 0%, transparent) 65%);
   transform: translateX(calc((var(--flip, 1) - 0.5) * -120%));
   opacity: calc(sin(var(--flip, 1) * 3.14159) * 0.9);
 }

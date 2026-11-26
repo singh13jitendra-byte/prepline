@@ -54,7 +54,7 @@ function TicketFace({ skin, host }: FaceProps) {
   const onStatus = useCallback((s: SeatStatus) => seatState.set(s), []);
 
   return (
-    <div className="tk-root" data-skin={skin} data-host={host} data-status={status} data-fresh={fresh ? "" : undefined}>
+    <div className="tk-root" data-skin={skin} data-paper="" data-host={host} data-status={status} data-fresh={fresh ? "" : undefined}>
       <div className="tk-plate" data-actor-var="lift" aria-hidden="true" />
       <div className="tk-paper tk-paper-main">
         <div className="tk-main">

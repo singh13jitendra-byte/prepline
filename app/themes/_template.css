@@ -1,0 +1,267 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   THEME TEMPLATE: copy to app/themes/<name>.css. It documents every token.
+
+   1. Rename the selector to your theme, e.g. :root[data-theme="night-desk"]
+      (keep `:root[...]`: it outranks app/theme.css whatever the import order).
+   2. Uncomment and set what your direction changes. Anything left out keeps
+      today's value (shown as "today:"). The contract roles (research/
+      theme-tokens.md) come first in each group; the extended tokens after them
+      are today's finer tints, and each lists a "derive:" suggestion built from
+      the contract roles, for a direction that does not care about them.
+   3. Import it in app/globals.css right after `@import "./theme.css";`
+   4. Turn it on: `applyTheme("<name>")` from lib/theme.ts (sets html[data-theme],
+      dispatches `prepline:theme`; the WebGL world re-reads its colours).
+
+   Scopes. Chapters and skins already pick night or day ROLES; a theme can also
+   swap a role by scope. Scope blocks must sit under your theme too:
+     :root[data-theme="x"][data-chapter="night"] { ... }   the night chapters (html)
+     :root[data-theme="x"] [data-skin="night"] { ... }      night objects (glass faces, the lamp-lit sheet)
+     :root[data-theme="x"] [data-skin="day"] { ... }        day-skinned objects, also inside a night chapter
+     :root[data-theme="x"] [data-paper] { ... }             every paper object whatever its light: the tile,
+                                                            sheet and ticket in both skins (the lamp-lit sheet
+                                                            at night is data-skin="night" AND data-paper), the
+                                                            row and card by day. Put it after the night block.
+   Tokens a component reads are resolved on that element, so a role set in a skin
+   scope reaches everything inside it. Derived tokens declared at :root (e.g.
+   --c-match: var(--c-line)) resolve at :root: set them explicitly in a scope if
+   the scope changes what they derive from.
+   The World reads night-side colours inside a [data-skin="night"] scope and
+   day-side ones inside [data-skin="day"] (lib/theme.ts WORLD_COLORS), so per-scope
+   swaps reach the canvas too.
+
+   Colours: any CSS colour (hex, rgb(), color(), oklch(), color-mix(), transparent).
+   An alpha-0 --c-line-glow switches the Line's halo and WebGL bloom off entirely.
+   Shadows: under a named theme, resting objects use --shadow-1 and moving ones
+   --shadow-2 (the default theme's continuous --lift blend is default-only).
+   Fonts: --font-mono may be a proportional face; set --mono-case: none and
+   --mono-tracking: 0 if your labels should not be uppercase or spaced.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root[data-theme="_template"] {
+  /* ── colour: day ── */
+  /* --c-paper: ; */  /* today: #f6f4ef · day background (canvas) */
+  /* --c-paper-2: ; */  /* today: #fffdf8 · raised surface on day: cards, the sheet's paper */
+  /* --c-ink: ; */  /* today: #1b1916 · primary text on day */
+  /* --c-ink-2: ; */  /* today: #5f5a53 · secondary text on day */
+  /* --c-ink-3: ; */  /* today: #a8a097 · tertiary text; the footer's quiet line */
+  /* --c-rule: ; */  /* today: #e4dfd5 · hairline / border on day */
+
+  /* ── colour: night ── */
+  /* --c-night: ; */  /* today: #0a1e3c · night background */
+  /* --c-night-2: ; */  /* today: #061226 · the deeper night: backdrop edge, dark glass under labels */
+  /* --c-on-night: ; */  /* today: #ffffff · primary text on night (and white on any dark ground) */
+  /* --c-on-night-2: ; */  /* today: color-mix(in oklab, var(--c-on-night) 72%, transparent) · secondary text on night */
+  /* --c-rule-night: ; */  /* today: color-mix(in oklab, var(--c-on-night) 14%, transparent) · hairline on night */
+
+  /* ── colour: brand and signals ── */
+  /* --c-accent: ; */  /* today: #b45309 · the brand colour: CTA focus, the Line on day and on paper */
+  /* --c-accent-ink: ; */  /* today: #ffffff · text / icon on top of accent */
+  /* --c-line: ; */  /* today: #ffd77a · the Line on night */
+  /* --c-line-glow: ; */  /* today: #ffb84a · the Line's halo (SVG stand-in when WebGL is off). Alpha 0 (e.g. `transparent`) turns the halo and the WebGL bloom off entirely */
+  /* --c-match: ; */  /* today: var(--c-line) · "kept / fits": the twelve, scores */
+  /* --c-dim: ; */  /* today: var(--art-speck) · "filtered out" on night: the sunk dust */
+  /* --c-success: ; */  /* today: #34b36b */
+  /* --c-danger: ; */  /* today: #b42318 */
+  /* --c-focus: ; */  /* today: var(--c-accent) · focus ring on day */
+
+  /* ── colour: extended (today's finer tints) ── */
+  /* --c-surface: ; */  /* today: #ffffff · derive: var(--c-paper-2) · pure white surface (inputs, pressed-paper buttons) */
+  /* --c-paper-sunk: ; */  /* today: #efece5 · derive: color-mix(in oklab, var(--c-paper) 92%, var(--c-ink)) · sunk surface on day */
+  /* --c-accent-night: ; */  /* today: var(--c-line) · the accent on night ground: nav dot, focus, labels */
+  /* --c-focus-night: ; */  /* today: var(--c-accent-night) · focus ring on night */
+  /* --c-accent-soft: ; */  /* today: #fdf0dc · derive: color-mix(in oklab, var(--c-accent) 12%, var(--c-paper-2)) */
+  /* --c-accent-line: ; */  /* today: #f1cf9c · derive: color-mix(in oklab, var(--c-accent) 35%, var(--c-paper-2)) */
+  /* --c-accent-mid: ; */  /* today: #d99a1c · derive: var(--c-accent) · the CTA's underline on white */
+  /* --c-ink-hover: ; */  /* today: #2a2723 · derive: color-mix(in oklab, var(--c-ink) 88%, var(--c-paper)) · ink button, hovered */
+  /* --c-shadow: ; */  /* today: var(--c-ink) · shadow colour on day */
+  /* --c-success-soft: ; */  /* today: #dcf5e6 · derive: color-mix(in oklab, var(--c-success) 15%, var(--c-paper-2)) */
+  /* --c-success-line: ; */  /* today: #7ee2a8 · derive: color-mix(in oklab, var(--c-success) 55%, var(--c-paper-2)) */
+  /* --c-success-ink: ; */  /* today: #0f6a3a · derive: color-mix(in oklab, var(--c-success) 60%, var(--c-ink)) */
+  /* --c-success-ink-2: ; */  /* today: #0f4a2a · derive: var(--c-success-ink) */
+  /* --c-night-glass: ; */  /* today: #07142a · derive: var(--c-night-2) · nav and menu glass on night */
+  /* --c-nav-night-solid: ; */  /* today: #09162c · derive: var(--c-night-2) · nav during a wipe (opaque, samples nothing) */
+  /* --c-nav-day-solid: ; */  /* today: #f4f1eb · derive: var(--c-paper) */
+  /* --c-footer: ; */  /* today: var(--c-ink) */
+  /* --c-on-footer: ; */  /* today: var(--c-paper) */
+  /* --c-on-footer-2: ; */  /* today: #d9d3c9 · derive: var(--c-on-night-2) */
+  /* board */
+  /* --c-board-col: ; */  /* today: #f7f5f0 · derive: color-mix(in oklab, var(--c-paper) 70%, var(--c-paper-2)) */
+  /* --c-ghost: ; */  /* today: #e4ddd0 · derive: var(--c-rule) */
+  /* --c-ghost-line-hover: ; */  /* today: #d9d1c3 · derive: color-mix(in oklab, var(--c-rule) 80%, var(--c-ink)) */
+  /* faces (row, card, tile) on day */
+  /* --c-tile: ; */  /* today: #f1ece3 · derive: var(--c-paper-sunk) */
+  /* --c-chip: ; */  /* today: #f4efe6 · derive: var(--c-paper-sunk) */
+  /* --c-chip-line: ; */  /* today: #e8e1d4 · derive: var(--c-rule) */
+  /* the prep sheet */
+  /* --c-sheet-rule: ; */  /* today: #e7e1d6 · derive: var(--c-rule) */
+  /* --c-paper-lamp: ; */  /* today: #f8f3e8 · derive: var(--c-paper-2) · lamp-lit paper: the tile at nightfall, the sheet's cover */
+  /* --c-score: ; */  /* today: #fbefd9 · derive: var(--c-accent-soft) */
+  /* --c-score-ink: ; */  /* today: #8a3d06 · derive: var(--c-match) */
+  /* --c-tag: ; */  /* today: #f4eee3 · derive: var(--c-paper-sunk) */
+  /* --c-tag-ink: ; */  /* today: #5e4320 · derive: var(--c-ink-2) */
+  /* --c-tag-hover: ; */  /* today: #fbe7c3 · derive: var(--c-accent-soft) */
+  /* --c-tag-hover-ink: ; */  /* today: #4a3214 · derive: var(--c-ink) */
+  /* --c-vote-line: ; */  /* today: #e0d9cc · derive: var(--c-rule) */
+  /* --c-vote-off: ; */  /* today: #efeae1 · derive: var(--c-paper-sunk) */
+  /* --c-vote-off-line: ; */  /* today: #cfc6b7 · derive: var(--c-rule) */
+  /* --c-ring-track: ; */  /* today: #ece6da · derive: var(--c-rule) */
+  /* the ticket */
+  /* --c-ticket-rule: ; */  /* today: #e4ddd0 · derive: var(--c-rule) */
+  /* --c-ticket-top: ; */  /* today: #fffefa · derive: var(--c-paper-2) */
+  /* --c-ticket-bottom: ; */  /* today: #fdf8ee · derive: var(--c-paper-2) */
+
+  /* ── art direction: the world and its light ──
+     Exact floats where the shader had them, so the default is pixel-identical.
+     Any CSS colour works here: hex, rgb(), color(), oklch(), color-mix(). */
+  /* --art-night-glow: ; */  /* today: #0f2a4f · derive: var(--c-night) · the backdrop's lit centre */
+  /* --art-speck: ; */  /* today: #fff6e3 · derive: var(--c-on-night) · CSS-field specks (the no-WebGL field) */
+  /* --art-speck-warm: ; */  /* today: color(srgb 1 0.94 0.82) · derive: var(--c-on-night) · WebGL specks, unread */
+  /* --art-speck-cool: ; */  /* today: color(srgb 0.8 0.89 1) · derive: var(--c-on-night) · a few cool specks among them */
+  /* --art-ember: ; */  /* today: color(srgb 1 0.74 0.38) · derive: var(--c-line) · a speck just read: the afterglow */
+  /* --art-seat: ; */  /* today: color(srgb 0.96 0.66 0.16) · derive: var(--c-accent) · a claimed seat, by day */
+  /* --art-dust-day: ; */  /* today: var(--c-ink) · specks by day */
+  /* --art-lamp-dust: ; */  /* today: color(srgb 1 0.8 0.56) · derive: var(--c-line) · dust the lamp catches (Act III) */
+  /* --art-lamp-deep: ; */  /* today: color(srgb 0.8 0.42 0.16) · derive: var(--art-lamp) · the lamp pool's edge, at night */
+  /* --art-lamp-heart: ; */  /* today: color(srgb 1 0.74 0.44) · derive: var(--art-lamp) · the lamp pool's heart, at night */
+  /* --art-lamp-day: ; */  /* today: color(srgb 1 0.68 0.32) · derive: var(--art-lamp) · the same light on the board (the column glow) */
+  /* --art-dawn-1: ; */  /* today: color(srgb 1 0.9 0.66) · derive: var(--art-lamp) · dawn, palest */
+  /* --art-dawn-2: ; */  /* today: color(srgb 1 0.77 0.42) · derive: var(--art-lamp) */
+  /* --art-dawn-3: ; */  /* today: color(srgb 0.95 0.6 0.28) · derive: var(--art-lamp) · dawn, deepest */
+  /* --art-wake-day: ; */  /* today: color(srgb 1 0.7 0.34) · derive: var(--c-accent) · the Line's wake by day, and day rising under it */
+  /* --art-wake-night: ; */  /* today: color(srgb 1 0.56 0.17) · derive: var(--c-line) · the Line's wake at night */
+  /* --art-line-bloom: ; */  /* today: color(srgb 1 0.62 0.2) · derive: var(--c-line-glow) · the Line's tight bloom (WebGL) */
+  /* --art-line-heat: ; */  /* today: color(srgb 1 0.9 0.66) · derive: var(--c-line) · the Line's white-hot core (WebGL, added) */
+  /* --art-line-core: ; */  /* today: #fffaf0 · derive: transparent · the Line's white-hot core (SVG) */
+  /* --art-flash-night: ; */  /* today: color(srgb 1 0.95 0.86) · derive: var(--c-on-night) · the exposure at a day-break, night side */
+  /* --art-flash-day: ; */  /* today: color(srgb 1 0.99 0.95) · derive: var(--c-paper) · ... day side */
+  /* --art-lens: ; */  /* today: color(srgb 0.86 0.92 1) · derive: var(--c-on-night) · the reading lens' glass */
+  /* --art-highlight: ; */  /* today: #ffffff · specular white: paper sheen, highlights */
+  /* --art-card-glass-a: ; */  /* today: #284068 · derive: var(--c-night-2) · the card on night (glass) */
+  /* --art-card-glass-b: ; */  /* today: #102444 · derive: var(--c-night-2) */
+  /* --art-card-solid-a: ; */  /* today: #243b61 · derive: var(--c-night-2) · the card on night (opaque, while moving or wiping) */
+  /* --art-card-solid-b: ; */  /* today: #122646 · derive: var(--c-night-2) */
+  /* --art-board-dusk: ; */  /* today: #24345c · derive: var(--c-night) · the board's tint as night comes */
+  /* --art-lamp: ; */  /* today: #ffba66 · derive: var(--c-line) · warm lamp light: glows and pools */
+  /* --art-lamp-haze: ; */  /* today: #ffd296 · derive: var(--art-lamp) */
+  /* --art-lamp-wash: ; */  /* today: #ffd696 · derive: var(--art-lamp) */
+  /* --art-lamp-edge: ; */  /* today: #ffeece · derive: var(--art-lamp) */
+  /* --art-lamp-clear: ; */  /* today: #fff6e2 · derive: var(--art-lamp) */
+  /* --art-lamp-shade: ; */  /* today: #4a3214 · derive: var(--c-ink) */
+  /* --art-sun-haze: ; */  /* today: #ffd6a0 · derive: var(--art-lamp) */
+  /* --art-col-warm: ; */  /* today: #ffb05c · derive: var(--art-lamp) · the Interview column's warmth */
+  /* --art-col-warm-2: ; */  /* today: #ffc480 · derive: var(--art-lamp) */
+  /* --art-col-breath: ; */  /* today: #ffaa54 · derive: var(--art-lamp) */
+  /* --art-board-glow: ; */  /* today: #ffa840 · derive: var(--art-lamp) */
+  /* --art-fold-light: ; */  /* today: #fff6e4 · derive: var(--c-paper-2) · the sheet's folds */
+  /* --art-fold-shade: ; */  /* today: #281a0a · derive: var(--c-ink) */
+  /* --art-sheen: ; */  /* today: #fffaeb · derive: var(--c-paper-2) */
+  /* --art-shade: ; */  /* today: #503818 · derive: var(--c-ink) · warm shadow on paper */
+  /* --art-shade-foot: ; */  /* today: #5c401e · derive: var(--c-ink) */
+  /* --art-plate-shadow: ; */  /* today: #3c2810 · derive: var(--c-shadow) · the ticket's cast shadow */
+  /* --art-placeholder: ; */  /* today: #808080 */
+
+  /* ── type ── */
+  /* --font-text: ; */  /* today: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif */
+  /* --font-display: ; */  /* today: var(--font-text) */
+  /* --font-mono: ; */  /* today: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace */
+  /* --font-accent: ; */  /* today: "Instrument Serif", ui-serif, Georgia, serif · the "ready." word */
+  /* Mono labels. Nothing measures --font-mono as monospaced (JS measures proportional faces), so a
+     direction may alias a proportional face with tabular figures and switch the label styling off. */
+  /* --mono-case: ; */  /* today: uppercase · text-transform of mono labels */
+  /* --mono-tracking: ; */  /* today: 1 · multiplier on each label's letter-spacing (0 = none) */
+  /* --mono-numeric: ; */  /* today: tabular-nums */
+  /* --fs-display-xl: ; */  /* today: clamp(72px, 10.5vw, 168px) */
+  /* --fs-display-l: ; */  /* today: clamp(54px, 7.2vw, 118px) */
+  /* --fs-counter: ; */  /* today: clamp(96px, 15vw, 240px) */
+  /* --fs-sentence: ; */  /* today: clamp(40px, 5vw, 76px) */
+  /* --fs-h2: ; */  /* today: clamp(34px, 4vw, 60px) */
+  /* --fs-h3: ; */  /* today: 20px */
+  /* --fs-lead: ; */  /* today: 20px */
+  /* --fs-body: ; */  /* today: clamp(15px, 1.2vw, 17px) */
+  /* --fs-small: ; */  /* today: 15px */
+  /* --fs-micro: ; */  /* today: 11px */
+  /* --tracking-display: ; */  /* today: -0.055em */
+  /* --tracking-counter: ; */  /* today: -0.06em */
+  /* --tracking-sentence: ; */  /* today: -0.045em */
+  /* --tracking-h2: ; */  /* today: -0.04em */
+  /* --tracking-lead: ; */  /* today: -0.01em */
+  /* --tracking-text: ; */  /* today: 0 */
+  /* --tracking-small: ; */  /* today: -0.005em */
+  /* --tracking-micro: ; */  /* today: 0.08em */
+  /* --leading-display: ; */  /* today: 0.88 */
+  /* --leading-display-l: ; */  /* today: 0.9 */
+  /* --leading-counter: ; */  /* today: 0.85 */
+  /* --leading-tight: ; */  /* today: 1.02 */
+  /* --leading-lead: ; */  /* today: 1.45 */
+  /* --leading-text: ; */  /* today: 1.55 */
+  /* --leading-small: ; */  /* today: 1.35 */
+  /* --leading-micro: ; */  /* today: 1.2 */
+  /* --weight-display: ; */  /* today: 500 */
+  /* --weight-text: ; */  /* today: 400 */
+  /* --weight-strong: ; */  /* today: 600 */
+  /* --weight-label: ; */  /* today: 500 · mono labels */
+
+  /* ── shape ── */
+  /* --r-2xs: ; */  /* today: 2px · ticks, carets, underlines (1-4px radii scale from this) */
+  /* --r-xs: ; */  /* today: 6px */
+  /* --r-sm: ; */  /* today: 10px */
+  /* --r-md: ; */  /* today: 16px */
+  /* --r-lg: ; */  /* today: 24px */
+  /* --r-xl: ; */  /* today: 28px · panels */
+  /* --r-pill: ; */  /* today: 999px */
+  /* --r-round: ; */  /* today: 50% · circles */
+  /* The story faces at natural size (registered below, so JS reads them as px). The Actor morphs
+     between them in flight; lib/theme.ts faceRadius() reads these, components/story/faces.ts
+     FACE_DEFAULTS mirrors them. */
+  /* --r-face-row: ; */  /* today: calc(var(--r-sm) * 6 / 5) */
+  /* --r-face-card: ; */  /* today: var(--r-lg) */
+  /* --r-face-tile: ; */  /* today: calc(var(--r-md) * 7 / 8) */
+  /* --r-face-sheet: ; */  /* today: calc(var(--r-lg) * 5 / 6) */
+  /* --r-face-ticket: ; */  /* today: var(--r-lg) */
+  /* --hairline: ; */  /* today: 1px */
+
+  /* ── depth ──
+     --shadow-1 rests, --shadow-2 is lifted / moving (any box-shadow: a soft blur, a hard print
+     offset ...). The --shadow-y/dy/blur/spread/a/da parts drive the default theme's continuous
+     --lift blend only; a named theme can ignore them. */
+  /* --shadow-y: ; */  /* today: 40px */
+  /* --shadow-dy: ; */  /* today: 16px · added at full lift */
+  /* --shadow-blur: ; */  /* today: 80px */
+  /* --shadow-spread: ; */  /* today: -50px */
+  /* --shadow-a: ; */  /* today: 45% */
+  /* --shadow-da: ; */  /* today: 20% · added at full lift */
+  /* --shadow-1: ; */  /* today: 0 var(--shadow-y) var(--shadow-blur) var(--shadow-spread) color-mix(in oklab, var(--c-shadow) var(--shadow-a), transparent) */
+  /* --shadow-2: ; */  /* today: 0 calc(var(--shadow-y) + var(--shadow-dy)) var(--shadow-blur) var(--shadow-spread) color-mix(in oklab, var(--c-shadow) calc(var(--shadow-a) + var(--shadow-da)), transparent) */
+  /* --shadow-inset: ; */  /* today: inset 0 0 0 1px color-mix(in oklab, var(--c-shadow) 7%, transparent) · paper edge */
+  /* --shadow-contact: ; */  /* today: 0 1px 0 color-mix(in oklab, var(--c-shadow) 4%, transparent) */
+  /* --shadow-nav: ; */  /* today: 0 10px 30px -18px color-mix(in oklab, var(--c-shadow) 35%, transparent) */
+  /* --shadow-menu: ; */  /* today: 0 30px 60px -30px color-mix(in oklab, var(--c-shadow) 45%, transparent) */
+  /* --shadow-hover: ; */  /* today: 0 12px 24px -16px color-mix(in oklab, var(--c-shadow) 35%, transparent) */
+  /* --shadow-field: ; */  /* today: 0 12px 30px -20px color-mix(in oklab, var(--c-shadow) 40%, transparent) */
+  /* lamp-lit paper at night: the tile at nightfall and the sheet */
+  /* --shadow-lamp: ; */  /* today: 0 30px 120px -30px color-mix(in oklab, var(--art-lamp) 38%, transparent), 0 0 60px -10px color-mix(in oklab, var(--art-lamp-haze) 12%, transparent) · derive: var(--shadow-2) */
+  /* the ticket's cast shadow (warm), blended by --lift like the others */
+  /* --shadow-plate-geo: ; */  /* today: 0 30px 46px -26px */
+  /* --shadow-plate-a: ; */  /* today: 34% */
+  /* --shadow-plate-da: ; */  /* today: 12% */
+  /* --shadow-plate-contact: ; */  /* today: 0 2px 4px color-mix(in oklab, var(--c-shadow) 6%, transparent) */
+
+  /* ── texture ──
+     The grain is baked at runtime (components/world/Grain.tsx writes --grain on <html>);
+     a direction can replace either texture with any CSS background, or none. */
+  /* --tex-paper: ; */  /* today: var(--grain, none) */
+  /* --tex-night: ; */  /* today: var(--grain, none) */
+  /* --tex-grain-alpha: ; */  /* today: 10 · the baked grain's strongest alpha, of 255 */
+
+  /* ── motion ── */
+  /* --ease-out: ; */  /* today: cubic-bezier(0.16, 1, 0.3, 1) · entrances (expo out) */
+  /* --ease-in: ; */  /* today: cubic-bezier(0.5, 0, 0.75, 0) · exits (quad in) */
+  /* --ease-in-out: ; */  /* today: cubic-bezier(0.65, 0, 0.15, 1) · travel */
+  /* --ease-in-out-sym: ; */  /* today: cubic-bezier(0.65, 0, 0.35, 1) */
+  /* --ease-out-soft: ; */  /* today: cubic-bezier(0.22, 1, 0.36, 1) */
+  /* --ease-spring: ; */  /* today: cubic-bezier(0.2, 1.5, 0.4, 1) */
+  /* --ease-spring-soft: ; */  /* today: cubic-bezier(0.2, 1.4, 0.4, 1) */
+  /* --dur-1: ; */  /* today: 120ms */
+  /* --dur-2: ; */  /* today: 240ms */
+  /* --dur-3: ; */  /* today: 480ms */
+}
