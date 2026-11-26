@@ -38,7 +38,7 @@ const idx = (b: BeatId) => BEATS.findIndex((x) => x.id === b);
 /** Session memory of a saved seat. */
 const SEAT_KEY = "prepline:seat";
 /** How long a claimed seat waits for its stub to dock before the CTA changes anyway (ms). */
-const DOCK_WAIT = 2400;
+const DOCK_WAIT = 3200;
 /** The ignite and the label crossfade, end to end (ms): `data-fresh` comes off after it. */
 const FRESH_MS = 1300;
 /** The lean toward a nearby pointer: at most LEAN px, felt from REACH px outside the CTA. */

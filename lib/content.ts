@@ -184,7 +184,7 @@ export const story = {
     ],
     cta: "Save me a seat",
     /** The CTA once a seat is saved this session ({seat} is the seat number). */
-    ctaSaved: "Seat {seat} saved",
+    ctaSaved: "Seat saved",
     menu: "Menu",
     railLabel: "Story",
     /** Beat rail ticks: label and the beat each one scrolls to. */
@@ -392,11 +392,11 @@ export const story = {
      * The number names the ring on this ticket, never a count of other sign-ups.
      */
     stampSaved: "Seat saved",
-    stampSeat: "Nº {n} of {total}",
+    stampSeat: "Private beta",
     /** A gentler stamp when the API says the address is already on the list. */
     stampAlready: "Already saved",
     /** Live region, after the success line: what the stamp says, for screen readers. */
-    stampLive: "Stamped: seat saved, number {n} of {total}.",
+    stampLive: "Stamped: seat saved for the private beta.",
     rings: "25 seats",
     /** NEW. The filled ring is the visitor's own request, never a live count of other sign-ups. */
     ringsLabel: "25 beta seats. The filled ring marks your request.",
