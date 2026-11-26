@@ -1,0 +1,17 @@
+/* Gallery only. Young Serif and Hanken Grotesk (SIL OFL 1.1), latin subsets taken from the
+   Night Desk brand board so the gallery can be judged in the real faces. When the Theming group
+   adds the @fontsource packages to the app, delete this file and ./fonts. */
+@font-face {
+  font-family: "Young Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/young-serif-latin-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/hanken-grotesk-latin-wght.woff2") format("woff2");
+}
