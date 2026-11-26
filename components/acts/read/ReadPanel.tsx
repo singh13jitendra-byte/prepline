@@ -49,6 +49,18 @@ export const RANK_STAGGER = 0.05;
 export const RANK_FADE = 0.18;
 /** Beat progress at which the reason card finishes its travel (ACTOR_TRACK.reason.range[1]). */
 const REASON_AT = ACTOR_TRACK.reason?.range?.[1] ?? 0.35;
+/** The row → card travel (ACTOR_TRACK.reason, scrubbed), 0..1, outside the beat 0 (before) or 1. */
+const REASON_RANGE = ACTOR_TRACK.reason?.range ?? [0, 0.35];
+function reasonTravel(s: Readonly<StoryState>): number {
+  const i = idx(s.beat);
+  if (i < I.reason) return 0;
+  if (i > I.reason) return 1;
+  return span(s.beatProgress, REASON_RANGE[0], REASON_RANGE[1]);
+}
+/** The flip, in travel: tip to edge-on over [0], [1]; swap faces at [1]; turn face-on by [2]. */
+const FLIP = [0.36, 0.5, 0.64] as const;
+const easeIn = (x: number) => x * x;
+const easeOut = (x: number) => 1 - (1 - x) * (1 - x);
 const BIRTH = ACTOR_TRACK.ranked?.fadeIn ?? [0.22, 0.34];
 
 const fig = storyCopy.common.figures;
@@ -121,6 +133,7 @@ export function ReadPanel() {
     ranked: NodeListOf<HTMLElement>;
     reason: NodeListOf<HTMLElement>;
     list: HTMLElement | null;
+    panel: HTMLElement | null;
   } | null>(null);
   const morph = useRef({ dn: { x: 0, y: 0, s: 1 }, st: { x: 0, y: 0, s: 1 } });
 
@@ -205,6 +218,7 @@ export function ReadPanel() {
       ranked: root.querySelectorAll<HTMLElement>(".rd-copy-ranked"),
       reason: root.querySelectorAll<HTMLElement>(".rd-copy-reason"),
       list: root.querySelector<HTMLElement>(".rd-list-wrap"),
+      panel: root.querySelector<HTMLElement>(".rd-panel"),
     });
     const setAll = (els: NodeListOf<HTMLElement>, prop: string, v: string) => els.forEach((el) => set(el, prop, v));
 
@@ -290,8 +304,17 @@ export function ReadPanel() {
       const y = 10 - 22 * story.breathOf("ranked", 0.15) - 10 * story.breathOf("reason", 0);
       const tf = `translate3d(0,${y.toFixed(2)}px,0) scale(${(1 - 0.04 * j).toFixed(4)})`;
       if (tg.list.style.transform !== tf) tg.list.style.transform = tf;
-      // Behind the card the list falls well back; on small screens the card covers it, so it goes entirely.
-      const op = (1 - (s.flags.small ? 1 : 0.88) * j).toFixed(4);
+      // The list steps back BEFORE the card lifts: it starts dimming in the last stretch of `ranked`
+      // and is down to its floor by 10% of `reason`, ahead of the flip (travel 0.36, reason 0.13).
+      // Behind the card it falls well back; on small screens the card covers it, so it goes entirely.
+      // It recedes by darkening, not by turning see-through: a pine wash over the opaque paper (a
+      // translucent paper panel over the meadow read as grey glass in the founder's recording).
+      const pre = idx(s.beat) > I.ranked ? 1 : span(r, 0.92, 1);
+      const dim = span(q, 0, 0.1);
+      const wash = (0.35 * pre * (1 - dim) + 0.78 * dim).toFixed(4);
+      if (tg.panel && tg.panel.style.getPropertyValue("--dim") !== wash) tg.panel.style.setProperty("--dim", wash);
+      // On small screens the card covers the list: once it is washed dark it goes, under the card.
+      const op = s.flags.small ? (1 - span(q, 0.1, 0.2)).toFixed(4) : "1";
       if (tg.list.style.opacity !== op) tg.list.style.opacity = op;
     }
     // Reason breath: after the card lands, its rows of working are read one by one.
@@ -375,6 +398,36 @@ export function ReadPanel() {
     return { rx: -cy * 3 * falloff, ry: dolly.ry * (1 - falloff) + cx * 3 * falloff };
   });
 
+  /* ── row → card: one deliberate flip, never two translucent faces (founder recording, z_16) ──
+     The engine's default face change crossfades two surfaces, which over the list read as grey
+     glass blinking cream and dark. Here the travelling Actor turns about X instead: the cream row
+     tips edge-on, the faces swap at that frame, and the pine card turns face-on. Both faces stay
+     opaque the whole way (faces.css, .actor[data-pl-swap]). */
+  useActorExtra((s) => {
+    const t = reasonTravel(s);
+    if (t <= FLIP[0] || t >= FLIP[2]) return null;
+    const flipX = t < FLIP[1] ? 90 * easeIn((t - FLIP[0]) / (FLIP[1] - FLIP[0])) : -90 * (1 - easeOut((t - FLIP[1]) / (FLIP[2] - FLIP[1])));
+    return { flipX };
+  });
+  useEffect(() => {
+    if (story.reduced()) return;
+    let actor: HTMLElement | null = null;
+    let last = "";
+    return story.frame("actor", (_t, _dt, s) => {
+      if (!actor || !actor.isConnected) {
+        actor = document.querySelector<HTMLElement>(".actor");
+        last = "";
+      }
+      if (!actor) return;
+      const t = reasonTravel(s);
+      const v = t > 0 && t < 1 ? (t < FLIP[1] ? "from" : "to") : "";
+      if (v === last) return;
+      last = v;
+      if (v) actor.setAttribute("data-pl-swap", v);
+      else actor.removeAttribute("data-pl-swap");
+    });
+  }, []);
+
   const style = { "--reveal-a": 0 } as CSSProperties;
   return (
     <Panel beats={["hero", "pass1", "pass2", "ranked", "reason"]} className="rd-read">
@@ -391,7 +444,7 @@ export function ReadPanel() {
               </p>
               {/* The statement and its detail sit on a pine slip over the meadow (review-3 P0-2). The
                   slip fades with the detail as the statement flies to the list header. */}
-              <div className="rd-slip rd-stmt-slip">
+              <div className="slip-night slip-bleed rd-stmt-slip">
               <p className="rd-stmt" aria-hidden="true">
                 <span ref={stmtRef} className="rd-stmt-fly">
                   <span className="rd-swap" data-swap-out="1">
@@ -450,7 +503,10 @@ export function ReadPanel() {
               <h2 className="rd-h2">
                 <Lines text={storyCopy.ranked.h2} className="rd-h2-vis" />
               </h2>
-              <p className="rd-body">{storyCopy.ranked.body}</p>
+              {/* Small copy over the meadow sits on the night slip (type-on-painting rule). */}
+              <div className="slip-night slip-bleed rd-body-slip">
+                <p className="rd-body">{storyCopy.ranked.body}</p>
+              </div>
             </div>
             <div className="rd-obj">
               <div className="rd-list-wrap">
@@ -490,6 +546,8 @@ export function ReadPanel() {
                     <div data-row-in>{storyCopy.ranked.more}</div>
                   </li>
                 </ol>
+                {/* Receding into the night: an opaque pine wash over the paper, never a see-through panel. */}
+                <i className="rd-panel-dim" aria-hidden="true" />
                 </div>
               </div>
             </div>
@@ -503,14 +561,16 @@ export function ReadPanel() {
               <h2 className="rd-h2">
                 <Lines text={storyCopy.reason.h2} className="rd-h2-vis" />
               </h2>
-              <p className="rd-body">{storyCopy.reason.body}</p>
-              <p className="rd-privacy-line" data-privacy>
-                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-                  <path d="M8 1.75 3 3.6v3.9c0 3 2.1 5.6 5 6.75 2.9-1.15 5-3.75 5-6.75V3.6L8 1.75Z" />
-                  <path d="m5.8 8 1.5 1.5 2.9-3" />
-                </svg>
-                <span>{storyCopy.reason.privacy}</span>
-              </p>
+              <div className="slip-night slip-bleed rd-body-slip">
+                <p className="rd-body">{storyCopy.reason.body}</p>
+                <p className="rd-privacy-line" data-privacy>
+                  <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                    <path d="M8 1.75 3 3.6v3.9c0 3 2.1 5.6 5 6.75 2.9-1.15 5-3.75 5-6.75V3.6L8 1.75Z" />
+                    <path d="m5.8 8 1.5 1.5 2.9-3" />
+                  </svg>
+                  <span>{storyCopy.reason.privacy}</span>
+                </p>
+              </div>
             </div>
             <div className="rd-obj rd-card-obj">
               <div className="rd-card-at">

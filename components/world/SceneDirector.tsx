@@ -5,9 +5,10 @@
  * only; no layout is read in the frame loop (the cover boxes are computed from the viewport
  * size, which is read on resize).
  *
- *   hero        desk-night at rest. Then the store's `push` (state.scene) drives the camera at the window:
- *               the room scales about the window's centre until the glass fills the screen,
- *               (its own painted frame flying past) and only then gives way to the meadow.
+ *   hero        desk-night at rest (nothing is written to it). Then the store's `push` drives the
+ *               camera at the window: the room scales about the window's centre, its painted frame
+ *               flying past, to at most ROOM_MAX x cover, dissolving into the meadow from hero 0.35
+ *               and gone (display:none) by ROOM_HANDOFF (0.45). The meadow then settles 1.16 → 1.
  *   pass1..     meadow-night, a slow push, the foreground grass risen
  *   daybreak    the cream day rises over it from below (ChapterBackdrop)
  *   board       paper only: every painted layer is switched off
@@ -24,9 +25,9 @@
 
 import { useEffect } from "react";
 import { registerAnchor, type AnchorId } from "@/lib/anchors";
-import { BEATS, clamp01, story, type BeatId, type StoryState } from "@/lib/story";
+import { BEATS, SCENE_TRACK, clamp01, story, type BeatId, type StoryState } from "@/lib/story";
 import { worldBus } from "./bus";
-import { DESK, DESK_CLOSE, FOCUS, HERO_SMALL, HOTSPOTS, WINDOW_SKY, coverBox, type HotspotId } from "./sceneGeometry";
+import { DESK, DESK_CLOSE, FOCUS, HERO_SMALL, HOTSPOTS, ROOM_HANDOFF, WINDOW_SKY, coverBox, type HotspotId } from "./sceneGeometry";
 
 const ORDER = Object.fromEntries(BEATS.map((b, i) => [b.id, i])) as Record<BeatId, number>;
 const ss = (a: number, b: number, x: number) => {
@@ -41,34 +42,76 @@ const GRASS_OFF = 0.62;
 const GRASS_LOW = 0.3;
 const GRASS_SEAT = 0.43;
 
-type Box = { x: number; y: number; w: number; h: number };
-type Put = { el: HTMLElement | null; t: string; o: string; v: string };
-const slot = (el: HTMLElement | null): Put => ({ el, t: "", o: "", v: "?" });
+/**
+ * The push through the window, in hero progress. The store's push (SCENE_TRACK.hero) starts at
+ * PUSH_START; the room hands the screen to the meadow by HANDOFF, dissolving from FADE_FROM.
+ * ROOM_MAX caps the room's scale over cover: desk-night is 2048px wide, so at 1440 on a 2x screen
+ * it is already 1.4x at rest and about 3.5x at the cap; past that the window and lamp go to mush.
+ */
+const PUSH_START = SCENE_TRACK.hero.moves?.[0]?.range[0] ?? 0.16;
+const HANDOFF = ROOM_HANDOFF;
+const FADE_FROM = 0.35;
+const ROOM_MAX = 2.4;
+const ROOM_MAX_SMALL = 1.5;
 
-function put(p: Put, visible: boolean, opacity = 1, tx = 0, ty = 0, k = 1) {
+type Box = { x: number; y: number; w: number; h: number };
+type Put = { el: HTMLElement | null; img: HTMLImageElement | null; t: string; o: string; v: string; d: string; offAt: number };
+const slot = (el: HTMLElement | null): Put => ({ el, img: el?.querySelector<HTMLImageElement>(":scope > picture > .sc-img") ?? null, t: "", o: "", v: "?", d: "?", offAt: 0 });
+
+/**
+ * The render-tree policy (round 5; the founder's recording of 195596b showed the room dropping
+ * to flat night in blocks, on and off, as the push began):
+ *   - A layer that is showing is visibility:visible.
+ *   - A layer that is NEAR (its scene is on screen, or one beat away) but not showing stays in
+ *     the render tree: visibility:hidden, opacity 0. Nothing is decoded or laid out again when it
+ *     comes back, and the flip can be undone in the same frame.
+ *   - Only a layer two or more beats away leaves the tree (display:none), so the GPU can let go of
+ *     its tiles (the original hero flicker came from many far layers kept composited).
+ *   - Hysteresis: a layer that stops being wanted keeps its place (at opacity 0) for HOLD_MS before
+ *     it is hidden, so a scroll that dithers around a threshold cannot toggle it frame to frame.
+ *   - A layer whose picture has not loaded and decoded is never revealed in a hand-off: the scene
+ *     before it holds (see `ready`).
+ */
+const HOLD_MS = 300;
+const clock = { now: 0, pending: false, flips: 0 };
+
+function put(p: Put, visible: boolean, opacity = 1, tx = 0, ty = 0, k = 1, near = true) {
   const el = p.el;
   if (!el) return;
-  const v = visible && opacity > 0.004 ? "visible" : "hidden";
-  // Hidden layers leave the render tree entirely (display, not visibility), so the GPU lets go of
-  // their tiles: several full-screen paintings kept as invisible composited layers starved the
-  // visible one of tile memory and it dropped out in blocks (seen as flicker on the hero).
-  if (v !== p.v) {
-    el.style.visibility = v;
-    el.style.display = v === "hidden" ? "none" : "";
-    p.v = v;
+  let show = visible && opacity > 0.004;
+  if (show) p.offAt = 0;
+  else if (p.v === "visible") {
+    if (!p.offAt) p.offAt = clock.now;
+    if (clock.now - p.offAt < HOLD_MS) {
+      show = true;
+      opacity = 0;
+      clock.pending = true;
+    }
   }
-  if (v === "hidden") return;
-  const o = opacity >= 0.996 ? "1" : opacity.toFixed(3);
+  const v = show ? "visible" : "hidden";
+  const d = show || near ? "" : "none";
+  if (v !== p.v) el.style.visibility = p.v = v;
+  if (d !== p.d) {
+    el.style.display = p.d = d;
+    clock.flips++;
+  }
+  const o = !show || opacity <= 0.004 ? "0" : opacity >= 0.996 ? "1" : opacity.toFixed(3);
   if (o !== p.o) el.style.opacity = p.o = o;
+  if (!show) return;
   const t = `translate3d(${tx.toFixed(2)}px,${ty.toFixed(2)}px,0) scale(${k.toFixed(5)})`;
   if (t !== p.t) el.style.transform = p.t = t;
 }
 
-/** The translation that puts box-point q at screen point `to` when the box is scaled by k (origin 0 0). */
-/** Wrappers are switched with display, so a visible child can never outvote a hidden parent. */
-function shown(p: Put, on: boolean) {
-  const v = on ? "block" : "none";
-  if (p.el && v !== p.v) p.el.style.display = p.v = v;
+/**
+ * Wrappers. Off and far: display:none (a visible child can never outvote a hidden parent).
+ * Off but near: left in the tree; their layer children are hidden by `put` instead.
+ */
+function shown(p: Put, on: boolean, near = false) {
+  const v = on || near ? "block" : "none";
+  if (p.el && v !== p.v) {
+    p.el.style.display = p.v = v;
+    clock.flips++;
+  }
 }
 
 const tx = (box: Box, q: number, to: number, k: number) => to - box.x - k * q;
@@ -121,6 +164,27 @@ export function SceneDirector() {
         hero.addEventListener("error", () => (lit(), release()), { once: true });
       }
     } else lit();
+    /* Every scene picture is decoded ahead of its hand-off (meadow first: the push needs it), and
+       once decoded it is switched to decoding="sync", so a later re-raster at a new scale waits for
+       the pixels instead of drawing the tile empty (checker-imaging) for a few frames. */
+    let lastKey = "";
+    const decoded = new WeakSet<HTMLImageElement>();
+    const warm = (img: HTMLImageElement | null) => {
+      if (!img || decoded.has(img)) return;
+      const done = () => {
+        decoded.add(img);
+        img.decoding = "sync";
+        lastKey = "";
+      };
+      const go = () => (img.decode ? img.decode().then(done, () => img.naturalWidth > 0 && done()) : done());
+      if (img.complete && img.naturalWidth > 0) go();
+      else img.addEventListener("load", go, { once: true });
+    };
+    const warmAll = () =>
+      [".sc-room", ".sc-meadow", ".sc-grass", ".sc-blue", ".sc-dawn"].forEach((sel) => warm(q<HTMLImageElement>(`${sel} > picture > .sc-img`)));
+    if (hero?.complete) warmAll();
+    else hero?.addEventListener("load", warmAll, { once: true });
+    window.setTimeout(warmAll, 1600);
     const timer = window.setTimeout(release, 1500);
     if (story.reduced()) return () => (window.clearTimeout(timer), offs.forEach((off) => off()));
 
@@ -140,6 +204,7 @@ export function SceneDirector() {
     const grass = slot(q(".sc-grass"));
     const dawnWrap = q<HTMLElement>(".sc-dawnwrap");
     let dawnMode = "";
+    let dawnDisplay = "";
     let grassNight = "?";
     const ar = (el: HTMLElement | null, fallback: number) => (el && parseFloat(el.style.getPropertyValue("--ar"))) || fallback;
     const roomAr = ar(room.el, DESK.w / DESK.h);
@@ -168,7 +233,8 @@ export function SceneDirector() {
     window.addEventListener("resize", onResize, { passive: true });
 
     const par = { x: 0, y: 0 };
-    let lastKey = "";
+    /** A picture that has loaded and decoded (or a layer with no files: its flat ground is ready). */
+    const ready = (p: Put) => !p.img || decoded.has(p.img);
 
     const frameFn = (_t: number, dt: number, s: Readonly<StoryState>) => {
       if (stale || !vw) measure();
@@ -185,8 +251,16 @@ export function SceneDirector() {
       if (Math.abs(par.y - wantY) < 0.0005) par.y = wantY;
 
       const key = `${s.pos.toFixed(3)}|${s.line.daySide}|${s.chapter}|${(par.x * 26).toFixed(1)}|${(par.y * 16).toFixed(1)}`;
-      if (key === lastKey) return;
+      clock.now = performance.now();
+      if (key === lastKey && !clock.pending) return;
       lastKey = key;
+      clock.pending = false;
+
+      // Which layers stay in the render tree (their scene is on screen or one beat away).
+      const nearRoom = i <= ORDER.pass1 || (i >= ORDER.hinge && i <= ORDER.seat);
+      const nearMeadow = i <= ORDER.saved;
+      const nearBlue = i >= ORDER.votes && i <= ORDER.seat;
+      const nearGrass = i <= ORDER.saved || i >= ORDER.votes;
 
       const cx = vw / 2;
       const cy = stageH / 2;
@@ -206,38 +280,46 @@ export function SceneDirector() {
 
       /* ── Act I ── */
       if (i === ORDER.hero) {
-        // The store says how far through the window we are (SCENE_TRACK.hero, a "push").
+        // The store says how far through the window we are (SCENE_TRACK.hero, a "push"): `p` runs
+        // over the whole push and drives what keeps moving (the fireflies' dolly, the wash, the grass).
         const sc = s.scene;
         const p = io(sc.id !== "desk-night" ? 1 : sc.kind === "push" ? clamp01(sc.mix) : 0);
-        // The camera goes for the clear opening between the casements until it fills the screen;
-        // only then, with nothing of the room left in frame, does the room give way to the meadow.
+        // The room itself only owns the first part of it (PUSH_START → HANDOFF in hero progress):
+        // it is a 2048px painting, so it is never scaled past ROOM_MAX × cover (soft beyond that).
+        // It dissolves into the meadow from FADE_FROM and has left the render tree by HANDOFF, so
+        // the counter that follows is revealed onto clean meadow.
+        const pr = io(clamp01((bp - PUSH_START) / (HANDOFF - PUSH_START)));
         const sx0 = roomBox.w / DESK.w;
         const skyW = (WINDOW_SKY.x1 - WINDOW_SKY.x0) * sx0;
         const skyH = (WINDOW_SKY.y1 - WINDOW_SKY.y0) * sx0;
         const qx = ((WINDOW_SKY.x0 + WINDOW_SKY.x1) / 2) * sx0;
         const qy = ((WINDOW_SKY.y0 + WINDOW_SKY.y1) / 2) * sx0;
-        const S = Math.max(vw / skyW, stageH / skyH) * 1.12;
+        const S = Math.min(Math.max(vw / skyW, stageH / skyH) * 1.12, small ? ROOM_MAX_SMALL : ROOM_MAX);
         // At rest the room is at cover; on small screens it stands smaller on the bottom edge.
         const k0 = small ? HERO_SMALL.scale : 1;
         const restX = small ? Math.min(0, Math.max(vw - k0 * roomBox.w, HERO_SMALL.laptopAt * vw - k0 * 0.704 * roomBox.w)) + k0 * qx : roomBox.x + qx;
         const restY = small ? stageH - k0 * roomBox.h + k0 * qy : roomBox.y + qy;
-        const kk = k0 * Math.pow(S / k0, p);
+        const kk = k0 * Math.pow(Math.max(S, k0) / k0, pr);
         // The room itself never follows the pointer: sub-pixel moves of a detailed painting (and the
         // live list on the laptop) shimmer and read as flicker. Only the fireflies lean (scene.px/py).
-        const toX = mix(restX, cx, p);
-        const toY = mix(restY, cy, p);
-        const ro = 1 - ss(0.8, 0.98, p);
+        // At rest (bp < PUSH_START) nothing below changes, so the big painted layer is not touched.
+        const toX = mix(restX, cx, pr);
+        const toY = mix(restY, cy, pr);
+        // The meadow must be decoded before the room dissolves into it; until then the room holds.
+        const mReady = ready(meadow);
+        const ro = mReady ? 1 - ss(FADE_FROM, HANDOFF, bp) : 1;
         const RX = tx(roomBox, qx, toX, kk);
         const RY = ty(roomBox, qy, toY, kk);
-        put(room, true, ro, RX, RY, kk);
-        const mk = mix(1.16, 1, p);
-        put(meadow, p > 0.5, 1, tx(meadowBox, cx - meadowBox.x, cx, mk), ty(meadowBox, cy - meadowBox.y, cy, mk), mk);
-        put(blue, false);
+        put(room, ro > 0, ro, RX, RY, kk, nearRoom);
+        // The meadow is under the room from the start of the dissolve, then settles 1.16 → 1.
+        const mk = mix(1.16, 1, ss(FADE_FROM, 0.92, bp));
+        put(meadow, mReady && bp > FADE_FROM - 0.02, 1, tx(meadowBox, cx - meadowBox.x, cx, mk), ty(meadowBox, cy - meadowBox.y, cy, mk), mk, nearMeadow);
+        put(blue, false, 0, 0, 0, 1, nearBlue);
         // Small screens: the wall above the smaller room is the wash, so it stays until the room covers.
-        put(washN, true, mix(1, 0.5, small ? ss(0.62, 0.95, p) : ss(0.15, 0.7, p)));
+        put(washN, true, mix(1, 0.5, small ? ss(0.55, 1, pr) : ss(0.15, 0.7, pr)));
         // Fireflies: inside the glass while the room is there, everywhere once it has gone.
         const sx = sx0;
-        const open = ss(0.7, 0.96, p);
+        const open = mReady ? ss(FADE_FROM, HANDOFF, bp) : 0;
         scene.x0 = mix(roomBox.x + RX + kk * WINDOW_SKY.x0 * sx, -200, open);
         scene.y0 = mix(roomBox.y + RY + kk * WINDOW_SKY.y0 * sx, -200, open);
         scene.x1 = mix(roomBox.x + RX + kk * WINDOW_SKY.x1 * sx, vw + 200, open);
@@ -246,22 +328,25 @@ export function SceneDirector() {
         scene.px = -par.x * 26 * (1 - p);
         scene.py = -par.y * 16 * (1 - p);
         scene.push = p;
-        shown(grassWrap, p > 0.8);
-        put(grass, true, 1, 0, mix(GRASS_OFF, GRASS_LOW + 0.05, ss(0.8, 1, p)) * stageH, 1);
+        shown(grassWrap, p > 0.8, nearGrass);
+        put(grass, p > 0.8, 1, 0, mix(GRASS_OFF, GRASS_LOW + 0.05, ss(0.8, 1, p)) * stageH, 1, nearGrass);
       } else if (i <= ORDER.daybreak) {
         const u = s.scene.id === "meadow-night" ? s.scene.progress : 1;
         const mk = 1 + 0.06 * u;
-        put(room, false);
-        put(blue, false);
+        put(room, false, 0, 0, 0, 1, nearRoom);
+        put(blue, false, 0, 0, 0, 1, nearBlue);
         put(meadow, true, 1, tx(meadowBox, cx - meadowBox.x, cx, mk), ty(meadowBox, cy - meadowBox.y, cy, mk), mk);
         put(washN, true, i >= ORDER.ranked ? mix(0.5, 0.78, i === ORDER.ranked ? ss(0, 0.5, bp) : 1) : 0.5);
         scene.field = 1;
         scene.push = 1;
         const g = i === ORDER.pass1 ? mix(0.8, 1, ss(0, 0.3, bp)) : i === ORDER.daybreak ? 1 - ss(0, 0.2, bp) : 1;
-        shown(grassWrap, g > 0);
-        put(grass, true, i === ORDER.daybreak ? g : 1, 0, (mix(GRASS_LOW + 0.05, GRASS_LOW, Math.min(1, (g - 0.8) * 5)) - u * 0.02) * stageH, 1);
+        shown(grassWrap, g > 0, nearGrass);
+        put(grass, g > 0, i === ORDER.daybreak ? g : 1, 0, (mix(GRASS_LOW + 0.05, GRASS_LOW, Math.min(1, (g - 0.8) * 5)) - u * 0.02) * stageH, 1);
       } else if (i < ORDER.nightfall) {
-        shown(grassWrap, false);
+        shown(grassWrap, false, nearGrass);
+        put(grass, false, 0, 0, 0, 1, nearGrass);
+        put(meadow, false, 0, 0, 0, 1, nearMeadow);
+        put(room, false, 0, 0, 0, 1, nearRoom);
       } else if (i <= ORDER.dawn) {
         /* ── Act III: close on the desk; at dawn the camera pulls back and the hour turns blue ── */
         const c = small ? DESK_CLOSE.small : DESK_CLOSE.wide;
@@ -279,36 +364,44 @@ export function SceneDirector() {
         camX = X;
         camY = Y;
         camK = kk;
-        const bo = i !== ORDER.dawn ? 0 : s.scene.id === "desk-lamp" ? (s.scene.kind === "fade" ? clamp01(s.scene.mix) : 0) : 1;
-        put(room, bo < 1, 1, X, Y, kk);
-        put(blue, bo > 0, bo, X, Y, kk);
-        put(meadow, false);
+        // Blue hour only once its picture is decoded; until then the lamp-lit room holds.
+        const bo = i !== ORDER.dawn || !ready(blue) ? 0 : s.scene.id === "desk-lamp" ? (s.scene.kind === "fade" ? clamp01(s.scene.mix) : 0) : 1;
+        put(room, bo < 1, 1, X, Y, kk, nearRoom);
+        put(blue, bo > 0, bo, X, Y, kk, nearBlue);
+        put(meadow, false, 0, 0, 0, 1, nearMeadow);
         put(washN, true, mix(0.82, 0.5, back));
-        shown(grassWrap, false);
+        shown(grassWrap, false, nearGrass);
+        put(grass, false, 0, 0, 0, 1, nearGrass);
       }
 
       /* ── Act IV: dawn below the Line, then the whole room ── */
       const mode = i >= ORDER.dawn ? (s.line.daySide === "below" ? "split" : s.chapter === "day" ? "day" : "off") : "off";
-      if (dawnWrap && mode !== dawnMode) {
-        dawnWrap.dataset.mode = dawnMode = mode;
-        dawnWrap.style.display = mode === "off" ? "none" : "block";
+      if (dawnWrap && mode !== dawnMode) dawnWrap.dataset.mode = dawnMode = mode;
+      // Off but near (from the votes on): left in the tree, hidden by its own CSS (visibility).
+      const dd = mode === "off" && i < ORDER.votes ? "none" : "block";
+      if (dawnWrap && dd !== dawnDisplay) {
+        dawnWrap.style.display = dawnDisplay = dd;
+        clock.flips++;
       }
       if (mode !== "off") {
         const sp = i === ORDER.dawn ? ss(0.15, 1, bp) * 0.6 : i === ORDER.seat ? 0.6 + 0.4 * ss(0, 0.5, bp) : 1;
-        put(sun, sp < 1, Math.sin(Math.PI * sp) * 0.34, mix(vw * 0.02, vw * 0.4, sp), -stageH * 0.1, 1);
+        // The light crosses in whole pixels and 1% steps: about a third of the writes, no visible step.
+        put(sun, sp < 1, Math.round(Math.sin(Math.PI * sp) * 34) / 100, Math.round(mix(vw * 0.02, vw * 0.4, sp)), Math.round(-stageH * 0.1), 1);
         put(washD, true, 1);
         // Above and below the Line it is one camera: the dawn room pulls back with the blue one.
         if (i === ORDER.dawn) put(dawn, true, 1, camX, camY, camK);
         else put(dawn, true, 1, 0, 0, 1);
         if (i > ORDER.dawn) {
           const g = i === ORDER.seat ? ss(0.15, 0.7, bp) : 1;
-          shown(grassWrap, g > 0);
-          put(grass, true, 1, 0, mix(GRASS_OFF, GRASS_SEAT, g) * stageH, 1);
+          shown(grassWrap, g > 0, nearGrass);
+          put(grass, g > 0, 1, 0, Math.round(mix(GRASS_OFF, GRASS_SEAT, g) * stageH), 1, nearGrass);
         }
       }
     };
 
     offs.push(story.frame("actor", frameFn));
+    // Verification: how often a scene layer or wrapper has entered or left the render tree.
+    (window as unknown as { __scenes?: unknown }).__scenes = clock;
 
     return () => {
       window.clearTimeout(timer);
