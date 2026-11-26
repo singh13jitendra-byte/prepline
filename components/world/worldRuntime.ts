@@ -27,6 +27,10 @@ const INTRO = 1.4;
 const FLASH: Partial<Record<BeatId, number>> = { daybreak: 0.5, dawn: 0.25 };
 const FLASH_S = 0.28;
 const CLAIM_S = 0.7;
+/** The parked lens sits this far below the first of the twelve; its label is 18px lower still. */
+const PARK_DY = 66;
+/** Interview: the dust pulls in for 0.6s, holds, and has let go by this many seconds. */
+const FIL_S = 1.6;
 const ss = (a: number, b: number, x: number) => {
   const t = clamp01((x - a) / (b - a));
   return t * t * (3 - 2 * t);
@@ -145,6 +149,9 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
   let lastBeat: BeatId | null = null;
   let lastBp = 0;
   const claim = { seat: 0, t: 1 };
+  const fil = { t: FIL_S };
+  let lastTravel = 1;
+  let lastTravelBeat: BeatId | null = null;
   let rowRadius = 12;
   const readRowRadius = () => {
     const rowEl = anchorElement("row-2") ?? anchorElement("row-1");
@@ -181,7 +188,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
   const watchFor = (beat: BeatId) => {
     const i = ORDER[beat];
     const want =
-      i >= ORDER.pass2 && i <= ORDER.ranked ? "rows" : i >= ORDER.interview && i <= ORDER.hinge ? "board" : i === ORDER.nightfall ? "handoff" : i >= ORDER.unfold && i < ORDER.votes ? "sheet" : i >= ORDER.votes ? "seats" : "";
+      i >= ORDER.pass2 && i <= ORDER.ranked ? "rows" : i === ORDER.interview ? "board" : i === ORDER.hinge || i === ORDER.nightfall ? "handoff" : i >= ORDER.unfold && i < ORDER.votes ? "sheet" : i >= ORDER.votes ? "seats" : "";
     if (want === watching) return;
     unwatch?.();
     watching = want;
@@ -197,7 +204,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
         : want === "board"
           ? watchAnchors(["col-interview"])
           : want === "handoff"
-            ? watchAnchors(["col-interview", "sheet"])
+            ? watchAnchors(["hinge-float", "sheet"])
             : want === "sheet"
               ? watchAnchors(["sheet"])
               : want === "seats"
@@ -246,6 +253,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     good: 0,
     upAfter: 0,
     falls: 0,
+    moved: false,
   };
   const timer = glc ? ((glc as WebGL2RenderingContext).getExtension("EXT_disjoint_timer_query_webgl2") as { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null) : null;
   let query: WebGLQuery | null = null;
@@ -269,7 +277,9 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     worldBus.stats.gpuMs = gpu;
     if (enough && now - q.readyAt > 2000) {
       if (interval > 4 && interval < q.refresh) q.refresh = interval;
-      const bad = cpu > 6 || gpu > q.refresh * 0.6 || interval > q.refresh * 1.5;
+      // Frame interval only counts in windows where the page stood still: while it scrolls, a long
+      // frame is as likely the DOM's doing as the canvas', and a lower DPR would not help.
+      const bad = cpu > 6 || gpu > q.refresh * 0.6 || (!q.moved && interval > q.refresh * 1.5);
       const good = cpu < 3 && gpu < q.refresh * 0.35 && interval < q.refresh * 1.15;
       q.bad = bad ? q.bad + 1 : 0;
       q.good = good ? q.good + 1 : 0;
@@ -285,6 +295,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     }
     q.winStart = now;
     q.n = q.cpu = q.gpu = q.gpuN = q.interval = q.intervalN = 0;
+    q.moved = false;
   };
 
   const first0 = data.first * 4;
@@ -296,13 +307,14 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     const vw = fu.uRes.value.x;
     const vh = s.viewport.h || fu.uRes.value.y;
     let live = false; // a time-based element is on screen
-    let slow = false; // ...but only a slow one (the dawn light): half rate is enough
+    let slow = false; // ...but only slow ones (dust drift, the dawn light): half rate is enough
+    let busy = false; // something quick is on screen: full rate
     clock += dt;
 
     /* load */
     if (intro < 1) {
       intro = pos > 2 ? 1 : Math.min(1, intro + dt / INTRO);
-      live = true;
+      live = busy = true;
     }
     fu.uIntro.value = intro;
     worldBus.fieldReady = intro >= 1;
@@ -352,7 +364,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     hist.b[hist.i] = t2;
     hist.i = (hist.i + 1) % HN;
     hist.n = Math.min(HN, hist.n + 1);
-    if (fu.uHist1.value.w !== t1 || fu.uHist2.value.w !== t2) live = true;
+    if (fu.uHist1.value.w !== t1 || fu.uHist2.value.w !== t2) live = busy = true;
 
     fu.uDolly.value = track(DOLLY, pos);
     fu.uBright.value = track(BRIGHT, pos);
@@ -365,7 +377,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     if (i < ORDER.pass2 || (beat === "pass2" && bp < 0.9)) pulseArmed = true;
     if (pulse < 1) {
       pulse = Math.min(1, pulse + dt / 0.6);
-      live = true;
+      live = busy = true;
     }
     fu.uPulse.value = Math.sin(Math.PI * pulse) * (1 - pulse * 0.4);
 
@@ -373,7 +385,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     if (gatherOn) {
       gatherT = Math.min(GATHER_END, gatherT + dt);
       if (gatherT >= GATHER_END) gatherOn = false;
-      live = true;
+      live = busy = true;
     }
     fu.uGatherT.value = gatherT;
     fu.uAnt.value = beat === "ranked" ? 0.08 * ss(0, 0.2, bp) : i > ORDER.ranked ? 0.08 : 0;
@@ -405,7 +417,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     } else fu.uSeatC.value = 0;
     if (claim.t < 1) {
       claim.t = Math.min(1, claim.t + dt / CLAIM_S);
-      live = true;
+      live = busy = true;
     }
     fu.uClaim.value.set(claim.seat, claim.t);
 
@@ -416,7 +428,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     lastBp = bp;
     if (flash < 1) {
       flash = Math.min(1, flash + dt / FLASH_S);
-      live = true;
+      live = busy = true;
     }
     lu.uFlash.value = Math.sin(Math.PI * flash);
 
@@ -441,42 +453,59 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     prevLineY = line.y;
     wakeV = damp(wakeV, Math.max(-4000, Math.min(4000, rawV)), 9, dt);
     if (Math.abs(wakeV) < 4) wakeV = 0;
-    else if (bloom > 0 || sweep > 0) live = true;
+    else if (bloom > 0 || sweep > 0) live = busy = true;
     lu.uWakeV.value = wakeV;
 
-    /* the lamp: born as the glow under the Interview column, it travels at nightfall to its
-       place up and left of the sheet, and leaves with the dawn */
+    /* interview: as the tile lands, the day dust lines up at the column, then lets go */
+    const landed = beat === "interview" && s.actor.present && s.actor.travel >= 1;
+    if (landed && lastTravel < 1 && lastTravelBeat === "interview" && s.direction === 1) fil.t = 0;
+    lastTravel = s.actor.present ? s.actor.travel : 1;
+    lastTravelBeat = beat;
+    if (fil.t < FIL_S) {
+      fil.t = beat === "interview" ? Math.min(FIL_S, fil.t + dt) : FIL_S;
+      const col = anchorRect("col-interview");
+      const pull = fil.t < 0.6 ? ss(0, 0.6, fil.t) : 1 - ss(0.85, FIL_S, fil.t);
+      if (col) fu.uFil.value.set(col.x, col.y, col.w, Math.max(col.h, vh * 0.5));
+      fu.uFilK.value.set(col ? pull : 0, col ? pull * (1 - ss(1.1, FIL_S, fil.t)) : 0);
+      live = busy = true;
+    } else fu.uFilK.value.set(0, 0);
+
+    /* the lamp: born as a small warm pool under the floating tile at the hinge, it goes with the
+       tile into nightfall, becomes the lamp up and left of the sheet, and leaves with the dawn */
     let lampK = 0; // night side
-    let lampDay = 0; // day side (the board glow)
-    let travel = 1; // 0 on the board, 1 at the sheet
-    if (beat === "interview") {
-      lampDay = 0.9 * ss(0.25, 0.7, bp);
-      travel = 0;
-    } else if (beat === "hinge") {
-      lampDay = mix(1, 0.85, bp);
+    let lampDay = 0; // day side: the small warm pool under the floating tile
+    let travel = 1; // 0 under the tile, 1 at the sheet
+    if (beat === "hinge") {
+      lampDay = 0.8 * ss(0.05, 0.35, bp);
       travel = 0;
     } else if (beat === "nightfall") {
       travel = ss(0.1, 1, bp);
-      lampDay = 0.85 * (1 - travel * 0.4);
+      lampDay = 0.8 * (1 - travel * 0.4);
       lampK = 0.4 + 0.25 * travel;
     } else if (beat === "unfold") lampK = 0.65 + 0.35 * ss(0, 1, bp);
     else if (i > ORDER.unfold && i < ORDER.dawn) lampK = 1;
     else if (beat === "dawn") lampK = 1 - ss(0.35, 1, bp);
     if (lampK > 0 || lampDay > 0) {
+      lampK *= 0.97 + 0.03 * Math.sin(clock * 0.5); // it breathes, on the CPU: nothing per pixel
       const sheet = anchorRect("sheet");
-      const col = travel < 1 ? anchorRect("col-interview") : null;
       // Small screens: the copy sits above the sheet, so the pool stays low and close behind its top edge.
       let lx = sheet ? sheet.x + sheet.w * (small ? 0.4 : 0.16) : vw * (small ? 0.4 : 0.62);
       let ly = sheet ? sheet.y - vh * (small ? 0.0 : 0.05) : vh * 0.1;
       let rx = small ? vw * 0.8 : Math.max(vh * 0.92, sheet ? sheet.w * 1.35 : 0);
       let ry = small ? vh * 0.2 : vh * 0.56;
       if (small) lampK *= 0.8;
-      if (col) {
-        lx = mix(col.x + col.w / 2, lx, travel);
-        // The board is an opaque panel: the glow is wide enough to spill out around and under it.
-        ly = mix(col.y + col.w * 1.5, ly, travel);
-        rx = mix(col.w * 2.6, rx, travel);
-        ry = mix(col.w * 2.5, ry, travel);
+      if (travel < 1) {
+        // The pool is born under the tile and goes where the tile goes.
+        const tile = s.actor.present ? s.actor : null;
+        const rest = tile ? null : anchorRect("hinge-float");
+        const tx = tile ? tile.x : rest ? rest.x : lx;
+        const ty = tile ? tile.y : rest ? rest.y : ly;
+        const tw = tile ? tile.w : rest ? rest.w : 200;
+        const th = tile ? tile.h : rest ? rest.h : 120;
+        lx = mix(tx + tw / 2, lx, travel);
+        ly = mix(ty + th * 0.85, ly, travel);
+        rx = mix(Math.min(tw, 260) * 1.0, rx, travel);
+        ry = mix(Math.min(th, 160) * 1.15, ry, travel);
       }
       if (travel >= 1 && s.pointer.fine && s.pointer.inside) {
         lx += (s.pointer.x - lx) * 0.1;
@@ -512,8 +541,9 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     const parked = fine && !worldBus.pointerMoved && worldBus.demo.shown && beat === "hero" && pos < 0.5;
     const lensOn = parked || (fine && worldBus.pointerMoved && s.pointer.inside && i <= ORDER.pass2 && intro >= 1 && !worldBus.overControl);
     if (parked) {
+      // Below the demonstration's deepest point, so the sweep never crosses the label.
       const tx = data.b[first0] - 46;
-      const ty = data.b[first0 + 1] - 34;
+      const ty = data.b[first0 + 1] + PARK_DY;
       if (lens.k === 0) {
         lens.x = tx;
         lens.y = ty;
@@ -559,19 +589,25 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
       } else lens.focus = -1;
       const ro = (lens.k * 0.25).toFixed(3);
       if (ring.style.opacity !== ro) ring.style.opacity = ro;
-      const lo = (lens.label ? lens.k : 0).toFixed(3);
+      // If the demonstration's stroke does come near the label, the label steps back.
+      const near = demo ? clamp01((Math.abs(line.y - (lens.y + 24)) - 9) / 14) : 1;
+      const lo = (lens.label ? lens.k * near : 0).toFixed(3);
       if (label.style.opacity !== lo) label.style.opacity = lo;
     }
     fu.uFocus.value = lens.focus;
 
     /* draw only when it matters */
-    if (nightOnScreen || lens.k > 0) live = true;
-    else if (dawn > 0 && !live) live = slow = true;
+    if (lens.k > 0) live = busy = true;
+    if (nightOnScreen || dawn > 0) live = true;
+    // From Act III on, what is left when nothing quick is happening is dust drift and the dawn
+    // light. Both are slow: every other frame is enough, and halves the World's cost at rest.
+    if (live && !busy && i >= ORDER.unfold) slow = true;
     light.visible = bloom > 0.001 || sweep > 0.001 || lampK > 0.001 || lampDay > 0.001 || dawn > 0 || lens.k > 0 || flash < 1;
     const key = `${pos.toFixed(3)}|${dayTop.toFixed(1)}|${line.y.toFixed(1)}|${line.x0.toFixed(1)}|${line.x1.toFixed(1)}|${lampDay.toFixed(3)}|${lamp.x.toFixed(1)}|${lamp.y.toFixed(1)}|${ringKey.toFixed(1)}`;
     if (key !== lastKey) {
       lastKey = key;
       needs = true;
+      q.moved = true;
     }
     frameNo++;
     // The dawn light drifts slowly: when it is the only thing moving, every other frame is enough.
@@ -626,6 +662,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
   };
   offs.push(story.frame("world", frame));
   (window as unknown as { __world?: unknown }).__world = worldBus.stats;
+  (window as unknown as { __worldUniforms?: unknown }).__worldUniforms = () => ({ field: fu, light: lu });
 
   return () => {
     offs.forEach((off) => off());

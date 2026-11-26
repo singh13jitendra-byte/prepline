@@ -71,6 +71,18 @@ function occupied(x: number, y: number): boolean {
   return false;
 }
 
+const ORDER = [0, 1, 2, 3];
+const HERO_ORDER = [1, 3, 0, 2];
+const SWEEP_ORDER = [0, 1];
+/** Free of visible text and controls, with a margin: the label must not even touch its neighbours. */
+function clear(lx: number, ly: number, w: number): boolean {
+  for (let r = 0; r < 2; r++) {
+    const y = r === 0 ? ly - 5 : ly + 16;
+    for (let k = 0; k < 4; k++) if (occupied(lx - 10 + ((w + 20) * k) / 3, y)) return false;
+  }
+  return true;
+}
+
 function slotX(c: number, wide: boolean, x0: number, x1: number, vw: number, w: number) {
   if (wide) return c < 2 ? vw - RAIL_INSET - w : 16;
   return c < 2 ? x1 - w : c === 2 ? x0 - 12 - w : x1 + 12;
@@ -163,7 +175,7 @@ export function Line() {
       let stepX = 0; // where the stroke starts to step down (0 = no step)
       let restY = y;
       if (out > 0) {
-        const depth = Math.min(vh * 0.3, Math.max(vh * 0.1, worldBus.firstY + 70 - line.y));
+        const depth = Math.min(vh * 0.3, Math.max(vh * 0.1, worldBus.firstY + 56 - line.y));
         stepX = Math.max(x1 + 36, vw * 0.42);
         x1 = mix(x1, vw, out);
         y += depth * dip;
@@ -292,15 +304,16 @@ export function Line() {
       if (line.label !== "" && draw >= 1 && !onPaper && len > 40 && hand < 0.5 && out === 0 && (!s.flags.small || line.sweep)) {
         // Four places. Edge to edge: above or below the line, at the right or left end.
         // Shorter: above or below its right end, then beside its left end, then beside its right.
-        const order = s.beat === "hero" ? [1, 3, 0, 2] : [0, 1, 2, 3];
+        // During a chapter change the left end is where the copy is: right end or nothing.
+        const order = line.sweep ? SWEEP_ORDER : s.beat === "hero" ? HERO_ORDER : ORDER;
         const refresh = now - place.checkedAt > 160;
-        for (let k = 0; k < 4 && slot < 0; k++) {
+        for (let k = 0; k < order.length && slot < 0; k++) {
           const c = order[k];
           const lx = slotX(c, wide, x0, x1, vw, labelW);
           const ly = slotY(c, wide, y);
           if (lx < 12 || lx + labelW > vw - 12 || ly < 76 || ly + 11 > vh - 10) continue;
           if ((a.present || a.docked) && lx < a.x + a.w + 10 && lx + labelW > a.x - 10 && ly < a.y + a.h + 10 && ly + 11 > a.y - 10) continue;
-          if (refresh) place.free[c] = !(occupied(lx + 4, ly + 5) || occupied(lx + labelW / 2, ly + 5) || occupied(lx + labelW - 4, ly + 5));
+          if (refresh) place.free[c] = clear(lx, ly, labelW);
           if (place.free[c]) slot = c;
         }
         if (refresh) place.checkedAt = now;

@@ -50,6 +50,12 @@ html.world-on .cf{opacity:0;visibility:hidden}
 .world-lens{position:fixed;top:0;left:0;z-index:var(--z-nav);pointer-events:none;border-radius:50%;border:1px solid #fff;will-change:transform,opacity}
 .world-lens-label{position:fixed;top:0;left:0;z-index:var(--z-nav);pointer-events:none;white-space:nowrap;font-family:var(--font-mono);font-size:11px;line-height:1;color:rgba(255,255,255,.88);background:rgba(6,18,38,.74);border:1px solid rgba(255,255,255,.14);border-radius:7px;padding:6px 8px;will-change:transform,opacity}
 
+/* Chrome stops presenting the canvas once an opaque footer covers about a third of the viewport
+   (seen headless at the page bottom: the seat specks and the dawn vanish above the footer).
+   A footer that is not fully opaque is not treated as an occluder; 0.4% is invisible on ink. */
+html.world-on footer.ft{background-color:rgba(27,25,22,.996)}
+/* No WebGL: the seats still look taken. A CSS pin in each ring, where the world would leave a speck. */
+html.motion:not(.world-on) .seat-ring::before{content:"";position:absolute;inset:31%;border-radius:50%;background:var(--color-accent);opacity:.92}
 html:not(.motion) .story-stage[data-chapter="night"]{background-image:${STATIC_DOTS},radial-gradient(120% 90% at 50% 0%,var(--color-night) 0%,var(--color-night-2) 100%)}
 html:not(.motion) [data-anchor="hero-underline"]{background:var(--color-gold);min-height:2px;border-radius:2px}
 html:not(.motion) [data-anchor="ready-underline"]{background:var(--color-accent);min-height:2px;border-radius:2px}

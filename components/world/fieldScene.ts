@@ -17,6 +17,7 @@ import { LENS_RADIUS } from "./bus";
  *               drags a trail of embers and a still line has none
  *   ranked      the 12 fly an arc to the live row rects (uRows) and stretch into the full row
  *   day / prep  the lattice lets go and everything is dust: ink on day, lamp-lit at night
+ *   interview   as the tile lands, the day dust is pulled into lanes at the Interview column (uFil)
  *   dawn, seat  25 of the survivors ride the day line up and are left in the seat rings (uRings)
  *
  * In focus a speck is a tiny listing: a 7x4 rounded slip with a brighter top edge.
@@ -207,6 +208,8 @@ const vert = /* glsl */ `
   uniform float uSeatLine;
   uniform float uBeadY;
   uniform vec2 uClaim; // seat number (0 none), fill 0..1
+  uniform vec4 uFil;   // the Interview column: x, y, w, h
+  uniform vec2 uFilK;  // pull 0..1, ink 0..1
 
   varying vec2 vP;
   varying vec2 vBox;
@@ -350,7 +353,7 @@ const vert = /* glsl */ `
           dayCol = mix(dayCol, mix(AMBER, SEAT, fill), seatK);
           dayA = mix(dayA, 0.92, seatK);
           halo = max(halo, seatK * (0.45 + 0.5 * sin(PI * fill) + 0.35 * fill));
-          reach = mix(reach, 18.0 + 10.0 * fill, seatK);
+          reach = mix(reach, 12.0 + 16.0 * fill, seatK);
           blur *= 1.0 - seatK;
           slip *= 1.0 - seatK;
         }
@@ -383,6 +386,22 @@ const vert = /* glsl */ `
         halo *= 1.0 - shape;
         gone = mix(landed, clamp(uGatherT / 0.3, 0.0, 1.0), 1.0 - has);
       }
+    }
+
+    // Interview: for a moment the day dust is drawn toward the column the tile just landed in,
+    // lining up in lanes above and below it like filings on a magnet, then let go.
+    if (uFilK.x + uFilK.y > 0.0 && kind < 1.5 && seatK <= 0.0) {
+      vec2 fc = uFil.xy + uFil.zw * 0.5;
+      vec2 fd = (P - fc) / vec2(uFil.z * 2.6, uFil.w * 1.05);
+      float w = 1.0 - smoothstep(0.72, 1.0, length(fd));
+      float lane = uFil.x + (floor(h1 * 8.0) + 0.5) / 8.0 * uFil.z;
+      vec2 T = vec2(lane, floor(P.y / 7.0) * 7.0 + 3.5);
+      P = mix(P, T, uFilK.x * w);
+      dayA = mix(dayA, 0.42 + 0.2 * h2, uFilK.y * w);
+      dayCol = mix(dayCol, AMBER, uFilK.y * w);
+      slip = max(slip, uFilK.y * w);
+      blur *= 1.0 - uFilK.y * w;
+      radius = mix(radius, 1.3, uFilK.y * w);
     }
 
     // The lamp catches dust (Act III).
@@ -482,7 +501,8 @@ const frag = /* glsl */ `
     float y = uRes.y - gl_FragCoord.y / uDpr;
     float day = step(uDayTop, y);
     float aBody = mix(vCol.a, vDay.a, day) * fill * body;
-    float aHalo = halo * (1.0 - fill) * mix(1.0, 0.55, day);
+    // On cream a halo reads as a stain: only a claimed seat (the widest reach) keeps its bloom by day.
+    float aHalo = halo * (1.0 - fill) * mix(1.0, 0.12 + 0.6 * step(20.0, vFx.w), day);
     float aEdge = edge * 0.72 * (1.0 - day);
     float a = clamp(aBody + aHalo + aEdge, 0.0, 1.0);
     if (a < 0.002) discard;
@@ -522,6 +542,8 @@ export type FieldUniforms = {
   uSeatLine: { value: number };
   uBeadY: { value: number };
   uClaim: { value: THREE_NS.Vector2 };
+  uFil: { value: THREE_NS.Vector4 };
+  uFilK: { value: THREE_NS.Vector2 };
 };
 
 export function createField(THREE: Three, data: FieldData, width: number, height: number) {
@@ -565,6 +587,8 @@ export function createField(THREE: Three, data: FieldData, width: number, height
     uSeatLine: { value: BIG },
     uBeadY: { value: BIG },
     uClaim: { value: new THREE.Vector2(0, 0) },
+    uFil: { value: new THREE.Vector4(0, 0, 1, 1) },
+    uFilK: { value: new THREE.Vector2(0, 0) },
   };
 
   const material = new THREE.ShaderMaterial({
