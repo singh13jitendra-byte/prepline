@@ -7,7 +7,8 @@
  * screens read tokens only.
  */
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { installRowTilt } from "../tilt";
 import {
   Board,
   Kbd,
@@ -115,6 +116,8 @@ const iconNames: IconName[] = [
 export function Gallery({ theme }: { theme: Theme }) {
   const S = SHOWCASE_SIZES;
   const [picked, setPicked] = useState<Role>(roles[0]);
+  // Delight 9: the rows' paper tilt, as on the story page (where Nav installs it).
+  useEffect(() => installRowTilt(), []);
 
   return (
     <div className="gx" data-theme={theme === "night-desk" ? undefined : theme}>

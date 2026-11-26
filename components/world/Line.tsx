@@ -17,6 +17,8 @@
  *   8px past it, so no cap shows.
  * - It is a string: within 80px a fine pointer bends it up to 6px toward the cursor,
  *   crossing it plucks it, and it rings out on a spring (about 0.5s).
+ * - Delight 9: a fast scroll plucks it too. A damped standing wave pinned at its ends, up to
+ *   6px with the scroll speed, quiet again in about 600ms. Only drawn while it rings.
  * - Ranked hold: the line docks as the list rule only after the last of the twelve has
  *   landed, however fast the wheel gets there. What is drawn is published as worldBus.line.
  * - The label is a margin note (--font-accent, sentence case as written in LINE_TRACK),
@@ -50,6 +52,17 @@ const STEP = 40;
 const AMP = 2.2;
 const WAVE = 180;
 const NOTE_H = 20;
+/**
+ * Delight 9, the pluck: a fast scroll sets the string ringing. A standing wave pinned at the
+ * line's ends (the fundamental and a quicker three-hump overtone), amplitude from the scroll speed
+ * (none under PLUCK_FROM px/s, PLUCK_MAX px at PLUCK_FULL), rung out on an exponential envelope
+ * (PLUCK_TAU) so it is still in about 600ms. While it is quiet nothing extra is written.
+ */
+const PLUCK_FROM = 1200;
+const PLUCK_FULL = 5200;
+const PLUCK_MAX = 6;
+const PLUCK_TAU = 0.15;
+const PLUCK_HZ = 4.2;
 
 function hash(n: number) {
   const s = Math.sin(n * 127.1) * 43758.5453;
@@ -116,6 +129,8 @@ export function Line() {
     if (story.reduced()) return;
     const born = performance.now();
     const spring = { v: 0, x: 0, cx: 0, lastDy: 0, had: false };
+    /** The pluck: envelope (px), its phase clock (s) and the sign of the scroll that struck it. */
+    const pluck = { a: 0, t: 0, dir: 1 };
     const last = { d: "", w: "", color: "", label: "", lt: "", lo: "", vis: "", uo: "", lc: "", on: "" };
     const place = { slot: -1, want: -1, checkedAt: 0, free: [true, true, true, true] };
     let labelW = 0;
@@ -204,6 +219,28 @@ export function Line() {
       if (Math.abs(spring.x) < 0.02 && Math.abs(spring.v) < 0.5 && target === 0) spring.x = spring.v = 0;
       const bend = Math.max(-9, Math.min(9, spring.x));
 
+      /* the pluck: a fast scroll rings the string; it settles in about 600ms */
+      const v = Math.abs(s.velocity);
+      const strike = draw >= 1 && len > 40 ? PLUCK_MAX * clamp01((v - PLUCK_FROM) / (PLUCK_FULL - PLUCK_FROM)) : 0;
+      if (strike > pluck.a) {
+        // Rises to the strike quickly but never jumps: the phase clock runs on from where it was.
+        if (pluck.a === 0) {
+          pluck.t = 0;
+          pluck.dir = s.velocity < 0 ? -1 : 1;
+        }
+        pluck.a += (strike - pluck.a) * Math.min(1, dt * 18);
+      } else if (pluck.a > 0) {
+        pluck.a *= Math.exp(-dt / PLUCK_TAU);
+        if (pluck.a < 0.12) pluck.a = 0;
+      }
+      if (pluck.a > 0) pluck.t += dt;
+      const ring = pluck.a;
+      const w1 = ring > 0 ? pluck.dir * ring * Math.sin(2 * Math.PI * PLUCK_HZ * pluck.t) : 0;
+      // An overtone with two nodes along the string makes it read as a wobble, not a bob. It is
+      // kept slow enough to draw cleanly at 60fps, and dies first, so the ring-out ends on the
+      // fundamental alone.
+      const w2 = ring > 0 ? pluck.dir * ring * Math.exp(-pluck.t / (PLUCK_TAU * 1.5)) * Math.sin(2 * Math.PI * PLUCK_HZ * 1.6 * pluck.t + 0.9) : 0;
+
       /* the path: one stroke, its wobble in the geometry */
       let d = "";
       if (len >= 0.5) {
@@ -212,11 +249,19 @@ export function Line() {
         const span = a1 - a0;
         const amp = AMP * Math.min(1, span / 140);
         const n = Math.max(2, Math.ceil(span / STEP));
+        // A short stub is a stiffer string: the pluck reaches full height only from 320px.
+        const reach = Math.min(1, span / 320);
+        const p1 = 0.6 * w1 * reach;
+        const p2 = 0.4 * w2 * reach;
         const at = (x: number) => {
           let yy = y + wobble(x, seed) * amp;
           if (bend !== 0) {
             const u = (x - spring.cx) / 150;
             yy += bend / (1 + u * u * u * u);
+          }
+          if (ring > 0) {
+            const u = (x - a0) / span;
+            yy += p1 * Math.sin(Math.PI * u) + p2 * Math.sin(3 * Math.PI * u);
           }
           return yy;
         };

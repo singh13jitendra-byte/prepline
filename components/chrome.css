@@ -61,6 +61,7 @@ html.motion[data-chapter="night"] .nav-overlay {
   --nav-cta-fg: var(--c-paper);
   --nav-cta-print: var(--art-lamp);
   --nav-focus: var(--c-ink);
+  --nav-fly-ring: var(--c-ink);
   color: var(--nav-fg);
   background: var(--c-paper-2);
   border-color: var(--c-ink);
@@ -78,6 +79,7 @@ html.motion[data-chapter="day"] .nav-overlay {
   --nav-cta-fg: var(--art-deep);
   --nav-cta-print: var(--c-on-night);
   --nav-focus: var(--art-lamp);
+  --nav-fly-ring: transparent;
   color: var(--nav-fg);
   background: var(--c-night-2);
   border-color: var(--c-rule-night);
@@ -96,6 +98,7 @@ html.motion:not([data-beat]) .nav-base {
   --nav-cta-fg: var(--art-deep);
   --nav-cta-print: var(--c-on-night);
   --nav-focus: var(--art-lamp);
+  --nav-fly-ring: transparent;
   color: var(--nav-fg);
   background: var(--c-night-2);
   border-color: var(--c-rule-night);
@@ -228,6 +231,7 @@ html.motion[data-wipe] .nav-pill {
   gap: 6px;
 }
 .nav-cta {
+  position: relative;
   display: inline-flex;
   align-items: center;
   height: 40px;
@@ -366,6 +370,276 @@ html.motion[data-chapter="night"] .nav-menu a {
   .nav-word {
     font-size: 19px;
   }
+}
+
+/* ── Delight 9: small touches on the CTA ──────────────────────────────────
+   The wrap carries the lean (Nav writes one transform on pointer moves near it; this
+   transition carries it), the ignite behind the button, the button, and the firefly. */
+.nav-cta-wrap {
+  position: relative;
+  display: inline-flex;
+  transition: transform 0.6s var(--ease-out);
+}
+/* Two labels in one grid cell: the pill is as wide as the wider one, before and after. */
+.nav-cta-labels {
+  display: grid;
+}
+.nav-cta-label {
+  grid-area: 1 / 1;
+  justify-content: center;
+}
+.nav-cta-label[data-label="saved"],
+.nav-cta[data-saved] .nav-cta-label[data-label="ask"] {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+.nav-cta-label[data-label="saved"] {
+  transform: translateY(5px);
+}
+.nav-cta[data-saved] .nav-cta-label[data-label="saved"] {
+  opacity: 1;
+  transform: none;
+}
+.nav-cta .cta-check {
+  flex: none;
+}
+/* Live only (a restored seat just shows): the ignite first, then the old label rises out and
+   the new one rises in behind it. Never two labels at full strength at once. */
+.nav-cta[data-fresh] .nav-cta-label[data-label="ask"] {
+  transition:
+    opacity 180ms ease 260ms,
+    transform 320ms var(--ease-out) 260ms;
+}
+.nav-cta[data-fresh] .nav-cta-label[data-label="saved"] {
+  transition:
+    opacity 240ms ease 400ms,
+    transform 420ms var(--ease-out) 400ms;
+}
+/* The ignite: a lamp fill behind the button that swells and fades (print, not glow). */
+.nav-cta-ignite {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-pill);
+  background: var(--art-lamp);
+  opacity: 0;
+  pointer-events: none;
+}
+.nav-cta-wrap:has(> .nav-cta[data-fresh]) .nav-cta-ignite {
+  animation: nav-ignite 1s var(--ease-out) both;
+}
+@keyframes nav-ignite {
+  0% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  16% {
+    opacity: 0.95;
+    transform: scale(1.05, 1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.18, 1.34);
+  }
+}
+/* The firefly: one lamp dot on a slow lap that hugs the pill, pausing once a lap to blink.
+   The lap is a transform on a box the size of the button (percentages of the button, plus a
+   few px of air), so it fits any label and phones; the blink is opacity on the dot. Both run
+   on the compositor; nothing is written from script. On day paper the dot wears a pine ring
+   (lamp is never a bare mark on cream). */
+.nav-fly {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  animation: nav-fly-orbit 19s linear infinite;
+}
+.nav-fly i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  margin: -1.5px 0 0 -1.5px;
+  border-radius: var(--r-pill);
+  background: var(--art-lamp);
+  box-shadow: 0 0 0 1px var(--nav-fly-ring);
+  animation: nav-fly-blink 19s linear infinite;
+}
+/* the pause is the last 12% of the lap: two slow blinks while it rests */
+@keyframes nav-fly-blink {
+  0%,
+  89.5%,
+  92.5%,
+  95%,
+  98%,
+  100% {
+    opacity: 1;
+  }
+  91% {
+    opacity: 0.12;
+  }
+  96.5% {
+    opacity: 0.12;
+  }
+  40% {
+    opacity: 0.82;
+  }
+}
+@keyframes nav-fly-orbit {
+  0% {
+    transform: translate(calc(37.87% + 3.03px), calc(-45.25% + -2.26px));
+  }
+  1.83% {
+    transform: translate(calc(38.74% + 3.1px), calc(-44.72% + -2.24px));
+  }
+  3.67% {
+    transform: translate(calc(39.61% + 3.17px), calc(-44.12% + -2.21px));
+  }
+  5.5% {
+    transform: translate(calc(40.52% + 3.24px), calc(-43.42% + -2.17px));
+  }
+  7.33% {
+    transform: translate(calc(41.49% + 3.32px), calc(-42.58% + -2.13px));
+  }
+  9.17% {
+    transform: translate(calc(42.53% + 3.4px), calc(-41.54% + -2.08px));
+  }
+  11% {
+    transform: translate(calc(43.64% + 3.49px), calc(-40.25% + -2.01px));
+  }
+  12.83% {
+    transform: translate(calc(44.8% + 3.58px), calc(-38.6% + -1.93px));
+  }
+  14.67% {
+    transform: translate(calc(45.99% + 3.68px), calc(-36.51% + -1.83px));
+  }
+  16.5% {
+    transform: translate(calc(47.15% + 3.77px), calc(-33.8% + -1.69px));
+  }
+  18.33% {
+    transform: translate(calc(48.23% + 3.86px), calc(-30.27% + -1.51px));
+  }
+  20.17% {
+    transform: translate(calc(49.13% + 3.93px), calc(-25.52% + -1.28px));
+  }
+  22% {
+    transform: translate(calc(49.76% + 3.98px), calc(-18.62% + -0.93px));
+  }
+  23.83% {
+    transform: translate(calc(50% + 4px), calc(-2.13% + -0.11px));
+  }
+  25.67% {
+    transform: translate(calc(49.73% + 3.98px), calc(19.21% + 0.96px));
+  }
+  27.5% {
+    transform: translate(calc(48.79% + 3.9px), calc(27.64% + 1.38px));
+  }
+  29.33% {
+    transform: translate(calc(47.03% + 3.76px), calc(34.14% + 1.71px));
+  }
+  31.17% {
+    transform: translate(calc(44.26% + 3.54px), calc(39.41% + 1.97px));
+  }
+  33% {
+    transform: translate(calc(40.25% + 3.22px), calc(43.64% + 2.18px));
+  }
+  34.83% {
+    transform: translate(calc(34.63% + 2.77px), calc(46.84% + 2.34px));
+  }
+  36.67% {
+    transform: translate(calc(26.64% + 2.13px), calc(48.96% + 2.45px));
+  }
+  38.5% {
+    transform: translate(calc(13.11% + 1.05px), calc(49.94% + 2.5px));
+  }
+  40.33% {
+    transform: translate(calc(-19.64% + -1.57px), calc(49.7% + 2.48px));
+  }
+  42.17% {
+    transform: translate(calc(-30.53% + -2.44px), calc(48.16% + 2.41px));
+  }
+  44% {
+    transform: translate(calc(-37.87% + -3.03px), calc(45.25% + 2.26px));
+  }
+  45.83% {
+    transform: translate(calc(-43.14% + -3.45px), calc(40.86% + 2.04px));
+  }
+  47.67% {
+    transform: translate(calc(-46.79% + -3.74px), calc(34.75% + 1.74px));
+  }
+  49.5% {
+    transform: translate(calc(-49.02% + -3.92px), calc(26.29% + 1.31px));
+  }
+  51.33% {
+    transform: translate(calc(-49.95% + -4px), calc(12.38% + 0.62px));
+  }
+  53.17% {
+    transform: translate(calc(-49.71% + -3.98px), calc(-19.4% + -0.97px));
+  }
+  55% {
+    transform: translate(calc(-48.41% + -3.87px), calc(-29.51% + -1.48px));
+  }
+  56.83% {
+    transform: translate(calc(-46.15% + -3.69px), calc(-36.19% + -1.81px));
+  }
+  58.67% {
+    transform: translate(calc(-43.03% + -3.44px), calc(-40.99% + -2.05px));
+  }
+  60.5% {
+    transform: translate(calc(-39.14% + -3.13px), calc(-44.45% + -2.22px));
+  }
+  62.33% {
+    transform: translate(calc(-34.53% + -2.76px), calc(-46.87% + -2.34px));
+  }
+  64.17% {
+    transform: translate(calc(-29.17% + -2.33px), calc(-48.48% + -2.42px));
+  }
+  66% {
+    transform: translate(calc(-22.83% + -1.83px), calc(-49.45% + -2.47px));
+  }
+  67.83% {
+    transform: translate(calc(-14.61% + -1.17px), calc(-49.91% + -2.5px));
+  }
+  69.67% {
+    transform: translate(calc(8.11% + 0.65px), calc(-49.99% + -2.5px));
+  }
+  71.5% {
+    transform: translate(calc(17.7% + 1.42px), calc(-49.8% + -2.49px));
+  }
+  73.33% {
+    transform: translate(calc(23% + 1.84px), calc(-49.43% + -2.47px));
+  }
+  75.17% {
+    transform: translate(calc(26.72% + 2.14px), calc(-48.95% + -2.45px));
+  }
+  77% {
+    transform: translate(calc(29.51% + 2.36px), calc(-48.41% + -2.42px));
+  }
+  78.83% {
+    transform: translate(calc(31.67% + 2.53px), calc(-47.85% + -2.39px));
+  }
+  80.67% {
+    transform: translate(calc(33.39% + 2.67px), calc(-47.3% + -2.37px));
+  }
+  82.5% {
+    transform: translate(calc(34.78% + 2.78px), calc(-46.77% + -2.34px));
+  }
+  84.33% {
+    transform: translate(calc(35.95% + 2.88px), calc(-46.26% + -2.31px));
+  }
+  86.17% {
+    transform: translate(calc(36.95% + 2.96px), calc(-45.76% + -2.29px));
+  }
+  88% {
+    transform: translate(calc(37.87% + 3.03px), calc(-45.25% + -2.26px));
+  }
+  100% {
+    transform: translate(calc(37.87% + 3.03px), calc(-45.25% + -2.26px));
+  }
+}
+html:not(.motion) .nav-fly,
+html:not(.motion) .nav-cta-ignite {
+  display: none;
 }
 
 /* ── beat rail: five ticks on the right edge (desktop) ── */
@@ -630,6 +904,14 @@ html.motion[data-beat="footer"] .rail {
   .nav-menu,
   .ft[data-seen] .ft-laptop {
     animation: none;
+  }
+  .nav-fly,
+  .nav-cta-ignite {
+    display: none;
+  }
+  .nav-cta-wrap,
+  .nav-cta-label {
+    transition: none !important;
   }
   .ft-laptop {
     --draw: 1;
