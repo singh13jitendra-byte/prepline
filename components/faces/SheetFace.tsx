@@ -9,10 +9,11 @@
  *
  * - host "dock": the real sheet. Votes are controlled from prepState (shared with the demo and
  *   the flying copies); PrepSheet keeps its own buttons, live region and "Tell:" column. The
- *   typing of q1..q3 is a visual layer portalled into the sheet's own scroll body, sitting
+ *   writing of q1..q3 is a visual layer portalled into the sheet's own scroll body, sitting
  *   exactly over each question: the real text is transparent while its question is written,
- *   then shown again. The overlay owns the anchors sheet-q1..3 (the Line's right end is the
- *   caret); sheet-foot is PrepSheet's own "n of 3 asked". The story scrolls the sheet's body
+ *   then shown again. Delight 6: the Line is the pen. A brass nib rides the Line's leading point
+ *   and writes each question, scrubbed by scroll (SheetPen.tsx). The overlay owns the anchors
+ *   sheet-q1..3 (the Line's leading point is the nib); sheet-foot is PrepSheet's own "n of 3 asked". The story scrolls the sheet's body
  *   with the reading (a breath channel) and ends on "Before it starts".
  * - host "actor": decorative copies only (the Actor layer is inert and aria-hidden). Three
  *   paper panels on hinges driven by the Actor's fold, flat 6% tints and faint creases for
@@ -21,15 +22,16 @@
  *   the board tile (TileFace), so nightfall grows the tile into this exact picture.
  */
 
-import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject } from "react";
 import { createPortal } from "react-dom";
 import { registerAnchor, type AnchorId } from "@/lib/anchors";
 import { usePerformance } from "@/lib/perform";
-import { BEATS, clamp01, story, type BeatId } from "@/lib/story";
+import { BEATS, clamp01, story, type BeatId, type StoryState } from "@/lib/story";
 import { FaceBoxContext, getFace, registerFace, type FaceProps } from "@/components/story/faces";
 import { FaceFrame } from "@/components/story/FaceSlot";
 import { Icon, Illustrative, KeyValue, PrepSheet, ScoreRule, SourceChip, productData } from "@/components/product";
 import { prepState, usePrepState, type Vote, type Votes } from "@/components/acts/prep/prepState";
+import { INK, PenNib, hideNib, nibScale, penPhase, placeNib, writeAt, writePlan, type Pen, type Plan } from "./SheetPen";
 import "./TileFace";
 import "./sheet.css";
 
@@ -54,17 +56,6 @@ function useFaceSize(): { w: number; h: number; p: number } {
 
 function record(v: Votes): Record<string, Vote> {
   return Object.fromEntries(QIDS.map((id, i) => [id, v[i] ?? null]));
-}
-
-/** 22ms a character, 180ms after punctuation (storyboard 4). */
-function schedule(text: string) {
-  const starts: number[] = [];
-  let t = 0;
-  for (let i = 0; i < text.length; i++) {
-    starts.push(t);
-    t += /[,.?:;!]/.test(text[i]) ? 0.18 : 0.022;
-  }
-  return { starts, total: t + 0.03 };
 }
 
 /** The product sheet at the face's natural size (the same markup in every copy). */
@@ -225,8 +216,6 @@ function SheetPrint({ votes, opener, foot, head, body }: { votes: Votes; opener:
 
 /* ───────────────────────────────────────────── dock: typing overlay ── */
 
-type Box = { l: number; t: number; w: number; h: number };
-
 /** Offset of `el` inside `host` (unscaled layout px), walking the offsetParent chain. */
 function offsetIn(el: HTMLElement, host: HTMLElement): { x: number; y: number } {
   let x = 0;
@@ -240,13 +229,26 @@ function offsetIn(el: HTMLElement, host: HTMLElement): { x: number; y: number } 
   return { x, y };
 }
 
+/**
+ * One likely question, written by the pen (delight 6, SheetPen.tsx). Scrubbed by the beat's
+ * progress and reversible: the Line brings the nib from the last rule (0..0.2), the nib writes
+ * the question onto the paper (to 0.82), then the Line becomes the row's rule and the nib sinks
+ * back into it (to 0.94). Scrolled back, the ink un-writes and the nib travels back.
+ *
+ * Two aria-hidden layers sit exactly over PrepSheet's question, in its own type: the ink (opacity
+ * per glyph, a soft front just behind the nib) and the wet ink over it (deep pine; a glyph's wet
+ * copy is switched on as the nib passes and a CSS animation dries it in about 400ms, on the
+ * compositor). The real text stays in the accessibility tree, transparent until the question is
+ * done. This layer owns the anchor sheet-qN: the Line underlines the line being written and its
+ * leading point is the nib.
+ */
 function TypedQuestion({ index, body, root }: { index: number; body: HTMLElement; root: HTMLElement }) {
   const text = QTEXT[index];
   const boxRef = useRef<HTMLDivElement>(null);
+  const wetRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLSpanElement>(null);
-  const caretRef = useRef<HTMLSpanElement>(null);
   const glyphs = useRef<HTMLSpanElement[]>([]);
-  const remeasure = useRef<() => void>(() => {});
+  const wets = useRef<HTMLSpanElement[]>([]);
 
   useEffect(() => {
     if (!anchorRef.current) return;
@@ -254,171 +256,198 @@ function TypedQuestion({ index, body, root }: { index: number; body: HTMLElement
   }, [index]);
 
   useEffect(() => {
-    const run = () => remeasure.current();
-    document.fonts?.ready.then(run).catch(() => {});
-    const ro = new ResizeObserver(run);
+    const box = boxRef.current;
+    const wet = wetRef.current;
+    const anchor = anchorRef.current;
+    if (!box || !wet || !anchor) return;
+    const attr = `data-q${index + 1}`;
+    const mine = order(Q_BEATS[index]);
+    if (story.reduced()) {
+      box.style.visibility = wet.style.visibility = "hidden";
+      root.setAttribute(attr, "done");
+      return;
+    }
+    let plan: Plan | null = null;
+    let row = { x: 0, y: 0, w: 0 };
+    let size = 1;
+    let stale = true;
+    let focused = root.matches(":focus-within");
+    const shown: string[] = [];
+    const wetOn: boolean[] = [];
+    const lastA = { l: "", t: "", w: "", h: "" };
+    let lastState = "";
+    let lastVis = "";
+    const pen: Pen = { x: 0, y: 0, left: 0, lift: 0 };
+    let tInk = 0;
+    let liftPrev = 0;
+
+    // Lay both layers exactly over PrepSheet's question text, in the same type; read the hand.
+    const measure = () => {
+      const real = body.querySelectorAll<HTMLElement>(".pp-q-text")[index];
+      const li = real?.closest<HTMLElement>(".pp-q");
+      if (!real || !li || !real.clientWidth) return;
+      const cs = getComputedStyle(real);
+      const o = offsetIn(real, body);
+      const type = {
+        left: `${o.x}px`,
+        top: `${o.y}px`,
+        width: `${real.clientWidth}px`,
+        fontFamily: cs.fontFamily,
+        fontSize: cs.fontSize,
+        lineHeight: cs.lineHeight,
+        letterSpacing: cs.letterSpacing,
+        fontWeight: cs.fontWeight,
+        textWrap: cs.getPropertyValue("text-wrap") || "wrap",
+      } as Partial<CSSStyleDeclaration>;
+      Object.assign(box.style, type);
+      Object.assign(wet.style, type);
+      const lo = offsetIn(li, body);
+      row = { x: o.x, y: lo.y + li.offsetHeight, w: lo.x + li.offsetWidth - o.x };
+      plan = writePlan(
+        text,
+        glyphs.current.map((g) => ({ l: o.x + g.offsetLeft, t: o.y + g.offsetTop, w: g.offsetWidth, h: g.offsetHeight })),
+      );
+      const r = body.getBoundingClientRect();
+      size = (body.offsetWidth ? r.width / body.offsetWidth : 1) * (window.matchMedia(SMALL).matches ? 0.74 : 1);
+      stale = false;
+      lastA.l = lastA.t = lastA.w = lastA.h = "";
+    };
+
+    const setAnchor = (l: number, t: number, w: number, h: number) => {
+      const v = { l: `${l.toFixed(1)}px`, t: `${t.toFixed(1)}px`, w: `${Math.max(0, w).toFixed(1)}px`, h: `${h.toFixed(2)}px` };
+      if (v.l !== lastA.l) anchor.style.left = lastA.l = v.l;
+      if (v.t !== lastA.t) anchor.style.top = lastA.t = v.t;
+      if (v.w !== lastA.w) anchor.style.width = lastA.w = v.w;
+      if (v.h !== lastA.h) anchor.style.height = lastA.h = v.h;
+    };
+
+    // Ink up to writing time t: the base layer's opacity per glyph (only those that change), and the
+    // wet copy switched on as each glyph inks in (off again when it un-writes).
+    const ink = (t: number) => {
+      if (!plan) return;
+      const { starts } = plan;
+      for (let i = 0; i < glyphs.current.length; i++) {
+        const a = Math.min(1, Math.max(0, (t - (starts[i] ?? 0)) / INK));
+        // Quarter steps: a soft front, at most three in-between writes per glyph.
+        const v = a >= 1 ? "" : a <= 0 ? "0" : (Math.max(1, Math.round(a * 4)) / 4).toFixed(2);
+        if (shown[i] !== v) glyphs.current[i].style.opacity = shown[i] = v;
+        const on = a >= 0.5;
+        if (wetOn[i] !== on) {
+          wets.current[i]?.toggleAttribute("data-w", on);
+          wetOn[i] = on;
+        }
+      }
+    };
+
+    const frame = (_t: number, _dt: number, s: Readonly<StoryState>) => {
+      if (stale) measure();
+      if (!plan) return;
+      const here = order(s.beat);
+      const ph = penPhase(mine, here, s.beatProgress);
+      const P = plan;
+      const L0 = P.lines[0];
+      const LN = P.lines[P.lines.length - 1];
+      let state = "blank";
+      // The Line draws the anchor as the story measured it at the start of this frame: the one
+      // written last frame. The ink follows that same writing time, so the written front, the
+      // Line's leading point and the nib on it agree in every frame; this frame's anchor is
+      // written for the next.
+      let tNow = 0;
+      if (ph.kind === "done") {
+        // At rest the Line thins to the rule under the whole question row.
+        state = "done";
+        tNow = P.total;
+        setAnchor(row.x, row.y - 1.5, row.w, 1.5);
+      } else if (ph.kind === "blank" || ph.kind === "travel") {
+        // Waiting: the Line's stub at the start of the first line, its leading point where the nib lands.
+        if (L0) setAnchor(L0.left - 8, L0.ul - 2, 8, 2);
+      } else if (ph.kind === "write") {
+        state = "typing";
+        tNow = ph.w * P.total;
+        writeAt(P, tNow, pen);
+        setAnchor(pen.left, pen.y - 2, pen.x - pen.left, 2);
+      } else {
+        // Settle: the underline of the last line becomes the row's rule, the nib riding its tip.
+        state = "settle";
+        tNow = P.total;
+        const u = ph.u * ph.u * (3 - 2 * ph.u);
+        const h = 2 - 0.5 * u;
+        const y = LN.ul + (row.y - LN.ul) * u;
+        const l = LN.left + (row.x - LN.left) * u;
+        const r = LN.right + (row.x + row.w - LN.right) * u;
+        setAnchor(l, y - h, r - l, h);
+      }
+      // A jump (a fling, a beat change, a resize) inks at once: there is no Line to agree with.
+      ink(Math.abs(tNow - tInk) > 0.6 || ph.kind !== "write" ? tNow : tInk);
+      tInk = tNow;
+      const liftInk = liftPrev;
+      liftPrev = ph.kind === "write" ? pen.lift : 0;
+      if (state !== lastState) root.setAttribute(attr, (lastState = state));
+      const vis = state === "done" ? "hidden" : "";
+      if (vis !== lastVis) box.style.visibility = wet.style.visibility = lastVis = vis;
+
+      // The nib belongs to the beat being written; the first question also puts it away elsewhere.
+      if (here === mine) {
+        const scale = focused ? 0 : nibScale(ph, s.beatProgress);
+        // The nib stands where the Line was measured (last frame's pen): so does its lift.
+        const lift = ph.kind === "write" ? liftInk : 0;
+        // The hand is alive: the barrel rocks a degree or two as the nib crosses the letters.
+        const wiggle = ph.kind === "write" ? 1.6 * Math.sin(pen.x / 7) : 0;
+        placeNib(s, scale, size, lift, wiggle);
+      } else if (index === 0 && !Q_BEATS.includes(s.beat)) hideNib();
+    };
+
+    const onFocus = () => {
+      focused = root.matches(":focus-within");
+    };
+    root.addEventListener("focusin", onFocus);
+    root.addEventListener("focusout", onFocus);
+    const ro = new ResizeObserver(() => (stale = true));
     ro.observe(body);
-    return () => ro.disconnect();
-  }, [body]);
-
-  usePerformance(
-    Q_BEATS[index],
-    (tl) => {
-      const box = boxRef.current;
-      const anchor = anchorRef.current;
-      const caret = caretRef.current;
-      if (!box || !anchor || !caret) return;
-      const { starts, total: T } = schedule(text);
-      const attr = `data-q${index + 1}`;
-      let boxes: Box[] = [];
-      let row = { x: 0, y: 0, w: 0 };
-      let stale = true;
-      let shown = -1;
-      let cur = 0;
-
-      // Lay the overlay exactly over PrepSheet's question text, in the same type.
-      const measure = () => {
-        const real = body.querySelectorAll<HTMLElement>(".pp-q-text")[index];
-        const li = real?.closest<HTMLElement>(".pp-q");
-        if (!real || !li) return;
-        const cs = getComputedStyle(real);
-        const o = offsetIn(real, body);
-        Object.assign(box.style, {
-          left: `${o.x}px`,
-          top: `${o.y}px`,
-          width: `${real.clientWidth}px`,
-          fontFamily: cs.fontFamily,
-          fontSize: cs.fontSize,
-          lineHeight: cs.lineHeight,
-          letterSpacing: cs.letterSpacing,
-          fontWeight: cs.fontWeight,
-          color: cs.color,
-          textWrap: cs.getPropertyValue("text-wrap") || "wrap",
-        } as Partial<CSSStyleDeclaration>);
-        const lo = offsetIn(li, body);
-        row = {
-          x: o.x,
-          y: lo.y + li.offsetHeight,
-          w: lo.x + li.offsetWidth - o.x,
-        };
-        boxes = glyphs.current.map((g) => ({
-          l: o.x + g.offsetLeft,
-          t: o.y + g.offsetTop,
-          w: g.offsetWidth,
-          h: g.offsetHeight,
-        }));
-        stale = false;
-      };
-
-      const render = (t: number) => {
-        cur = t;
-        const done = t >= T;
-        root.setAttribute(attr, done ? "done" : t > 0 ? "typing" : "blank");
-        if (done) {
-          // At rest the Line thins to the rule under the whole question row.
-          if (stale) measure();
-          box.style.visibility = "hidden";
-          caret.removeAttribute("data-on");
-          Object.assign(anchor.style, {
-            left: `${row.x}px`,
-            top: `${row.y - 1.5}px`,
-            width: `${row.w}px`,
-            height: "1.5px",
-          });
-          return;
-        }
-        if (stale) measure();
-        box.style.visibility = "";
-        let n = 0;
-        while (n < starts.length && starts[n] < t) n++;
-        if (n !== shown) {
-          glyphs.current.forEach((g, i) => {
-            const want = i < n ? "" : "0";
-            if (g.style.opacity !== want) g.style.opacity = want;
-          });
-          shown = n;
-        }
-        const first = boxes[0];
-        const last = boxes[Math.max(0, n - 1)];
-        if (!first || !last) return;
-        const lineTop = n === 0 ? first.t : last.t;
-        const lineH = n === 0 ? first.h : last.h;
-        let lineLeft = first.l;
-        for (let i = 0; i < n; i++)
-          if (Math.abs(boxes[i].t - lineTop) < 2) {
-            lineLeft = boxes[i].l;
-            break;
-          }
-        const right = n === 0 ? first.l : last.l + last.w;
-        // While typing, the Line's right end is the caret: it underlines the line being written.
-        Object.assign(anchor.style, {
-          left: `${lineLeft}px`,
-          top: `${(lineTop + lineH + 1).toFixed(1)}px`,
-          width: `${Math.max(0, right - lineLeft).toFixed(1)}px`,
-          height: "2px",
-        });
-        Object.assign(caret.style, {
-          left: `${(right + 1).toFixed(1)}px`,
-          top: `${(lineTop + lineH * 0.1).toFixed(1)}px`,
-          height: `${(lineH * 0.8).toFixed(1)}px`,
-        });
-        caret.toggleAttribute("data-on", t > 0);
-      };
-
-      const proxy = { t: 0 };
-      render(0);
-      tl.to(proxy, {
-        t: T,
-        duration: T,
-        ease: "none",
-        onUpdate: () => render(proxy.t),
-        onComplete: () => render(T),
-        onReverseComplete: () => render(0),
-      });
-      remeasure.current = () => {
-        stale = true;
-        shown = -1;
-        render(cur);
-      };
-    },
-    [index, body, root],
-  );
+    document.fonts?.ready.then(() => (stale = true)).catch(() => {});
+    const off = story.frame("world", frame);
+    return () => {
+      off();
+      ro.disconnect();
+      root.removeEventListener("focusin", onFocus);
+      root.removeEventListener("focusout", onFocus);
+    };
+  }, [index, body, root, text]);
 
   // Words keep their letters together; spaces sit between words so lines break where the real text does.
   const words = useMemo(() => text.split(" "), [text]);
-  let k = 0;
+  const layer = (into: MutableRefObject<HTMLSpanElement[]>) => {
+    let k = 0;
+    return words.map((w, wi) => {
+      const letters = [...w].map((ch) => {
+        const i = k++;
+        return (
+          <span key={i} ref={(el) => void (el && (into.current[i] = el))}>
+            {ch}
+          </span>
+        );
+      });
+      const i = wi < words.length - 1 ? k++ : -1;
+      return (
+        <span key={wi}>
+          <span className="shx-word">{letters}</span>
+          {i >= 0 ? (
+            <span key={`s${i}`} ref={(el) => void (el && (into.current[i] = el))}>
+              {" "}
+            </span>
+          ) : null}
+        </span>
+      );
+    });
+  };
   return (
     <>
       <div ref={boxRef} className="shx-typed" aria-hidden="true">
-        {words.map((w, wi) => {
-          const letters = [...w].map((ch) => {
-            const i = k++;
-            return (
-              <span key={i} ref={(el) => void (el && (glyphs.current[i] = el))}>
-                {ch}
-              </span>
-            );
-          });
-          const space =
-            wi < words.length - 1
-              ? (() => {
-                  const i = k++;
-                  return (
-                    <span key={`s${i}`} ref={(el) => void (el && (glyphs.current[i] = el))}>
-                      {" "}
-                    </span>
-                  );
-                })()
-              : null;
-          return (
-            <span key={wi}>
-              <span className="shx-word">{letters}</span>
-              {space}
-            </span>
-          );
-        })}
+        {layer(glyphs)}
       </div>
-      <span ref={caretRef} className="shx-caret" aria-hidden="true" />
+      <div ref={wetRef} className="shx-typed shx-wet" aria-hidden="true">
+        {layer(wets)}
+      </div>
       <span ref={anchorRef} className="shx-anchor" aria-hidden="true" />
     </>
   );
@@ -577,6 +606,7 @@ function SheetDock({ skin }: { skin: FaceProps["skin"] }) {
       <div className="shx-cast" aria-hidden="true" />
       <div className="shx-plate" aria-hidden="true" />
       <Sheet live votes={votes} />
+      <PenNib />
       <div className="shx-crease" style={{ top: P }} aria-hidden="true" />
       <div className="shx-crease" style={{ top: 2 * P }} aria-hidden="true" />
       {body && rootRef.current
