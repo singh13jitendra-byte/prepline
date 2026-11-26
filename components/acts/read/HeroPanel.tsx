@@ -150,8 +150,8 @@ export function HeroPanel() {
                   {copy.sub}
                 </p>
                 <div className="rd-form" data-rise>
-                  {/* No glass: read.css restyles this tone to the Night Desk field (deep well, sage keyline, lamp button). */}
-                  <WaitlistForm tone="glass" />
+                  {/* Night Desk field from WaitlistForm itself: deep well, sage keyline, lamp button. */}
+                  <WaitlistForm tone="night" />
                 </div>
                 <p className="rd-privacy" data-rise>
                   {copy.privacy}

@@ -22,6 +22,15 @@
   --wl-danger: var(--c-danger);
   --wl-focus: var(--art-lamp);
 }
+/* The form owns its look: the field and the button carry it, never the form box, so a host's
+   wrapper styles (a well, a keyline, a blur) cannot draw a second frame around them. */
+form.wl[data-tone] {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
 .wl[data-tone="ticket"] {
   --wl-h: 42px;
   --wl-fg: var(--c-ink);
