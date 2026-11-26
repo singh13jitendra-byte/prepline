@@ -18,7 +18,7 @@
  *   story.breath(el, beat, opts?): () => void    write a scrubbed 0..1 `--breath` on `el` for the back half of a beat
  *   story.breathOf(beat, from?, to?): number     the same value, for JS
  *   story.useBreath(beat, opts?)                 React ref that does story.breath
- *   story.lineScope(el): () => void              make `el` (and its subtree) receive --line-y / --day-top / --day-side
+ *   story.lineScope(el): () => void              make `el` (not its subtree) receive --line-y / --day-top / --day-side
  *
  *   BEATS, ACTS          the scroll budget (storyboard 2.2). Single source of truth for section heights.
  *   LINE_TRACK           per beat: where the Line goes (storyboard section 2, "Line label" and line moves)
@@ -97,11 +97,11 @@
  * above it night; 0 = all day, viewport height = all night) and --day-side
  * ("below" while the line is sweeping a chapter change, else "none") change
  * every frame, so they are NOT written on <html>: that restyled the whole
- * document. They are written on "line scopes": small wrappers registered with
- * story.lineScope(el) or rendered with <LineScope>. StoryRoot wraps its `world`
- * and `chrome` props in one each, and app/page.tsx wraps the nav. CSS inside a
- * scope reads var(--day-top) exactly as before; :root keeps static defaults
- * (first-frame values) for anything outside a scope. The act sections are not
+ * document. They are written on "line scopes": the reader elements themselves,
+ * registered with story.lineScope(el) or through <LineScope targets>. The three
+ * are registered non-inherited (app/globals.css), so a scope's own rules read
+ * var(--day-top) and its subtree is not restyled; anything that is not a scope
+ * reads the static first-frame defaults. The act sections are not
  * a scope: stages are clipped by an inline clip-path, and act code that needs
  * the line reads story.get().line / .dayTop in a subscriber.
  *
@@ -1259,7 +1259,7 @@ export const story = {
 
   /**
    * Make `el` a line scope: it receives --line-y, --day-top and --day-side every
-   * frame they change, and its subtree inherits them. Keep scopes small.
+   * frame they change. They do not inherit: `el` is the element whose rule reads them.
    * `lineY: false` leaves --line-y out: --day-top only moves during a wipe, while
    * --line-y moves on almost every scroll frame, so a scope that only splits at
    * the wipe (nav, rail) should not take it.

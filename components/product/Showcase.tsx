@@ -1,6 +1,7 @@
 "use client";
 
-import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode, useContext } from "react";
+import { FaceBoxContext } from "@/components/story/faces";
 import { cx } from "./primitives";
 
 /**
@@ -33,6 +34,11 @@ export type ShowcaseSize = keyof typeof SHOWCASE_SIZES | { w: number; h: number 
  * - `fit="contain"` (default) scales to fit the parent box, centred.
  *   `fit="width"` scales to the parent's width and lets height follow.
  * - `scale` fixes the factor and skips measuring (cheapest inside a moving frame).
+ * - Minimum scale: inside a story face (which sets `--pp-min: 0.85` and its own scale as
+ *   `--face-k`), a screen is never drawn smaller than that. If `scale × face scale` falls below
+ *   it, the screen is laid out in a proportionally narrower box at the minimum scale, so its
+ *   narrow layout takes over where the desktop layout would have been shrunk to 7px type. The
+ *   footprint does not change. Outside a face (the gallery, the hero laptop) nothing changes.
  * - `decorative` makes the copy inert and hidden from assistive tech, for the
  *   flying copies of a face. Leave it off for the one copy people interact with.
  * - The scale is written to a CSS variable, never through React state, so a
@@ -57,6 +63,13 @@ export function Showcase({
 }) {
   const { w, h } = typeof size === "string" ? SHOWCASE_SIZES[size] : size;
   const outer = useRef<HTMLDivElement>(null);
+  // Inside a story face: is this the face's own screen (its drawn size is the face's registered
+  // size)? Then it follows the face's size on this screen (smaller on a phone) and obeys the
+  // minimum scale. Any other showcase inside a face is left exactly as sized by its author.
+  const box = useContext(FaceBoxContext);
+  const own = box !== null && scale !== undefined && Math.abs(w * scale - box.registered.width) < 1.5 && Math.abs(h * scale - box.registered.height) < 1.5;
+  const lw = own && scale ? box.now.width / scale : w;
+  const lh = own && scale ? box.now.height / scale : h;
 
   useLayoutEffect(() => {
     const el = outer.current;
@@ -78,16 +91,27 @@ export function Showcase({
     <div
       ref={outer}
       className={cx("pp-showcase", className)}
-      style={{ ...(scale !== undefined ? ({ "--pp-s": scale } as CSSProperties) : null), ...style }}
+      style={{
+        ...(scale !== undefined ? ({ "--pp-s": scale } as CSSProperties) : null),
+        // Not the face's own screen: no minimum scale here.
+        ...(box !== null && !own ? ({ "--pp-min": 0.001 } as CSSProperties) : null),
+        ...style,
+      }}
       aria-hidden={decorative || undefined}
       inert={decorative || undefined}
     >
       <div
         className="pp-showcase-inner"
         style={{
-          width: w,
-          height: h,
-          transform: `scale(var(--pp-s, 1)) translate(-50%, -50%)`,
+          // --pp-fit (product.css) is 1 unless the copy would be drawn below the minimum scale of
+          // its context (a story face sets --pp-min). Then the layout box shrinks by that factor and
+          // the scale grows by it: the footprint is unchanged, the screen re-lays out narrower (its
+          // container queries pick the narrow layout) and its type is never below the minimum.
+          // With a fixed `scale` inside a story face, the layout box follows the face's natural
+          // size (--face-w / --face-h, which change on small screens) rather than the size prop.
+          width: `calc(${lw}px * var(--pp-fit, 1))`,
+          height: `calc(${lh}px * var(--pp-fit, 1))`,
+          transform: `scale(calc(var(--pp-s, 1) / var(--pp-fit, 1))) translate(-50%, -50%)`,
         }}
       >
         {children}

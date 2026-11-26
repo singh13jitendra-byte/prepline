@@ -29,10 +29,10 @@
  * `FaceFrame` is the shared chrome + scaled content. You rarely need it directly.
  */
 
-import { useEffect, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { registerAnchor, type AnchorId } from "@/lib/anchors";
 import type { FaceId, Skin } from "@/lib/story";
-import { facesVersion, getFace, subscribeFaces, type FaceProps } from "./faces";
+import { facesVersion, getFace, subscribeFaces, type FaceProps, FaceBoxContext } from "./faces";
 import { faceRadius, onThemeChange } from "@/lib/theme";
 
 /**
@@ -44,13 +44,22 @@ const isPaper = (face: FaceId, skin: Skin) => skin === "day" || face === "tile" 
 
 export function FaceFrame({ face, skin, fold, progress, host }: { face: FaceId } & FaceProps) {
   useSyncExternalStore(subscribeFaces, facesVersion, () => 0);
-  const { Component, meta } = getFace(face);
+  const reg = getFace(face);
+  const { Component, meta } = reg;
+  const registered = reg.base ?? meta;
+  const box = useMemo(
+    () => ({ registered: { width: registered.width, height: registered.height }, now: { width: meta.width, height: meta.height } }),
+    [registered.width, registered.height, meta.width, meta.height],
+  );
   return (
     <div className="face" data-face={face} data-skin={skin} data-paper={isPaper(face, skin) ? "" : undefined} data-chrome={meta.chrome ? "" : undefined}>
       {meta.chrome ? <div className="face-chrome" /> : null}
       <div className="face-clip" data-clip={meta.clip ? "" : undefined}>
-        <div className="face-content" style={{ width: meta.width, height: meta.height }}>
-          <Component skin={skin} fold={fold} progress={progress} host={host} />
+        {/* --face-w / --face-h: the natural size on this screen, for the face's own layout. */}
+        <div className="face-content" style={{ width: meta.width, height: meta.height, "--face-w": `${meta.width}px`, "--face-h": `${meta.height}px` } as CSSProperties}>
+          <FaceBoxContext.Provider value={box}>
+            <Component skin={skin} fold={fold} progress={progress} host={host} />
+          </FaceBoxContext.Provider>
         </div>
       </div>
     </div>
