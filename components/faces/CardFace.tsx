@@ -17,7 +17,7 @@
 
 import { useEffect, useRef } from "react";
 import "@/components/acts/read/faces.css";
-import { cardShow, CARD_FULL } from "@/components/acts/read/runtime";
+import { cardShow, CARD_FULL, titleHandOver } from "@/components/acts/read/runtime";
 import { registerFace, type FaceProps } from "@/components/story/faces";
 import { rankedRoles, storyActs12, storyCopy } from "@/lib/content";
 import { useAnchor } from "@/lib/anchors";
@@ -32,6 +32,8 @@ const ticksAt = Array.from({ length: 10 }, (_, i) => i);
 
 export function CardFace({ host }: FaceProps) {
   const anchor = useAnchor("card-meter");
+  const idRef = useRef<HTMLDivElement>(null);
+  const lastId = useRef("");
   const ringRef = useRef<SVGCircleElement>(null);
   const numRef = useRef<HTMLSpanElement>(null);
   const scoreRef = useRef<HTMLSpanElement>(null);
@@ -43,6 +45,11 @@ export function CardFace({ host }: FaceProps) {
     if (story.reduced()) return;
     const last = { score: -1, meter: -1, c: [-1, -1, -1], caret: -1, f: ["", "", ""] };
     const write = () => {
+      // Leaving for the tile: the title block slides toward where the tile's title will be.
+      if (host === "actor" && idRef.current) {
+        const tf = titleHandOver(story.get(), "card");
+        if (tf !== lastId.current) idRef.current.style.transform = lastId.current = tf;
+      }
       const score = Math.round(cardShow.score * 10) / 10;
       if (score !== last.score) {
         last.score = score;
@@ -91,7 +98,7 @@ export function CardFace({ host }: FaceProps) {
         <span className="pl-card-ini" aria-hidden="true">
           {rankedRoles[0].initials}
         </span>
-        <div className="pl-card-id">
+        <div ref={idRef} className="pl-card-id">
           <p className="pl-card-title">{storyCopy.reason.card.title}</p>
           <p className="pl-card-meta">{storyCopy.reason.card.meta}</p>
         </div>

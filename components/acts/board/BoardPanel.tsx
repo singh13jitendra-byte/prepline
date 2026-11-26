@@ -325,9 +325,11 @@ export function BoardPanel() {
       const w = (0.72 * span(ip, 0.2, 0.3) * (1 - span(ip, 0.6, 0.72))).toFixed(3);
       if (tg.surface.style.getPropertyValue("--win") !== w) tg.surface.style.setProperty("--win", w);
     }
-    // The slot flag appears as the Line's right end arrives at Thursday 11:40.
+    // The slot flag appears at the booking moment (60% of the beat), as the Line's right end arrives
+    // at Thursday 11:40. Not earlier: until then the moving clock label would run into it on a
+    // narrow strip. Once booked, the clock's text ends at the "now" dot and leaves the flag clear.
     if (tg.slot) {
-      const v = span(ip, 0.42, 0.6).toFixed(3);
+      const v = span(ip, 0.6, 0.68).toFixed(3);
       if (tg.slot.style.opacity !== v) tg.slot.style.opacity = v;
     }
     set(tg.glow, "--glow", (span(ip, 0.25, 1) * 0.85 * (1 - span(hp, 0, 0.15))).toFixed(4));

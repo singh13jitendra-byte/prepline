@@ -14,7 +14,7 @@
 
 import { useEffect, useRef } from "react";
 import "@/components/acts/read/faces.css";
-import { tileShow } from "@/components/acts/read/runtime";
+import { tileShow, titleHandOver } from "@/components/acts/read/runtime";
 import { registerFace, type FaceProps } from "@/components/story/faces";
 import { rankedRoles, storyCopy } from "@/lib/content";
 import { story } from "@/lib/story";
@@ -39,15 +39,21 @@ function ChipBody({ index }: { index: number }) {
   );
 }
 
-export function TileFace(_props: FaceProps) {
+export function TileFace({ host }: FaceProps) {
+  const idRef = useRef<HTMLDivElement>(null);
   const chipRef = useRef<HTMLDivElement>(null);
   const bodyRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const tickRef = useRef<SVGPathElement>(null);
 
   useEffect(() => {
     if (story.reduced()) return;
-    const last = { c: -1, tick: -1 };
+    const last = { c: -1, tick: -1, id: "" };
     const write = () => {
+      // Arriving from the card: the title block comes in from where the card's title was heading.
+      if (host === "actor" && idRef.current) {
+        const tf = titleHandOver(story.get(), "tile");
+        if (tf !== last.id) idRef.current.style.transform = last.id = tf;
+      }
       const c = tileShow.applied + tileShow.interview;
       if (c !== last.c) {
         last.c = c;
@@ -70,7 +76,7 @@ export function TileFace(_props: FaceProps) {
     };
     write();
     return story.frame("actor", write);
-  }, []);
+  }, [host]);
 
   return (
     <div className="pl-tile">
@@ -84,8 +90,10 @@ export function TileFace(_props: FaceProps) {
           <span className="pl-tile-of">{storyCopy.ranked.scoreSuffix}</span>
         </span>
       </div>
-      <p className="pl-tile-title">{role.title}</p>
-      <p className="pl-tile-meta">{role.company}</p>
+      <div ref={idRef} className="pl-tile-id">
+        <p className="pl-tile-title">{role.title}</p>
+        <p className="pl-tile-meta">{role.company}</p>
+      </div>
       <div className="pl-tile-foot">
         <div ref={chipRef} className="pl-tile-chip" data-state="2">
           {labels.map((_, i) => (

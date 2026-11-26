@@ -123,6 +123,33 @@ export function offsetIn(el: HTMLElement, root: HTMLElement): { x: number; y: nu
 export const softBelow = (y: number) => `linear-gradient(to bottom, transparent ${y.toFixed(1)}px, #000 ${(y + 24).toFixed(1)}px)`;
 /** Mask that keeps what is above viewport y, with a 24px soft edge. */
 export const softAbove = (y: number) => `linear-gradient(to bottom, #000 ${(y - 24).toFixed(1)}px, transparent ${y.toFixed(1)}px)`;
+/**
+ * Card → tile (the `saved` beat): the title block is handed over, not swapped. On the card it sits
+ * right of the initials; on the tile, under them. While the Actor shrinks, the card's block slides
+ * half-way toward the tile's place as it fades out, and the tile's block arrives from that same
+ * point, so the eye follows one title down into the tile. Positions are the faces' own layout
+ * constants (faces.css): card block at (86, 27) of 520x320, tile block at (11, 37) of 154x92.
+ */
+const CARD_ID = { x: 86, y: 27 };
+const TILE_ID = { x: 11, y: 37 };
+const smooth = (x: number) => x * x * (3 - 2 * x);
+export function titleHandOver(s: Readonly<StoryState>, face: "card" | "tile"): string {
+  const a = s.actor;
+  if (s.beat !== "saved" || !a.present || a.docked || a.travel <= 0 || a.travel >= 1 || a.w <= 0 || a.h <= 0) return "";
+  const sc = a.w / 520;
+  const st = a.h / 92;
+  const mx = (CARD_ID.x * sc + TILE_ID.x * st) / 2;
+  // Vertically they meet just above the tile's own place (7 tile-units up), so the arriving title
+  // never crosses the tile's top row (initials and score).
+  const my = (TILE_ID.y - 7) * st;
+  if (face === "card") {
+    const k = smooth(span(a.travel, 0.28, 0.5));
+    return k <= 0 ? "" : `translate3d(${(((mx - CARD_ID.x * sc) / sc) * k).toFixed(2)}px,${(((my - CARD_ID.y * sc) / sc) * k).toFixed(2)}px,0)`;
+  }
+  const k = 1 - smooth(span(a.travel, 0.5, 0.74));
+  return k <= 0 ? "" : `translate3d(${(((mx - TILE_ID.x * st) / st) * k).toFixed(2)}px,${(((my - TILE_ID.y * st) / st) * k).toFixed(2)}px,0)`;
+}
+
 /** Write a mask-image (both spellings) only when it changes. */
 export function setMask(el: HTMLElement, mask: string) {
   if (el.dataset.mask === mask) return;
