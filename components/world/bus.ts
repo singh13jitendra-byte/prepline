@@ -1,19 +1,45 @@
 /**
- * Shared, non-React state of the world layers. The canvas loop is the only
- * writer of the lens (Lens.tsx only lends its elements); Line.tsx is the only
- * writer of the drawn line.
+ * Shared, non-React state of the world layers. Lantern.tsx is the only writer of the lantern
+ * (where the warm pool is, how lit it is) and of its DOM; the canvas loop reads the lantern for
+ * its uniforms and answers with `pick` (the firefly to name). Line.tsx is the only writer of the
+ * drawn line.
  */
-/** How near the pointer a firefly lights up, and how far the pointer's note looks for a role. */
-export const LENS_RADIUS = 90;
+/** How near the lantern a firefly brightens and drifts toward it, like a moth (CSS px). */
+export const LENS_RADIUS = 120;
+/** How near the resting pointer a firefly has to be to be named (CSS px). */
+export const PICK_RADIUS = 28;
+
+/** What a named firefly says. Built by the canvas loop, drawn by Lantern.tsx. */
+export type RoleTag = {
+  /** "Product Designer · Pune" */
+  role: string;
+  /** "7/10", or "" while the role has no portfolio score yet. */
+  score: string;
+  /** kept (lamp dot), set aside (a dot gone out), or not read yet (a pale dot). */
+  verdict: "kept" | "aside" | "unread";
+  /** "kept · fits your portfolio", "set aside · five days on-site", "not read yet" */
+  note: string;
+};
 
 export const worldBus = {
   /** True once the WebGL world has drawn its first frame. */
   glReady: false,
-  lensLabel: null as HTMLDivElement | null,
-  /** Pointer is over a control (link, button, field): the lens steps back. */
+  /** Pointer is over a control (link, button, field): the lantern names nothing there. */
   overControl: false,
   /** A real pointer has moved since load. */
   pointerMoved: false,
+  /**
+   * The lantern (Lantern.tsx). `x, y` is the eased pool centre in viewport px, `k` how lit it is
+   * (0 out, 1 lit: day scenes, touch and reduced motion keep it at 0). `rest` is how long the
+   * pointer has been still, in seconds; `px, py` is the pointer itself.
+   */
+  lantern: { x: -999, y: -999, k: 0, rest: 0, px: -999, py: -999, names: false },
+  /**
+   * The firefly being named (written by the canvas loop, read by Lantern.tsx). `id` is the
+   * firefly's instance, -1 for none; `x, y` is where it is held while it is read (it stops for
+   * the reader, so the tag and its leader stay still). `seq` changes whenever the pick does.
+   */
+  pick: { id: -1, x: 0, y: 0, seq: 0, tag: null as RoleTag | null },
   /**
    * The line as drawn. Line.tsx writes it every frame (store line + the ranked hold); the canvas reads it for the reading thresholds.
    */

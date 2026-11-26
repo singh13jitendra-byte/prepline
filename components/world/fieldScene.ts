@@ -3,6 +3,12 @@ import type { Three } from "@/lib/gl";
 import type { WorldColorRole } from "@/lib/theme";
 import { LENS_RADIUS } from "./bus";
 
+/** The moth: how far a firefly drifts toward the lantern (a share of its distance, capped in px). */
+const MOTH_PULL = 0.3;
+const MOTH_MAX = 14;
+/** How bright an ember the lantern finds in the grass is. */
+const EMBER_A = 0.34;
+
 /**
  * THE FIREFLIES — the World's one draw call (round 4: the painted world).
  *
@@ -179,7 +185,8 @@ const vert = /* glsl */ `
   uniform float uGatherT;
   uniform vec4 uRows[12];
   uniform float uRowR;
-  uniform vec3 uLens;
+  uniform vec3 uLens;   // the lantern: x, y (CSS px), how lit 0..1
+  uniform vec4 uFocus;  // the firefly being named: instance id (-1 none), held x, y, hold 0..1
   uniform vec4 uRings[${SEATS}];
   uniform float uSeatC;
   uniform float uSeatLine;
@@ -260,6 +267,7 @@ const vert = /* glsl */ `
     float shape = 0.0;
     float gone = 0.0;
     float seatK = 0.0;
+    float aside = 0.0; // 0..1: read and set aside (gone out)
     float field = uField;
     vec2 box = vec2(0.0);
     float rad = 0.0;
@@ -273,6 +281,7 @@ const vert = /* glsl */ `
     if (kind < 0.5) {
       // Dropped: one last flash, then it goes out: a dim ember for a moment, falling into the grass.
       float dim = e1 * (1.0 - glow * 0.85);
+      aside = smoothstep(0.5, 0.9, e1);
       float ember = smoothstep(0.2, 0.5, e1) * (1.0 - smoothstep(0.6, 1.0, e1)) * (1.0 - glow);
       P.y += e1 * (34.0 + 80.0 * h3);
       P.x += sin(e1 * 3.0 + h1 * 6.283) * 5.0 * e1;
@@ -298,6 +307,7 @@ const vert = /* glsl */ `
       col = mix(col, min(ucGold * 1.12, vec3(1.0)), e1);
       if (kind < 1.5) {
         float dim2 = e2 * (1.0 - glow2 * 0.85);
+        aside = smoothstep(0.5, 0.9, e2);
         float ember2 = smoothstep(0.2, 0.5, e2) * (1.0 - smoothstep(0.6, 1.0, e2)) * (1.0 - glow2);
         P.y += e2 * (34.0 + 80.0 * h3);
         alpha = mix(alpha, 0.0, dim2) + (flare2 * 0.6 + glow2 * 0.35) * (1.0 - e2) + ember2 * 0.16;
@@ -350,10 +360,23 @@ const vert = /* glsl */ `
       }
     }
 
-    // Near the pointer a firefly lights up and comes a little closer. No glass, no ring.
-    float lk = uLens.z * (1.0 - smoothstep(${(LENS_RADIUS * 0.4).toFixed(1)}, ${LENS_RADIUS.toFixed(1)}, distance(P, uLens.xy))) * (1.0 - shape) * (1.0 - seatK);
-    radius *= 1.0 + 0.15 * lk;
-    alpha = mix(alpha, max(alpha, 0.85), lk * step(0.02, alpha + lit));
+    // The lantern: near it a firefly brightens and drifts a little toward it, like a moth. The
+    // ones already set aside (gone out in the grass) glow again faintly as embers where the lamp
+    // finds them, so the reader can ask them why. Mirrored on the CPU by pickSpeck below.
+    float dl = distance(P, uLens.xy);
+    float lk = uLens.z * (1.0 - smoothstep(${(LENS_RADIUS * 0.3).toFixed(1)}, ${LENS_RADIUS.toFixed(1)}, dl)) * (1.0 - shape) * (1.0 - seatK);
+    P += (uLens.xy - P) / max(dl, 1.0) * min(dl * ${MOTH_PULL.toFixed(2)}, ${MOTH_MAX.toFixed(1)}) * lk;
+    radius *= 1.0 + 0.18 * lk;
+    alpha = mix(alpha, max(alpha, 0.85), lk * step(0.02, alpha + lit) * (1.0 - aside));
+    alpha = max(alpha, ${EMBER_A.toFixed(2)} * lk * aside);
+    col = mix(col, ucWarm * 0.72, lk * aside);
+    radius = mix(radius, max(radius, 1.8), lk * aside);
+
+    // Named: it stops for the reader and holds still beside its tag, lit (an ember stays an ember).
+    float fk = step(abs(float(gl_InstanceID) - uFocus.x), 0.5) * uFocus.w * (1.0 - shape) * (1.0 - seatK);
+    P = mix(P, uFocus.yz, fk);
+    alpha = mix(alpha, mix(1.0, 0.62, aside), fk);
+    radius = mix(radius, max(radius, mix(3.6, 2.4, aside)), fk);
 
     // Load: they come out a few at a time.
     alpha *= smoothstep(h3 * 0.7, h3 * 0.7 + 0.3, uIntro);
@@ -443,6 +466,7 @@ export type FieldUniforms = {
   uRows: { value: THREE_NS.Vector4[] };
   uRowR: { value: number };
   uLens: { value: THREE_NS.Vector3 };
+  uFocus: { value: THREE_NS.Vector4 };
   uRings: { value: THREE_NS.Vector4[] };
   uSeatC: { value: number };
   uSeatLine: { value: number };
@@ -494,6 +518,7 @@ export function createField(THREE: Three, data: FieldData, width: number, height
     uRows: { value: Array.from({ length: 12 }, () => new THREE.Vector4(0, 0, 0, 0)) },
     uRowR: { value: 12 },
     uLens: { value: new THREE.Vector3(0, 0, 0) },
+    uFocus: { value: new THREE.Vector4(-1, 0, 0, 0) },
     uRings: { value: Array.from({ length: SEATS }, () => new THREE.Vector4(0, 0, 0, 0)) },
     uSeatC: { value: 0 },
     uSeatLine: { value: BIG },
@@ -534,34 +559,52 @@ export function createField(THREE: Three, data: FieldData, width: number, height
   return { mesh, uniforms, resize, dispose: () => base.dispose() };
 }
 
-/* ───────────────────────────── CPU mirror, for the pointer note only ── */
+/* ───────────────────────────── CPU mirror, for the lantern's tag only ── */
 
-export type Verdict = "unread" | "dropped1" | "kept" | "dropped2";
+/**
+ * unread     not read yet (below the Line in pass 1, and every firefly in the hero)
+ * dropped1   set aside in pass 1 (level, city, office days)
+ * kept1      survived pass 1, not yet read for portfolio fit
+ * dropped2   set aside in pass 2 (portfolio fit)
+ * kept2      one of the twelve, read twice and kept
+ */
+export type Verdict = "unread" | "dropped1" | "kept1" | "dropped2" | "kept2";
 const hit = { index: -1, verdict: "unread" as Verdict, kind: 0, rank: 0, seed: 0, x: 0, y: 0 };
 
 /**
- * The firefly nearest to (x, y) that is still in the air, with the state the shader shows
- * it in. Mirrors the vertex shader's position maths (drift, dolly, parallax, read, settle).
+ * The firefly nearest to (x, y), within `radius`, that is on screen to be named, with the state
+ * the shader shows it in and where it is drawn right now. Mirrors the vertex shader's position
+ * maths (drift, dolly, parallax, read, settle, the lantern's pull) and its clip to the window.
+ * Called a few times a second at most, only while the pointer rests: never per frame.
  */
-export function nearestSpeck(data: FieldData, u: FieldUniforms, x: number, y: number, stick: number): typeof hit | null {
+export function pickSpeck(data: FieldData, u: FieldUniforms, x: number, y: number, radius: number): typeof hit | null {
   const { count, a, b } = data;
+  if (u.uField.value < 0.5) return null;
   const w = u.uRes.value.x;
   const h = u.uRes.value.y;
   const t = u.uTime.value;
   const band = u.uBand.value;
+  const T1 = u.uT1.value;
+  const T2 = u.uT2.value;
+  const dolly = u.uDolly.value;
+  const par = u.uPar.value;
+  const clip = u.uClip.value;
+  const L = u.uLens.value;
   let best = -1;
-  let bestD = LENS_RADIUS * LENS_RADIUS;
+  let bestD = radius * radius;
   let bx = 0;
   let by = 0;
-  let br1 = 0;
+  let bv: Verdict = "unread";
   for (let i = 0; i < count; i++) {
     const o = i * 4;
     const z = a[o + 2];
     const persp = 0.5 + z;
-    const hx = w / 2 + a[o] * w * SPREAD * (1 + u.uDolly.value * persp) + u.uPar.value.x * persp;
-    const hy = h / 2 + a[o + 1] * h * SPREAD * (1 + u.uDolly.value * persp) + u.uPar.value.y * persp;
-    // Cheap reject before the trigonometry (drift is under 40px).
-    if (Math.abs(hx - x) > LENS_RADIUS + 60 && b[o + 2] < 1) continue;
+    const kind = b[o + 2];
+    const hx = w / 2 + a[o] * w * SPREAD * (1 + dolly * persp) + par.x * persp;
+    // Cheap reject before the trigonometry (drift is under 40px, the pull under 15); the kept
+    // settle elsewhere, so they are always tested.
+    if (kind < 1 && Math.abs(hx - x) > radius + 60) continue;
+    const hy = h / 2 + a[o + 1] * h * SPREAD * (1 + dolly * persp) + par.y * persp;
     const sd = a[o + 3];
     const h1 = (sd * 17.13) % 1;
     const h2 = (sd * 91.7) % 1;
@@ -570,22 +613,42 @@ export function nearestSpeck(data: FieldData, u: FieldUniforms, x: number, y: nu
     const amp = 6 + 18 * z;
     const px0 = hx + (Math.sin(t * (0.1 + 0.16 * h1) + h2 * 6.283) + 0.5 * Math.sin(t * (0.23 + 0.1 * h3) + h4 * 6.283)) * amp;
     const py0 = hy + (Math.cos(t * (0.09 + 0.15 * h3) + h1 * 6.283) + 0.5 * Math.cos(t * (0.19 + 0.12 * h2) + h4 * 6.283)) * amp;
-    const r1 = Math.min(1, Math.max(0, (u.uT1.value - py0) / band));
+    const r1 = Math.min(1, Math.max(0, (T1 - py0) / band));
     const e1 = r1 * r1 * (3 - 2 * r1);
-    const kind = b[o + 2];
-    const r2 = kind >= 1 ? Math.min(1, Math.max(0, (b[o + 1] - u.uT2.value) / band)) * r1 : 0;
-    // Fireflies that have sunk into the grass are not there to be read.
-    if ((kind < 0.5 && r1 > 0.6) || (kind >= 0.5 && kind < 1.5 && r2 > 0.6)) continue;
-    const px = kind < 0.5 ? px0 : px0 + (b[o] - px0) * e1;
-    const py = kind < 0.5 ? py0 + e1 * (34 + 80 * h3) : py0 + (b[o + 1] - py0) * e1;
-    let d = (px - x) * (px - x) + (py - y) * (py - y);
-    if (i === stick) d -= 500; // hysteresis: the note does not flicker between neighbours
+    let px = px0;
+    let py = py0;
+    let verdict: Verdict = r1 < 0.5 ? "unread" : kind < 0.5 ? "dropped1" : "kept1";
+    if (kind < 0.5) {
+      py += e1 * (34 + 80 * h3);
+      px += Math.sin(e1 * 3 + h1 * 6.283) * 5 * e1;
+    } else {
+      const sx = Math.sin(t * (0.07 + 0.05 * h2) + h1 * 6.283) * (3 + 3 * z);
+      const sy = Math.sin(t * (0.21 + 0.09 * h4) + h3 * 6.283) * (2.5 + 2 * h1);
+      px = px0 + (b[o] + sx - px0) * e1;
+      py = py0 + (b[o + 1] + sy - py0) * e1;
+      const r2 = Math.min(1, Math.max(0, (b[o + 1] - T2) / band)) * r1;
+      if (r2 >= 0.5) verdict = kind < 1.5 ? "dropped2" : "kept2";
+      if (kind < 1.5) py += r2 * r2 * (3 - 2 * r2) * (34 + 80 * h3);
+    }
+    // The lantern's pull, as the shader applies it.
+    const dlx = L.x - px;
+    const dly = L.y - py;
+    const dl = Math.hypot(dlx, dly);
+    const lk = L.z * (1 - smooth(LENS_RADIUS * 0.3, LENS_RADIUS, dl));
+    if (lk > 0) {
+      const m = (Math.min(dl * MOTH_PULL, MOTH_MAX) * lk) / Math.max(dl, 1);
+      px += dlx * m;
+      py += dly * m;
+    }
+    // Only what is drawn can be named: inside the window's glass in the hero.
+    if (px < clip.x + 4 || px > clip.z - 4 || py < clip.y + 4 || py > clip.w - 4) continue;
+    const d = (px - x) * (px - x) + (py - y) * (py - y);
     if (d < bestD) {
       bestD = d;
       best = i;
       bx = px;
       by = py;
-      br1 = r1;
+      bv = verdict;
     }
   }
   if (best < 0) return null;
@@ -596,6 +659,11 @@ export function nearestSpeck(data: FieldData, u: FieldUniforms, x: number, y: nu
   hit.seed = a[o + 3];
   hit.x = bx;
   hit.y = by;
-  hit.verdict = br1 < 0.5 ? "unread" : "kept";
+  hit.verdict = bv;
   return hit;
+}
+
+function smooth(e0: number, e1: number, x: number) {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
 }
