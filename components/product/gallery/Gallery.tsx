@@ -30,11 +30,10 @@ import {
 import { Icon, type IconName } from "../icons";
 import { boardItems, detailFor, roles, type Role } from "../data";
 import { Tile } from "../Board";
-import "./nd-fonts.css";
-import "./night-desk.theme.css";
+import "@/app/themes/gallery-proof.css";
 import "./gallery.css";
 
-type Theme = "night-desk" | "today" | "alt" | "dark";
+type Theme = "night-desk" | "alt" | "dark";
 
 function Frame({
   label,
@@ -118,7 +117,7 @@ export function Gallery({ theme }: { theme: Theme }) {
   const [picked, setPicked] = useState<Role>(roles[0]);
 
   return (
-    <div className="gx" data-theme={theme === "today" ? undefined : theme}>
+    <div className="gx" data-theme={theme === "night-desk" ? undefined : theme}>
       <header className="gx-top">
         <div>
           <p className="gx-kicker">Dev only · not indexed · illustrative data</p>
@@ -131,9 +130,6 @@ export function Gallery({ theme }: { theme: Theme }) {
         <nav aria-label="Theme" className="gx-themes">
           <a href="?theme=night-desk" aria-current={theme === "night-desk" ? "page" : undefined}>
             Night Desk
-          </a>
-          <a href="?theme=today" aria-current={theme === "today" ? "page" : undefined}>
-            Today’s tokens
           </a>
           <a href="?theme=alt" aria-current={theme === "alt" ? "page" : undefined}>
             Alt theme

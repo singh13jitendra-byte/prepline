@@ -6,8 +6,7 @@ import { Gallery } from "@/components/product/gallery/Gallery";
  * showcase size, in every state, on mobile, and under alternative themes.
  * Not linked from the site, not in any sitemap, and marked noindex.
  *
- *   /product                 Night Desk (the chosen direction)
- *   /product?theme=today     today's tokens (the fallback in components/product/tokens.css)
+ *   /product                 Night Desk (the site's theme, app/theme.css)
  *   /product?theme=alt       a throwaway palette, fonts and radii (proves nothing is hard-coded)
  *   /product?theme=dark      an inverted palette
  */
@@ -20,7 +19,7 @@ type Search = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function ProductGalleryPage({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams;
-  const themes = ["night-desk", "today", "alt", "dark"] as const;
+  const themes = ["night-desk", "alt", "dark"] as const;
   type T = (typeof themes)[number];
   const theme: T = themes.includes(sp.theme as T) ? (sp.theme as T) : "night-desk";
   return <Gallery theme={theme} />;
