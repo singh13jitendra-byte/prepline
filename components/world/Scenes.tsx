@@ -3,7 +3,7 @@ import path from "node:path";
 import type { CSSProperties } from "react";
 import { LaptopScreen } from "./LaptopScreen";
 import { SceneDirector } from "./SceneDirector";
-import { DESK, FOCUS, HOTSPOTS, WINDOW_SKY, SCENE_FALLBACK, SCENE_GROUND, SCENE_NAMES, type HotspotId, type Rect, type SceneEntry, type SceneManifest, type SceneName } from "./sceneGeometry";
+import { DESK, FOCUS, HOTSPOTS, WINDOW_FILES, WINDOW_LAYERS, WINDOW_SKY, SCENE_FALLBACK, SCENE_GROUND, SCENE_NAMES, type HotspotId, type Rect, type SceneEntry, type SceneManifest, type SceneName } from "./sceneGeometry";
 
 /**
  * SCENES — the painted world: the World's backdrop (round 4).
@@ -17,7 +17,8 @@ import { DESK, FOCUS, HOTSPOTS, WINDOW_SKY, SCENE_FALLBACK, SCENE_GROUND, SCENE_
  *   desk-night     the hero, and (framed close on the lamp-lit desk) the prep act
  *   meadow-night   through the window: the two reading passes, ranked, reason
  *   (window-frame is not drawn: the room's own painted window flies past as the camera
- *    pushes through it, and a second, differently painted frame on top of it read as a prop.)
+ *    pushes through it, and a second, differently painted frame on top of it read as a prop.
+ *    Delight 4 cuts that painted window into layers instead: see WindowRig.)
  *   grass-fg       foreground grass: parallax in the meadow, and the bottom of the seat act
  *   desk-bluehour  the same room before dawn (above the Line during the dawn wipe)
  *   desk-dawn      the same room at dawn (below the Line, then the whole seat act)
@@ -138,6 +139,57 @@ function Hotspot({ id, children }: { id: HotspotId; children?: React.ReactNode }
   );
 }
 
+/** A held-back alpha layer cut from desk-night (scenes/derive-window.py), drawn 1:1 over its own pixels. */
+function Cut({ src, rect, className, fill }: { src: string; rect: Rect; className: string; fill?: boolean }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img className={`sc-wimg ${className}`} alt="" width={rect.x1 - rect.x0} height={rect.y1 - rect.y0} decoding="async" draggable={false} data-src={src} loading="lazy" style={fill ? undefined : rectStyle(rect)} />
+  );
+}
+
+/**
+ * THROUGH THE WINDOW (delight 4): the room's own painted window, in layers, inside the room layer
+ * (so the room's push carries all of it with no per-frame work of its own):
+ *   .sc-view    what is seen through the window (a static alpha mask in the painting's pixels),
+ *               holding a second meadow-night that SceneDirector keeps exactly where the meadow
+ *               layer is on screen: the meadow is revealed through the opening first, and when the
+ *               room dissolves under it the two coincide, so nothing in the window changes.
+ *   .sc-pane    the two casements, swinging a few degrees wider on their hinges as we pass; a soft
+ *               lamp glint slides once across their glass. Not on phones (the view mask there keeps
+ *               the painted casements and replaces only their glass).
+ *   .sc-front   the lamp, in front of the casements and of the meadow beyond.
+ * Hidden (visibility) until SceneDirector has every picture and mask decoded, and at rest.
+ */
+function WindowRig({ manifest }: { manifest: SceneManifest }) {
+  const meadow = manifest["meadow-night"];
+  if (!manifest["desk-night"].widths.length || !meadow.widths.length) return null;
+  if (!Object.values(WINDOW_FILES).every((f) => fs.existsSync(path.join(process.cwd(), "public", f)))) return null;
+  const style = { "--mar": (meadow.width / meadow.height).toFixed(5) } as CSSProperties;
+  return (
+    <div className="sc-win" data-win>
+      <div className="sc-view" style={rectStyle(WINDOW_LAYERS.view)}>
+        <div className="sc-view-meadow" style={style}>
+          <Picture name="meadow-night" manifest={manifest} sizes={SIZES["meadow-night"]} />
+          <div className="sc-hush sc-hush-meadow" />
+        </div>
+      </div>
+      <div className="sc-pane sc-pane-l" style={rectStyle(WINDOW_LAYERS.paneL)}>
+        <Cut src={WINDOW_FILES.paneL} rect={WINDOW_LAYERS.paneL} className="sc-pane-img" fill />
+        <div className="sc-glass sc-glass-l">
+          <div className="sc-glint" />
+        </div>
+      </div>
+      <div className="sc-pane sc-pane-r" style={rectStyle(WINDOW_LAYERS.paneR)}>
+        <Cut src={WINDOW_FILES.paneR} rect={WINDOW_LAYERS.paneR} className="sc-pane-img" fill />
+        <div className="sc-glass sc-glass-r">
+          <div className="sc-glint" />
+        </div>
+      </div>
+      <Cut src={WINDOW_FILES.front} rect={WINDOW_LAYERS.front} className="sc-front" />
+    </div>
+  );
+}
+
 /**
  * THE HUSH (round 5, review P1-2): the paintings came with fireflies painted in, and those must
  * not compete with the 2,340 that are the roles. The plates cannot be repainted, so the painted
@@ -199,6 +251,7 @@ export function ScenesNight() {
       </Layer>
       <Layer name="desk-night" manifest={manifest} className="sc-room" focus="room" eager>
         <div className="sc-hush sc-hush-window" style={rectStyle(WINDOW_SKY)} />
+        <WindowRig manifest={manifest} />
         <Hotspot id="window-view" />
         <Hotspot id="desk-lamp" />
         <Hotspot id="laptop-screen">
@@ -256,6 +309,27 @@ export const SCENE_CSS = `
 .sc-grasswrap{overflow:visible;contain:layout style}
 .sc-grass{top:auto;bottom:0}
 .sc-hot{position:absolute}
+/* Through the window (delight 4): every rect is in the painting's own pixels, so it rides the room's transform. */
+.sc-win{position:absolute;inset:0;visibility:hidden;pointer-events:none}
+.sc-view{position:absolute;overflow:hidden;opacity:0;will-change:opacity;-webkit-mask:url(/scenes/window-view.webp) 0 0/100% 100% no-repeat;mask:url(/scenes/window-view.webp) 0 0/100% 100% no-repeat}
+.sc-view-meadow{position:absolute;left:0;top:0;--mw:max(100vw,calc(100lvh * var(--mar)));width:var(--mw);height:calc(var(--mw) / var(--mar));transform-origin:0 0;will-change:transform}
+.sc-view-meadow .sc-img{filter:url(#sc-knee)}
+.sc-wimg{position:absolute;display:block;user-select:none}
+.sc-pane{position:absolute;will-change:transform;backface-visibility:hidden}
+.sc-pane-l{transform-origin:0 50%}
+.sc-pane-r{transform-origin:100% 50%}
+.sc-pane-img{inset:0;width:100%;height:100%}
+/* The glint: lamp light caught on the glass as the casement turns. Feathered on both sides, never a slab. */
+.sc-glass{position:absolute;inset:0;overflow:hidden;-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+.sc-glass-l{-webkit-mask-image:url(/scenes/window-glass-l.webp);mask-image:url(/scenes/window-glass-l.webp)}
+.sc-glass-r{-webkit-mask-image:url(/scenes/window-glass-r.webp);mask-image:url(/scenes/window-glass-r.webp)}
+.sc-glint{position:absolute;top:-10%;left:-150%;width:400%;height:120%;opacity:0;will-change:transform,opacity;background:linear-gradient(58deg,transparent 43%,color-mix(in oklab,var(--art-glow) 6%,transparent) 47%,color-mix(in oklab,var(--art-glow) 34%,transparent) 49.6%,color-mix(in oklab,var(--art-glow) 34%,transparent) 50.4%,color-mix(in oklab,var(--art-glow) 6%,transparent) 53%,transparent 57%)}
+@media (max-width:767px){
+/* Phones: the room is smaller than the screen at rest, so its top edge shows as the push lifts it; feathered, never a hard line. */
+.sc-room{-webkit-mask-image:linear-gradient(transparent,var(--c-night) 7%);mask-image:linear-gradient(transparent,var(--c-night) 7%)}
+.sc-view{-webkit-mask-image:url(/scenes/window-view-glass.webp);mask-image:url(/scenes/window-view-glass.webp)}
+.sc-pane{display:none}
+}
 .sc-hot-laptop-screen{overflow:hidden;contain:strict;border-radius:calc(var(--r-2xs,2px) * 1.5);background:var(--c-paper-2);opacity:0;transition:opacity .6s linear}
 .sc-night[data-lit] .sc-hot-laptop-screen{opacity:1}
 /* The screen is a painted object: its UI sits a touch under the paint, and lights the desk a little. */

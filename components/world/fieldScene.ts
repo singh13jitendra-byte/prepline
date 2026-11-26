@@ -46,6 +46,9 @@ const EMBER_A = 0.34;
 const SPREAD = 1.1;
 /** The dolly the settle points are fitted for (the field's push-in during the passes). */
 export const PASS_DOLLY = 0.13;
+/** The breeze through the window (delight 4): how far out a firefly is blown, per px from the window's middle, far (z 0) + near (z 1). */
+const BREEZE_NEAR = 0.06;
+const BREEZE_Z = 0.18;
 export const SEATS = 25;
 export const BIG = 1e6;
 
@@ -206,6 +209,7 @@ const vert = /* glsl */ `
   uniform float uSeatLine;
   uniform float uBeadY;
   uniform vec2 uClaim; // seat number (0 none), fill 0..1
+  uniform vec4 uBreeze; // the window's middle x, y (CSS px), strength 0..1, reach (CSS px): delight 4
 
   // Colours come from the theme (lib/theme.ts readWorld, set in worldRuntime.ts): no literals here.
   uniform vec3 ucWarm;  // --art-speck-warm: an unlit, unread firefly leans this way
@@ -262,11 +266,16 @@ const vert = /* glsl */ `
       cos(uTime * (0.09 + 0.15 * h3) + h1 * 6.283) + 0.5 * cos(uTime * (0.19 + 0.12 * h2) + h4 * 6.283)
     ) * (6.0 + 18.0 * z);
     vec2 P0 = c + aA.xy * uRes * ${SPREAD.toFixed(2)} * (1.0 + uDolly * persp) + drift + uPar * persp;
+    // The breeze through the window (hero push): the ones near it are blown gently out toward the
+    // viewer, the near ones (z) more: a parallax burst that dies away. Mirrored by pickSpeck.
+    vec2 bd = P0 - uBreeze.xy;
+    float bw = uBreeze.z * exp(-dot(bd, bd) / (uBreeze.w * uBreeze.w));
+    P0 += bd * bw * (${BREEZE_NEAR.toFixed(2)} + ${BREEZE_Z.toFixed(2)} * z);
 
     // Each firefly blinks on its own slow clock: lit for about a third of it, dark for the rest.
     float phase = fract(uTime * (0.055 + 0.07 * h1) + h2);
     float lit = smoothstep(0.0, 0.10, phase) * (1.0 - smoothstep(0.22, 0.46, phase));
-    float r0 = mix(1.3, 2.8, z) + h4 * 0.4;
+    float r0 = (mix(1.3, 2.8, z) + h4 * 0.4) * (1.0 + 0.35 * bw * z);
     // Unread tops out below the kept (0.8 against 0.96 and a bigger disc), so read = lit is legible.
     float a0 = (0.07 + 0.73 * lit) * mix(0.45, 1.0, z);
 
@@ -517,6 +526,7 @@ export type FieldUniforms = {
   uSeatLine: { value: number };
   uBeadY: { value: number };
   uClaim: { value: THREE_NS.Vector2 };
+  uBreeze: { value: THREE_NS.Vector4 };
   ucWarm: { value: THREE_NS.Vector3 };
   ucGold: { value: THREE_NS.Vector3 };
   ucSeat: { value: THREE_NS.Vector3 };
@@ -571,6 +581,7 @@ export function createField(THREE: Three, data: FieldData, width: number, height
     uSeatLine: { value: BIG },
     uBeadY: { value: BIG },
     uClaim: { value: new THREE.Vector2(0, 0) },
+    uBreeze: { value: new THREE.Vector4(0, 0, 0, 1) },
     ucWarm: { value: v3() },
     ucGold: { value: v3() },
     ucSeat: { value: v3() },
@@ -638,6 +649,7 @@ export function pickSpeck(data: FieldData, u: FieldUniforms, x: number, y: numbe
   const par = u.uPar.value;
   const clip = u.uClip.value;
   const L = u.uLens.value;
+  const br = u.uBreeze.value;
   let best = -1;
   let bestD = radius * radius;
   let bx = 0;
@@ -661,8 +673,15 @@ export function pickSpeck(data: FieldData, u: FieldUniforms, x: number, y: numbe
     const h3 = (sd * 263.1) % 1;
     const h4 = (sd * 571.3) % 1;
     const amp = 6 + 18 * z;
-    const px0 = hx + (Math.sin(t * (0.1 + 0.16 * h1) + h2 * 6.283) + 0.5 * Math.sin(t * (0.23 + 0.1 * h3) + h4 * 6.283)) * amp;
-    const py0 = hy + (Math.cos(t * (0.09 + 0.15 * h3) + h1 * 6.283) + 0.5 * Math.cos(t * (0.19 + 0.12 * h2) + h4 * 6.283)) * amp;
+    let px0 = hx + (Math.sin(t * (0.1 + 0.16 * h1) + h2 * 6.283) + 0.5 * Math.sin(t * (0.23 + 0.1 * h3) + h4 * 6.283)) * amp;
+    let py0 = hy + (Math.cos(t * (0.09 + 0.15 * h3) + h1 * 6.283) + 0.5 * Math.cos(t * (0.19 + 0.12 * h2) + h4 * 6.283)) * amp;
+    if (br.z > 0) {
+      const bdx = px0 - br.x;
+      const bdy = py0 - br.y;
+      const bk = br.z * Math.exp(-(bdx * bdx + bdy * bdy) / (br.w * br.w)) * (BREEZE_NEAR + BREEZE_Z * z);
+      px0 += bdx * bk;
+      py0 += bdy * bk;
+    }
     const r1 = Math.min(1, Math.max(0, (T1 - py0) / band));
     const e1 = r1 * r1 * (3 - 2 * r1);
     let px = px0;

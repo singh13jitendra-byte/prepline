@@ -72,6 +72,33 @@ export const WINDOW_SKY: Rect = { x0: 1158, y0: 90, x1: 1709, y1: 538 };
 export type HotspotId = keyof typeof HOTSPOTS;
 
 /**
+ * THROUGH THE WINDOW (delight 4). The push-through is built from desk-night's OWN window, cut
+ * into layers by scenes/derive-window.py (the separate `window-frame` asset is another painting
+ * and does not line up). Rects are desk-night source pixels; each file is that rect, 1:1.
+ *   view    alpha mask of what is seen through the window (the meadow is shown inside it)
+ *   paneL/R the two open casements, wood only (glass transparent), hinged on their outer stile
+ *   glassL/R alpha masks of each casement's glass (the lamp glint slides inside them)
+ *   front   the lamp, which stays in front of the casements and of the meadow beyond
+ */
+export const WINDOW_LAYERS = {
+  view: { x0: 940, y0: 100, x1: 1940, y1: 834 },
+  paneL: { x0: 942, y0: 102, x1: 1184, y1: 828 },
+  paneR: { x0: 1686, y0: 102, x1: 1936, y1: 828 },
+  front: { x0: 996, y0: 538, x1: 1272, y1: 846 },
+} as const satisfies Record<string, Rect>;
+export const WINDOW_FILES = {
+  view: "/scenes/window-view.webp",
+  viewGlass: "/scenes/window-view-glass.webp",
+  paneL: "/scenes/window-pane-l.webp",
+  paneR: "/scenes/window-pane-r.webp",
+  glassL: "/scenes/window-glass-l.webp",
+  glassR: "/scenes/window-glass-r.webp",
+  front: "/scenes/window-front.webp",
+} as const;
+/** The middle of the window opening (inside the frame), source px: the breeze blows from here. */
+export const WINDOW_OPENING: Rect = { x0: 946, y0: 108, x1: 1932, y1: 826 };
+
+/**
  * Where each cover box sits when the viewport is narrower or shorter than the painting:
  * 0 = pinned left/top, 1 = pinned right/bottom. `small` is under 768px (portrait): the room
  * is framed on the window and the laptop, the wall is off to the left.

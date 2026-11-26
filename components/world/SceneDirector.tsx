@@ -27,7 +27,7 @@ import { useEffect } from "react";
 import { registerAnchor, type AnchorId } from "@/lib/anchors";
 import { BEATS, SCENE_TRACK, clamp01, story, DAWN_WIPE, type BeatId, type StoryState } from "@/lib/story";
 import { worldBus } from "./bus";
-import { DESK, DESK_CLOSE, FOCUS, HERO_SMALL, HOTSPOTS, ROOM_HANDOFF, WINDOW_SKY, coverBox, type HotspotId } from "./sceneGeometry";
+import { DESK, DESK_CLOSE, FOCUS, HERO_SMALL, HOTSPOTS, ROOM_HANDOFF, WINDOW_FILES, WINDOW_LAYERS, WINDOW_OPENING, WINDOW_SKY, coverBox, type HotspotId } from "./sceneGeometry";
 
 const ORDER = Object.fromEntries(BEATS.map((b, i) => [b.id, i])) as Record<BeatId, number>;
 const ss = (a: number, b: number, x: number) => {
@@ -53,8 +53,35 @@ const HANDOFF = ROOM_HANDOFF;
 const FADE_FROM = 0.35;
 const ROOM_MAX = 2.4;
 const ROOM_MAX_SMALL = 1.5;
+/** How far past its cap the room goes while it dissolves (delight 4), as a fraction of the cap. */
+const ROOM_PAST = 0.22;
+const ROOM_PAST_SMALL = 0.3;
+
+/**
+ * Through the window (delight 4), in hero progress. The meadow is revealed through the painted
+ * opening (VIEW_IN), the casements swing PANE_SWING degrees wider on their hinges (SWING), a lamp
+ * glint crosses their glass once (GLINT), and the fireflies by the window are blown gently out
+ * toward the viewer (BREEZE). The meadow seen through the window grows a little as we near it
+ * (MEADOW_NEAR → MEADOW_PEAK by FADE_FROM: the far hills move less than the room), then settles.
+ * Everything is done by HANDOFF; the breeze has died by 0.53, before the counter at 0.55.
+ */
+const VIEW_IN: [number, number] = [0.17, 0.27];
+const SWING: [number, number] = [0.21, 0.43];
+const PANE_SWING = 12;
+const GLINT: [number, number] = [0.25, 0.39];
+const BREEZE: [number, number] = [0.27, 0.53];
+const MEADOW_NEAR = 1.06;
+const MEADOW_PEAK = 1.16;
 
 type Box = { x: number; y: number; w: number; h: number };
+/** A style property written only when its value changes. */
+type Prop = { el: HTMLElement | null; v: string };
+const prop = (el: HTMLElement | null): Prop => ({ el, v: "" });
+function set(p: Prop, name: "transform" | "opacity" | "visibility", v: string) {
+  if (!p.el || v === p.v) return;
+  p.v = v;
+  p.el.style[name] = v;
+}
 type Put = { el: HTMLElement | null; img: HTMLImageElement | null; t: string; o: string; v: string; d: string; offAt: number };
 const slot = (el: HTMLElement | null): Put => ({ el, img: el?.querySelector<HTMLImageElement>(":scope > picture > .sc-img") ?? null, t: "", o: "", v: "?", d: "?", offAt: 0 });
 
@@ -112,6 +139,15 @@ function shown(p: Put, on: boolean, near = false) {
     p.el.style.display = p.v = v;
     clock.flips++;
   }
+}
+
+const fix = (v: number, d: number) => (v <= 0.0005 ? "0" : v >= 0.9995 ? "1" : v.toFixed(d));
+/** One pass of the glint across a casement's glass: u 0..1 slides it over; it is lit only mid-way. */
+function glint(g: { t: Prop; o: Prop }, u: number) {
+  const k = clamp01(u);
+  const lit = Math.pow(Math.sin(Math.PI * k), 1.6);
+  set(g.o, "opacity", fix(lit, 3));
+  if (lit > 0) set(g.t, "transform", `translate3d(${mix(-26, 26, k).toFixed(2)}%,0,0)`);
 }
 
 const tx = (box: Box, q: number, to: number, k: number) => to - box.x - k * q;
@@ -180,8 +216,33 @@ export function SceneDirector() {
       if (img.complete && img.naturalWidth > 0) go();
       else img.addEventListener("load", go, { once: true });
     };
-    const warmAll = () =>
+    /* The window rig's masks are CSS mask-images: fetched and decoded here (after the hero), so the
+       rig is never shown with a mask still loading. */
+    const masks = new Map<string, boolean>();
+    const warmMask = (src: string) => {
+      if (masks.has(src)) return;
+      masks.set(src, false);
+      const im = new Image();
+      im.decoding = "async";
+      im.src = src;
+      const done = () => {
+        masks.set(src, true);
+        lastKey = "";
+      };
+      (im.decode ? im.decode() : Promise.resolve()).then(done, () => im.naturalWidth > 0 && done());
+    };
+    const rigImgs = {
+      meadow: q<HTMLImageElement>(".sc-view-meadow > picture > .sc-img"),
+      paneL: q<HTMLImageElement>(".sc-pane-l > .sc-wimg"),
+      paneR: q<HTMLImageElement>(".sc-pane-r > .sc-wimg"),
+      front: q<HTMLImageElement>(".sc-front"),
+    };
+    const warmAll = () => {
       [".sc-room", ".sc-meadow", ".sc-grass", ".sc-blue", ".sc-dawn"].forEach((sel) => warm(q<HTMLImageElement>(`${sel} > picture > .sc-img`)));
+      if (!q(".sc-win")) return;
+      Object.values(rigImgs).forEach(warm);
+      [WINDOW_FILES.view, WINDOW_FILES.viewGlass, WINDOW_FILES.glassL, WINDOW_FILES.glassR].forEach(warmMask);
+    };
     if (hero?.complete) warmAll();
     else hero?.addEventListener("load", warmAll, { once: true });
     window.setTimeout(warmAll, 1600);
@@ -206,6 +267,22 @@ export function SceneDirector() {
     let dawnMode = "";
     let dawnDisplay = "";
     let grassNight = "?";
+    /* ── through the window (delight 4) ── */
+    const rigEl = q<HTMLElement>(".sc-win");
+    const rig = prop(rigEl);
+    const view = prop(q(".sc-view"));
+    const viewIn = prop(q(".sc-view-meadow"));
+    const paneL = prop(q(".sc-pane-l"));
+    const paneR = prop(q(".sc-pane-r"));
+    const glints = [...document.querySelectorAll<HTMLElement>(".sc-glint")];
+    const glintL = { t: prop(glints[0] ?? null), o: prop(glints[0] ?? null) };
+    const glintR = { t: prop(glints[1] ?? null), o: prop(glints[1] ?? null) };
+    const decodedImg = (img: HTMLImageElement | null) => !!img && decoded.has(img);
+    const rigReady = () =>
+      !!rigEl &&
+      decodedImg(rigImgs.meadow) &&
+      decodedImg(rigImgs.front) &&
+      (small ? !!masks.get(WINDOW_FILES.viewGlass) : decodedImg(rigImgs.paneL) && decodedImg(rigImgs.paneR) && !!masks.get(WINDOW_FILES.view) && !!masks.get(WINDOW_FILES.glassL) && !!masks.get(WINDOW_FILES.glassR));
     const ar = (el: HTMLElement | null, fallback: number) => (el && parseFloat(el.style.getPropertyValue("--ar"))) || fallback;
     const roomAr = ar(room.el, DESK.w / DESK.h);
     const meadowAr = ar(meadow.el, 16 / 9);
@@ -269,6 +346,7 @@ export function SceneDirector() {
       scene.x1 = scene.y1 = 1e5;
       scene.field = 0;
       scene.px = scene.py = 0;
+      scene.breeze = 0;
 
       const nightOn = i <= ORDER.daybreak || (i >= ORDER.nightfall && i <= ORDER.dawn);
       const gn = i <= ORDER.daybreak ? "1" : "";
@@ -299,7 +377,9 @@ export function SceneDirector() {
         const k0 = small ? HERO_SMALL.scale : 1;
         const restX = small ? Math.min(0, Math.max(vw - k0 * roomBox.w, HERO_SMALL.laptopAt * vw - k0 * 0.704 * roomBox.w)) + k0 * qx : roomBox.x + qx;
         const restY = small ? stageH - k0 * roomBox.h + k0 * qy : roomBox.y + qy;
-        const kk = k0 * Math.pow(Math.max(S, k0) / k0, pr);
+        // As it dissolves (delight 4) the room goes on past its cap a little, so the window's frame and
+        // casements sweep out past the screen's edges: we pass through. The upscale is hidden by the fade.
+        const kk = k0 * Math.pow(Math.max(S, k0) / k0, pr) * (1 + (small ? ROOM_PAST_SMALL : ROOM_PAST) * ss(FADE_FROM - 0.01, HANDOFF, bp));
         // The room itself never follows the pointer: sub-pixel moves of a detailed painting (and the
         // live list on the laptop) shimmer and read as flicker. Only the fireflies lean (scene.px/py).
         // At rest (bp < PUSH_START) nothing below changes, so the big painted layer is not touched.
@@ -311,9 +391,42 @@ export function SceneDirector() {
         const RX = tx(roomBox, qx, toX, kk);
         const RY = ty(roomBox, qy, toY, kk);
         put(room, ro > 0, ro, RX, RY, kk, nearRoom);
-        // The meadow is under the room from the start of the dissolve, then settles 1.16 → 1.
-        const mk = mix(1.16, 1, ss(FADE_FROM, 0.92, bp));
-        put(meadow, mReady && bp > FADE_FROM - 0.02, 1, tx(meadowBox, cx - meadowBox.x, cx, mk), ty(meadowBox, cy - meadowBox.y, cy, mk), mk, nearMeadow);
+        // The meadow: seen through the window as we near it (growing a little, far away), then under
+        // the room from the start of the dissolve, settling 1.16 → 1. One picture, one transform.
+        const mk = bp < FADE_FROM ? mix(MEADOW_NEAR, MEADOW_PEAK, ss(PUSH_START, FADE_FROM, bp)) : mix(MEADOW_PEAK, 1, ss(FADE_FROM, 0.92, bp));
+        const MX = tx(meadowBox, cx - meadowBox.x, cx, mk);
+        const MY = ty(meadowBox, cy - meadowBox.y, cy, mk);
+        put(meadow, mReady && bp > FADE_FROM - 0.02, 1, MX, MY, mk, nearMeadow);
+
+        // Through the window (delight 4). The rig lives inside the room layer, so it is carried by
+        // the room's transform and fades with it; here only what moves within it is written.
+        const rigOn = mReady && ro > 0 && bp > PUSH_START + 0.004 && rigReady();
+        set(rig, "visibility", rigOn ? "visible" : "hidden");
+        if (rigOn) {
+          set(view, "opacity", fix(ss(VIEW_IN[0], VIEW_IN[1], bp), 3));
+          // The meadow inside the window sits exactly where the meadow layer is on screen.
+          const vx = WINDOW_LAYERS.view.x0 * sx0;
+          const vy = WINDOW_LAYERS.view.y0 * sx0;
+          const is = mk / kk;
+          const ix = (meadowBox.x + MX - roomBox.x - RX) / kk - vx;
+          const iy = (meadowBox.y + MY - roomBox.y - RY) / kk - vy;
+          set(viewIn, "transform", `translate3d(${ix.toFixed(2)}px,${iy.toFixed(2)}px,0) scale(${is.toFixed(5)})`);
+          if (!small) {
+            // The casements swing wider on their outer hinges (they open outward: the free edge goes away).
+            const a = PANE_SWING * ss(SWING[0], SWING[1], bp);
+            const persp = 3.4 * (WINDOW_LAYERS.paneL.x1 - WINDOW_LAYERS.paneL.x0) * sx0;
+            set(paneL, "transform", a > 0.005 ? `perspective(${persp.toFixed(0)}px) rotateY(${a.toFixed(2)}deg)` : "none");
+            set(paneR, "transform", a > 0.005 ? `perspective(${persp.toFixed(0)}px) rotateY(${(-a).toFixed(2)}deg)` : "none");
+            glint(glintL, (bp - GLINT[0]) / (GLINT[1] - GLINT[0]));
+            glint(glintR, (bp - GLINT[0] - 0.015) / (GLINT[1] - GLINT[0]));
+          }
+        }
+        // The breeze: from the middle of the opening, the fireflies there drift out toward the viewer.
+        const ox = ((WINDOW_OPENING.x0 + WINDOW_OPENING.x1) / 2) * sx0;
+        const oy = ((WINDOW_OPENING.y0 + WINDOW_OPENING.y1) / 2) * sx0;
+        scene.bx = roomBox.x + RX + kk * ox;
+        scene.by = roomBox.y + RY + kk * oy;
+        scene.breeze = Math.sin(Math.PI * clamp01((bp - BREEZE[0]) / (BREEZE[1] - BREEZE[0])));
         put(blue, false, 0, 0, 0, 1, nearBlue);
         // Small screens: the wall above the smaller room is the wash, so it stays until the room covers.
         put(washN, true, mix(1, 0.5, small ? ss(0.55, 1, pr) : ss(0.15, 0.7, pr)));
@@ -331,6 +444,7 @@ export function SceneDirector() {
         shown(grassWrap, p > 0.8, nearGrass);
         put(grass, p > 0.8, 1, 0, mix(GRASS_OFF, GRASS_LOW + 0.05, ss(0.8, 1, p)) * stageH, 1, nearGrass);
       } else if (i <= ORDER.daybreak) {
+        set(rig, "visibility", "hidden");
         const u = s.scene.id === "meadow-night" ? s.scene.progress : 1;
         const mk = 1 + 0.06 * u;
         put(room, false, 0, 0, 0, 1, nearRoom);
@@ -343,6 +457,7 @@ export function SceneDirector() {
         shown(grassWrap, g > 0, nearGrass);
         put(grass, g > 0, i === ORDER.daybreak ? g : 1, 0, (mix(GRASS_LOW + 0.05, GRASS_LOW, Math.min(1, (g - 0.8) * 5)) - u * 0.02) * stageH, 1);
       } else if (i < ORDER.nightfall) {
+        set(rig, "visibility", "hidden");
         shown(grassWrap, false, nearGrass);
         put(grass, false, 0, 0, 0, 1, nearGrass);
         put(meadow, false, 0, 0, 0, 1, nearMeadow);
@@ -365,6 +480,7 @@ export function SceneDirector() {
         camY = Y;
         camK = kk;
         // Blue hour only once its picture is decoded; until then the lamp-lit room holds.
+        set(rig, "visibility", "hidden");
         const bo = i !== ORDER.dawn || !ready(blue) ? 0 : s.scene.id === "desk-lamp" ? (s.scene.kind === "fade" ? clamp01(s.scene.mix) : 0) : 1;
         put(room, bo < 1, 1, X, Y, kk, nearRoom);
         put(blue, bo > 0, bo, X, Y, kk, nearBlue);

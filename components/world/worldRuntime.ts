@@ -307,6 +307,8 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     fu.uPar.value.set(scene.px, scene.py);
     // The camera's push through the window carries the fireflies with it.
     fu.uDolly.value = i === ORDER.hero ? PASS_DOLLY * scene.push : PASS_DOLLY;
+    // The breeze through the window as we pass it (delight 4): scroll-driven, so `pos` keys the redraw.
+    fu.uBreeze.value.set(scene.bx, scene.by, i === ORDER.hero ? scene.breeze : 0, 0.6 * Math.max(vw, vh));
 
     /* the two passes: thresholds follow the Line's own y */
     const band = Math.max(56, vh * 0.09);

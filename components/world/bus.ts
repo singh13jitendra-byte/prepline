@@ -48,8 +48,10 @@ export const worldBus = {
    * What the painted scene gives the fireflies, written every frame by SceneDirector:
    * the window's glass on screen (they are drawn only inside it), whether the field shows at
    * all (0 indoors and by day), the pointer parallax in px, and how far through the window we are.
+   * `bx, by, breeze`: the middle of the window opening on screen and how hard the breeze through it
+   * blows (0..1, hero only): the fireflies by the window drift out toward the viewer (delight 4).
    */
-  scene: { x0: -1e5, y0: -1e5, x1: 1e5, y1: 1e5, field: 1, px: 0, py: 0, push: 1 },
+  scene: { x0: -1e5, y0: -1e5, x1: 1e5, y1: 1e5, field: 1, px: 0, py: 0, push: 1, bx: 0, by: 0, breeze: 0 },
   /** 1 while the ranked flight is in the air (the line waits), easing to 0 after the last landing. */
   dockHold: 0,
   /** Last measured numbers, for the debug console (window.__world). */
