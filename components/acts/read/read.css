@@ -155,37 +155,32 @@ html.motion .rd-underline {
   line-height: 1.4;
   color: var(--c-on-night-2);
 }
-/* The slip (review-3 P0-2: text under 18px never sits directly on a painting). A flat pine card in
-   the wall's own colour with a night hairline: on the wall it disappears; over lit plaster, the window
-   frame, the laptop or the meadow it holds the copy at AA (cream 11.7:1, sage 7.1:1). No glass. */
-.rd-slip {
-  position: relative;
-  isolation: isolate;
-  padding: 18px 20px 16px;
-  margin-inline: -20px;
-  border-radius: var(--r-md);
-}
-.rd-slip::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  background: var(--c-night);
-  box-shadow: inset 0 0 0 var(--hairline) var(--c-rule-night);
-}
+/* Small copy sits on the shared night slip (globals.css: .slip-night .slip-bleed, the type-on-painting
+   rule). Local adjustments only. */
 .rd-hero-slip {
   margin-top: 14px;
 }
 .rd-hero-slip > .rd-sub {
   margin-top: 0;
 }
-.rd-stmt-slip {
+/* The ranked and reason sub-copy: the body's own top margin moves to the slip. */
+.rd-body-slip {
+  margin-top: 20px;
+  max-width: calc(30em + 40px);
+}
+.rd-body-slip > .rd-body {
+  margin-top: 0;
+  color: var(--c-on-night-2);
+}
+.rd-body-slip > .rd-privacy-line {
+  margin-top: 16px;
+  padding-top: 14px;
+}
+.slip-night.rd-stmt-slip {
   display: inline-grid;
   grid-template-rows: auto 1fr;
   max-width: 100%;
-  padding: 12px 18px 14px;
-  margin-inline: -18px;
+  padding-block: 12px 14px;
 }
 .rd-detail-wrap {
   min-height: 0;
@@ -199,8 +194,11 @@ html.motion .rd-stmt-slip {
 html.motion .rd-pass[data-pass="0"] .rd-stmt-slip {
   grid-template-rows: auto 0fr;
 }
-html.motion .rd-stmt-slip::before {
-  opacity: calc(1 - min(1, var(--k, 0) * 2.2));
+/* The slip's ground fades with the detail as the statement flies to the list header. */
+html.motion .rd-stmt-slip {
+  --slip-a: calc((1 - min(1, var(--k, 0) * 2.2)) * 100%);
+  background: color-mix(in oklab, var(--c-night) var(--slip-a), transparent);
+  box-shadow: inset 0 0 0 var(--hairline) color-mix(in oklab, var(--c-rule-night) var(--slip-a), transparent);
 }
 .rd-cue {
   font-size: var(--fs-small);
@@ -435,9 +433,23 @@ html.motion .rd-detail {
 }
 /* The matches panel: the product's paper card (keyline, radius, hard lamp print offset). */
 .pp.rd-panel {
+  position: relative;
   height: auto;
   padding: 6px 8px;
   overflow: visible;
+}
+/* The list recedes into the night as the card lifts (ReadPanel writes --dim on the panel only):
+   an opaque pine wash over the paper, and the lamp print darkens with it. Never translucent paper. */
+.rd-panel-dim {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--c-night);
+  opacity: var(--dim, 0);
+  pointer-events: none;
+}
+html.motion .pp.rd-panel {
+  box-shadow: 6px 7px 0 0 color-mix(in oklab, var(--art-lamp) calc((1 - var(--dim, 0)) * 100%), var(--c-night));
 }
 .rd-list {
   display: flex;
@@ -530,14 +542,14 @@ html.motion .rd-copy-ranked {
 html.motion .rd-copy-ranked .rd-w {
   transform: translate3d(0, calc(clamp(0, 1 - (var(--h2a, 0) * (1 + var(--wn) * 0.12) - var(--wi) * 0.12), 1) * 110%), 0);
 }
-html.motion .rd-copy-ranked .rd-body {
+html.motion .rd-copy-ranked .rd-body-slip {
   opacity: var(--b2a, 0);
   transform: translate3d(0, calc((1 - var(--b2a, 0)) * 12px), 0);
 }
 html.motion .rd-copy-reason .rd-w {
   transform: translate3d(0, calc(clamp(0, 1 - (var(--in, 0) * (1 + var(--wn) * 0.12) - var(--wi) * 0.12), 1) * 110%), 0);
 }
-html.motion .rd-copy-reason .rd-body {
+html.motion .rd-copy-reason .rd-body-slip {
   opacity: var(--in2, 0);
   transform: translate3d(0, calc((1 - var(--in2, 0)) * 12px), 0);
 }
@@ -593,10 +605,6 @@ html:not(.motion) .rd-card-obj {
 /* ══ small screens (under 768px, storyboard 5.7) ═══════════════════════ */
 
 @media (max-width: 767px) {
-  .rd-slip {
-    padding-inline: 14px;
-    margin-inline: -14px;
-  }
   .rd-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     column-gap: 16px;

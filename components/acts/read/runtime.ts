@@ -170,6 +170,9 @@ export type ActorExtra = {
   ry?: number;
   /** Vertical offset in px (anticipation lift, landing settle). Not sprung. */
   ty?: number;
+  /** A deliberate turn about the X axis in degrees (a face change done as a card flip). Not sprung:
+   *  it is exact to the scroll, so the face swap can happen at the edge-on frame. */
+  flipX?: number;
   /** Shadow depth 0..1, combined with the engine's own travel lift. */
   lift?: number;
   /** Specular highlight: position in % of the face and strength 0..1. */
@@ -209,6 +212,7 @@ function loop(_t: number, dt: number, s: Readonly<StoryState>) {
   let rx = 0;
   let ry = 0;
   let ty = 0;
+  let flipX = 0;
   let lift = 0;
   let spec = 0;
   let specX = 50;
@@ -221,6 +225,7 @@ function loop(_t: number, dt: number, s: Readonly<StoryState>) {
     rx += e.rx ?? 0;
     ry += e.ry ?? 0;
     ty += e.ty ?? 0;
+    flipX += e.flipX ?? 0;
     lift = Math.max(lift, e.lift ?? 0);
     if ((e.spec ?? 0) > spec) {
       spec = e.spec ?? 0;
@@ -229,7 +234,7 @@ function loop(_t: number, dt: number, s: Readonly<StoryState>) {
     }
   });
   // While the line splits the Actor, both skins must stay flat and aligned.
-  if (s.line.sweep) rx = ry = ty = spec = 0;
+  if (s.line.sweep) rx = ry = ty = spec = flipX = 0;
 
   // Spring 160 / 18 (storyboard 3), integrated in small steps.
   const steps = Math.max(1, Math.ceil(dt / (1 / 240)));
@@ -243,11 +248,13 @@ function loop(_t: number, dt: number, s: Readonly<StoryState>) {
   if (s.line.sweep) spring.rx = spring.ry = spring.vx = spring.vy = 0;
   spring.spec += (spec - spring.spec) * Math.min(1, dt * 10);
 
-  const angle = Math.hypot(spring.rx, spring.ry);
+  // The flip adds to the sprung tilt about X (one axis-angle: exact for the flip, which dominates).
+  const ax = spring.rx + flipX;
+  const angle = Math.hypot(ax, spring.ry);
   const engineLift = s.actor.travel > 0 && s.actor.travel < 1 ? Math.sin(Math.PI * s.actor.travel) : 0;
   const resting = !any && angle < 0.01 && spring.spec < 0.005;
 
-  write(el, "rotate", "rotate", resting || angle < 0.01 ? "" : `${(spring.rx / angle).toFixed(4)} ${(spring.ry / angle).toFixed(4)} 0 ${angle.toFixed(3)}deg`);
+  write(el, "rotate", "rotate", resting || angle < 0.01 ? "" : `${(ax / angle).toFixed(4)} ${(spring.ry / angle).toFixed(4)} 0 ${angle.toFixed(3)}deg`);
   write(el, "translate", "translate", resting || Math.abs(ty) < 0.01 ? "" : `0 ${ty.toFixed(2)}px`);
   write(el, "lift", "--lift", resting || lift <= engineLift ? "" : lift.toFixed(3));
   write(el, "sx", "--spec-x", resting ? "" : `${specX.toFixed(1)}%`);
