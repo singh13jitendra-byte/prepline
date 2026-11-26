@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { story } from "@/lib/story";
 import { Grain } from "./Grain";
 
@@ -14,8 +14,12 @@ import { Grain } from "./Grain";
  * split, whole) when the mode changes. Outside a sweep the sheet is whole or
  * gone, so a mobile URL bar resizing the viewport can never leave a sliver.
  * Server-rendered: the night is there on the first frame, before any script.
+ *
+ * The painted scenes are passed in as two slots so the stack reads bottom to top:
+ * pine, the night paintings (`night`), the cream day sheet, the dawn painting and the
+ * grass (`day`), the grain.
  */
-export function ChapterBackdrop() {
+export function ChapterBackdrop({ night, day: over }: { night?: ReactNode; day?: ReactNode }) {
   const day = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (story.reduced()) return;
@@ -30,7 +34,9 @@ export function ChapterBackdrop() {
   return (
     <>
       <div aria-hidden="true" data-backdrop="night" className="world-night only-motion" />
+      {night}
       <div ref={day} aria-hidden="true" data-backdrop="day" data-mode="night" className="world-day only-motion" />
+      {over}
       <Grain />
     </>
   );

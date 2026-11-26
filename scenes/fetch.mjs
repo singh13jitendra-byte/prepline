@@ -13,7 +13,10 @@ for (const s of sources) {
   const img = sharp(buf);
   const meta = await img.metadata();
   manifest[s.name] = { width: meta.width, height: meta.height, alpha: !!s.alpha, widths: [] };
-  for (const w of [960, 1600, 2400]) {
+  // 960, 1600, 2400 where the source is at least that wide, plus the source's own width
+  // (2048, 1280) so nothing is ever upscaled from a smaller export.
+  const targets = [...new Set([960, 1600, 2400, meta.width])].sort((a, b) => a - b);
+  for (const w of targets) {
     if (w > meta.width * 1.05 && w !== 960) continue;
     const r = sharp(buf).resize({ width: Math.min(w, meta.width) });
     await r.clone().webp({ quality: s.alpha ? 86 : 80, alphaQuality: 90 }).toFile(`public/scenes/${s.name}-${w}.webp`);
