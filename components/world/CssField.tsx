@@ -6,7 +6,8 @@
  * for the dense one, well under 1KB for the grid), server-rendered so they are
  * on the first frame:
  *   dense   the unread noise (bright), with a dim copy under it as dust
- *   grid    the kept: a sparse, strict 48px lattice (bright), and a dim copy
+ *   grid    the kept: sparse, loosely scattered lights (bright), and a dim copy (round 5: no
+ *           lattice; each light sits a random distance off its 48px cell's centre)
  *   gold    the twelve
  * They are clipped against --line-y by rules on html[data-beat] (index.tsx),
  * so the passes still read as dense noise turning into sparse order, and
@@ -50,7 +51,13 @@ function denseTile(size: number, count: number, seed: number, opacity = 1) {
 function gridTile(seed: number) {
   const rand = rng(seed);
   let d = "";
-  for (let j = 0; j < 10; j++) for (let i = 0; i < 10; i++) if (rand() < 0.46) d += `M${24 + i * 48} ${24 + j * 48}h0`;
+  for (let j = 0; j < 10; j++)
+    for (let i = 0; i < 10; i++) {
+      const on = rand() < 0.46;
+      const dx = Math.round((rand() - 0.5) * 36);
+      const dy = Math.round((rand() - 0.5) * 36);
+      if (on) d += `M${24 + i * 48 + dx} ${24 + j * 48 + dy}h0`;
+    }
   return esc(`<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480" fill="none" stroke="black" stroke-linecap="round"><path d="${d}" stroke-width="3.8"/></svg>`);
 }
 

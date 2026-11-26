@@ -25,6 +25,8 @@ export type SceneEntry = {
   alpha: boolean;
   /** Exported widths. Empty: the files are not there yet. */
   widths: number[];
+  /** Encodings written for every width (scenes/fetch.mjs): opaque "avif"+"webp", alpha layers "webp" only. */
+  formats?: ("avif" | "webp")[];
   /** Tiny blurred data URI, shown until the picture has loaded. */
   placeholder?: string;
 };
@@ -96,6 +98,13 @@ export const DESK_CLOSE = {
  * `laptopAt` of the viewport width. Above it the wall is the pine wash.
  */
 export const HERO_SMALL = { scale: 0.64, laptopAt: 0.6 };
+
+/**
+ * Hero progress by which the push through the window has handed the screen to the meadow: the
+ * room has dissolved and left the render tree. Anything revealed after it (the 2,340 counter)
+ * lands on clean meadow. Acts may import it to time their reveals.
+ */
+export const ROOM_HANDOFF = 0.45;
 
 /** Layout of a cover box in CSS px, for a viewport. Pure maths: no layout is read. */
 export function coverBox(vw: number, vh: number, ar: number, fx: number, fy: number) {

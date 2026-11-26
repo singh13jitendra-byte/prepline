@@ -128,7 +128,9 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
       },
     }),
   );
-  // Act IV dispatches this when a request for a seat succeeds: that ring's firefly fills it.
+  // Act IV dispatches this when a request for a seat succeeds. Since round 5 no firefly sits in the
+  // rings at rest (they are printed on the ticket), so this only matters if the seat is claimed
+  // while the dawn sweep is still on screen; otherwise it is a no-op behind the paper.
   const onClaim = (e: Event) => {
     const ring = Number((e as CustomEvent<{ ring?: number }>).detail?.ring);
     claim.seat = Number.isFinite(ring) ? Math.min(SEATS, Math.max(1, Math.round(ring))) : 1;
@@ -143,7 +145,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
   let watching = "";
   const watchFor = (beat: BeatId) => {
     const i = ORDER[beat];
-    const want = i >= ORDER.pass2 && i <= ORDER.ranked ? "rows" : i >= ORDER.votes ? "seats" : "";
+    const want = i >= ORDER.pass2 && i <= ORDER.ranked ? "rows" : i >= ORDER.votes && i <= ORDER.dawn ? "seats" : "";
     if (want === watching) return;
     unwatch?.();
     watching = want;
@@ -291,14 +293,16 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
       }
     }
 
-    /* dawn: 25 come back up with the day line and are left in the seat rings */
+    /* dawn: 25 come back up with the day line and ride it toward the seat rings. Since round 5 the
+       rings are printed on the ticket stub (acts layer, above this canvas), so the fireflies go out
+       as the sweep ends: nothing is drawn at rest in the seat, and none sits behind the paper. */
     let ringKey = 0;
     let seats = false;
-    if (i >= ORDER.dawn) {
+    if (beat === "dawn") {
       seats = true;
-      fu.uSeatC.value = beat === "dawn" ? ss(0, 0.15, bp) : 1;
-      fu.uBeadY.value = beat === "dawn" ? line.y : -BIG;
-      fu.uSeatLine.value = beat === "dawn" ? (bp < 0.15 ? BIG : line.y) : -BIG;
+      fu.uSeatC.value = ss(0, 0.15, bp) * (1 - ss(0.8, 0.97, bp));
+      fu.uBeadY.value = line.y;
+      fu.uSeatLine.value = bp < 0.15 ? BIG : line.y;
       for (let n = 0; n < SEATS; n++) {
         const r = anchorRect(RING_IDS[n]);
         if (r && r.w > 1) fu.uRings.value[n].set(r.x + r.w / 2, r.y + r.h / 2, r.w / 2, 0);

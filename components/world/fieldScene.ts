@@ -16,24 +16,25 @@ import { LENS_RADIUS } from "./bus";
  *   hero        drawn only inside the window's glass (uClip follows the painted window as
  *               the camera pushes through it)
  *   pass 1      read = its own screen y against the Line's y (uT1). Dropped: one last flare,
- *               then it dims and sinks into the grass. Kept: it stops blinking, turns lamp
- *               yellow and settles on its node of the 48px grid.
+ *               then it goes out (an ember for a moment) and sinks into the grass. Kept: it stops
+ *               blinking, brightens to lamp yellow and settles near its home with a slow drift
+ *               and bob, holding its glow (no grid since round 5).
  *   pass 2      the kept are read again from below (uT2): 174 dim and sink, 12 stay lit and grow
  *   afterglow   a firefly just read stays lit for about 0.4s (uHist1, uHist2)
  *   ranked      the 12 fly an arc to the live row rects (uRows) and stretch into the full row:
  *               a flat lamp tint with a lamp border, which hands over to the DOM row
- *   dawn, seat  25 come back up with the day line and settle in the seat rings (uRings);
- *               a claimed seat fills
+ *   dawn        25 come back up with the day line and ride it toward the seat rings (uRings),
+ *               going out as the sweep ends (round 5: the rings are printed on the ticket, so
+ *               nothing is drawn in the seat at rest)
  *
  * Indoors and by day the field is not drawn at all (uField), except the 25 in their rings.
  * The fragment shader draws a signed-distance rounded box: a firefly is a soft-edged disc,
  * a landed row is a hard-edged bar.
  */
 
-export const GRID = 48;
 /** Homes are spread a little past the viewport so drift and dolly never show an edge. */
 const SPREAD = 1.1;
-/** The dolly the grid is fitted for (the field's push-in during the passes). */
+/** The dolly the settle points are fitted for (the field's push-in during the passes). */
 export const PASS_DOLLY = 0.13;
 /**
  * The ranked flight, shared with Act I (components/acts/read/ReadPanel.tsx):
@@ -58,7 +59,7 @@ export type FieldData = {
   /** home.x, home.y (−0.5..0.5), depth z, seed */
   a: Float32Array;
   /**
-   * grid.x, grid.y (px), kind (0 dropped in pass 1, 1 dropped in pass 2, 2 kept), slot.
+   * settle.x, settle.y (px), kind (0 dropped in pass 1, 1 dropped in pass 2, 2 kept), slot.
    * slot is the rank (0..11) for the kept, and seat number (1..25, 0 for none) for kind 1.
    */
   b: Float32Array;
@@ -138,45 +139,24 @@ export function buildField(small: boolean): FieldData {
   return { count, mid, first: count - 12, a, b };
 }
 
-/** Give every kept speck its own node of the strict 48px grid, nearest to where it drifts. */
-export function fitGrid(data: FieldData, w: number, canvasH: number, stageH = canvasH) {
+/**
+ * Where every kept firefly settles: its own home, as it stands at the passes' dolly, held inside
+ * the band the Line reads (17%–87% of the stage). No lattice (round 5, review P1-1): the kept come
+ * from an evenly jittered field, so their homes are already spaced like a loose swarm; the shader
+ * gives each a slow drift and bob around it. Pass 2 reads this y, and the twelve fly from here.
+ */
+export function fitSettle(data: FieldData, w: number, canvasH: number, stageH = canvasH) {
   const { count, a, b } = data;
   // The canvas is as tall as the largest viewport; the story happens in the stage (100svh).
-  const h = stageH;
-  const ox = ((w % GRID) + GRID) / 2;
-  const oy = ((h % GRID) + GRID) / 2;
-  const nx = Math.max(1, Math.floor((w - ox * 2) / GRID) + 1);
-  const ny = Math.max(1, Math.floor((h - oy * 2) / GRID) + 1);
-  const j0 = Math.max(0, Math.ceil((h * 0.17 - oy) / GRID));
-  const j1 = Math.min(ny - 1, Math.floor((h * 0.87 - oy) / GRID));
-  const taken = new Uint8Array(nx * ny);
+  const y0 = stageH * 0.17;
+  const y1 = stageH * 0.87;
   for (let i = 0; i < count; i++) {
     if (b[i * 4 + 2] < 1) continue;
     const persp = 0.5 + a[i * 4 + 2];
     const px = w / 2 + a[i * 4] * w * SPREAD * (1 + PASS_DOLLY * persp);
     const py = canvasH / 2 + a[i * 4 + 1] * canvasH * SPREAD * (1 + PASS_DOLLY * persp);
-    let best = -1;
-    let bestD = Infinity;
-    for (let j = j0; j <= j1; j++) {
-      for (let k = 0; k < nx; k++) {
-        if (taken[j * nx + k]) continue;
-        const dx = ox + k * GRID - px;
-        const dy = oy + j * GRID - py;
-        const d = dx * dx + dy * dy;
-        if (d < bestD) {
-          bestD = d;
-          best = j * nx + k;
-        }
-      }
-    }
-    if (best < 0) {
-      b[i * 4] = Math.round(px / GRID) * GRID;
-      b[i * 4 + 1] = Math.round(py / GRID) * GRID;
-      continue;
-    }
-    taken[best] = 1;
-    b[i * 4] = ox + (best % nx) * GRID;
-    b[i * 4 + 1] = oy + Math.floor(best / nx) * GRID;
+    b[i * 4] = Math.min(w - 24, Math.max(24, px));
+    b[i * 4 + 1] = Math.min(y1, Math.max(y0, py));
   }
 }
 
@@ -265,7 +245,8 @@ const vert = /* glsl */ `
     float phase = fract(uTime * (0.055 + 0.07 * h1) + h2);
     float lit = smoothstep(0.0, 0.10, phase) * (1.0 - smoothstep(0.22, 0.46, phase));
     float r0 = mix(1.3, 2.8, z) + h4 * 0.4;
-    float a0 = (0.07 + 0.93 * lit) * mix(0.45, 1.0, z);
+    // Unread tops out below the kept (0.8 against 0.96 and a bigger disc), so read = lit is legible.
+    float a0 = (0.07 + 0.73 * lit) * mix(0.45, 1.0, z);
 
     vec2 P = P0;
     float radius = r0 * (0.8 + 0.4 * lit);
@@ -290,27 +271,38 @@ const vert = /* glsl */ `
     float glow = afterglow(P0.y, uT1, uHist1, 1.0);
 
     if (kind < 0.5) {
-      // Dropped: one last light, then it dims and sinks into the grass.
+      // Dropped: one last flash, then it goes out: a dim ember for a moment, falling into the grass.
       float dim = e1 * (1.0 - glow * 0.85);
+      float ember = smoothstep(0.2, 0.5, e1) * (1.0 - smoothstep(0.6, 1.0, e1)) * (1.0 - glow);
       P.y += e1 * (34.0 + 80.0 * h3);
       P.x += sin(e1 * 3.0 + h1 * 6.283) * 5.0 * e1;
-      alpha = mix(alpha, 0.0, dim) + (flare * 0.55 + glow * 0.35) * (1.0 - e1);
-      radius = mix(radius, r0 * 0.6, dim) + flare * 0.5;
-      col = mix(col, ucGold, max(glow, flare) * 0.6);
+      alpha = mix(alpha, 0.0, dim) + (flare * 0.8 + glow * 0.4) * (1.0 - e1) + ember * 0.16;
+      radius = mix(radius, r0 * 0.55, dim) + flare * 0.9;
+      col = mix(col, ucGold, max(glow, flare) * 0.75);
+      col = mix(col, ucWarm * 0.55, ember);
     } else {
       float r2 = clamp((G.y - uT2) / uBand, 0.0, 1.0) * r1;
       float e2 = r2 * r2 * (3.0 - 2.0 * r2);
       float glow2 = afterglow(G.y, uT2, uHist2, -1.0) * step(0.5, r1);
-      // Kept: it stops blinking, turns lamp yellow and settles on its node.
-      P = mix(P0, G, e1);
-      radius = mix(radius, 3.8, e1) + flare * 0.8;
-      alpha = mix(alpha, 0.96, e1);
-      col = mix(col, ucGold, e1);
+      float flare2 = sin(PI * clamp(r2 * 2.2, 0.0, 1.0));
+      // Kept: it stops blinking, brightens to lamp yellow and settles near its home, where it
+      // keeps a slow drift and bob (smaller and slower than the unread's) and holds its glow.
+      vec2 settle = vec2(
+        sin(uTime * (0.07 + 0.05 * h2) + h1 * 6.283) * (3.0 + 3.0 * z),
+        sin(uTime * (0.21 + 0.09 * h4) + h3 * 6.283) * (2.5 + 2.0 * h1)
+      );
+      float breathe = 1.0 + 0.06 * sin(uTime * (0.35 + 0.2 * h3) + h2 * 6.283);
+      P = mix(P0, G + settle, e1);
+      radius = mix(radius, 4.4 * breathe, e1) + flare * 1.0;
+      alpha = mix(alpha, 0.98, e1);
+      col = mix(col, min(ucGold * 1.12, vec3(1.0)), e1);
       if (kind < 1.5) {
         float dim2 = e2 * (1.0 - glow2 * 0.85);
+        float ember2 = smoothstep(0.2, 0.5, e2) * (1.0 - smoothstep(0.6, 1.0, e2)) * (1.0 - glow2);
         P.y += e2 * (34.0 + 80.0 * h3);
-        alpha = mix(alpha, 0.0, dim2) + glow2 * 0.3 * (1.0 - e2);
-        radius = mix(radius, 1.4, dim2);
+        alpha = mix(alpha, 0.0, dim2) + (flare2 * 0.6 + glow2 * 0.35) * (1.0 - e2) + ember2 * 0.16;
+        radius = mix(radius, 1.4, dim2) + flare2 * 0.8;
+        col = mix(col, ucWarm * 0.55, ember2);
 
         // Dawn: 25 of them come back up, ride the Line as it brings the day, and are left
         // in the seat rings as it passes them.
@@ -534,7 +526,7 @@ export function createField(THREE: Three, data: FieldData, width: number, height
   const resize = (w: number, h: number) => {
     uniforms.uRes.value.set(w, h);
     const stage = document.querySelector<HTMLElement>(".story-stage");
-    fitGrid(data, w, h, Math.min(h, (stage && stage.offsetHeight) || h));
+    fitSettle(data, w, h, Math.min(h, (stage && stage.offsetHeight) || h));
     attrB.needsUpdate = true;
   };
   resize(width, height);

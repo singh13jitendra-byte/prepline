@@ -3,6 +3,10 @@
     "width": 2048,
     "height": 1152,
     "alpha": false,
+    "formats": [
+      "avif",
+      "webp"
+    ],
     "widths": [
       960,
       1600,
@@ -14,6 +18,10 @@
     "width": 1280,
     "height": 720,
     "alpha": false,
+    "formats": [
+      "avif",
+      "webp"
+    ],
     "widths": [
       960,
       1280
@@ -24,6 +32,10 @@
     "width": 1280,
     "height": 720,
     "alpha": false,
+    "formats": [
+      "avif",
+      "webp"
+    ],
     "widths": [
       960,
       1280
@@ -34,6 +46,10 @@
     "width": 2048,
     "height": 1152,
     "alpha": false,
+    "formats": [
+      "avif",
+      "webp"
+    ],
     "widths": [
       960,
       1600,
@@ -45,6 +61,9 @@
     "width": 2048,
     "height": 1152,
     "alpha": true,
+    "formats": [
+      "webp"
+    ],
     "widths": [
       960,
       1600,
@@ -56,6 +75,9 @@
     "width": 2048,
     "height": 1152,
     "alpha": true,
+    "formats": [
+      "webp"
+    ],
     "widths": [
       960,
       1600,

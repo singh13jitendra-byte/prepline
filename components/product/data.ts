@@ -71,7 +71,7 @@ export const roles: Role[] = rankedRoles.map((r) => ({
 export const funnel = { read: 2340, level: 186, fit: 12 } as const;
 
 /** The week the list covers, and when it was read. */
-export const week = { label: "Week of 23 November", readAt: "Last read: today, 6:10 AM" } as const;
+export const week = { label: "Week of 23 November", readAt: "Last read: today, 11:10 PM" } as const;
 
 /** Roles that were read and cut, each with its reason (a sample of the 2,328). */
 export type CutRole = { id: string; title: string; company: string; city: string; reason: string };

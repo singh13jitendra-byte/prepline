@@ -3,7 +3,7 @@ import path from "node:path";
 import type { CSSProperties } from "react";
 import { LaptopScreen } from "./LaptopScreen";
 import { SceneDirector } from "./SceneDirector";
-import { DESK, FOCUS, HOTSPOTS, SCENE_FALLBACK, SCENE_GROUND, SCENE_NAMES, type HotspotId, type SceneManifest, type SceneName } from "./sceneGeometry";
+import { DESK, FOCUS, HOTSPOTS, WINDOW_SKY, SCENE_FALLBACK, SCENE_GROUND, SCENE_NAMES, type HotspotId, type Rect, type SceneEntry, type SceneManifest, type SceneName } from "./sceneGeometry";
 
 /**
  * SCENES — the painted world: the World's backdrop (round 4).
@@ -48,15 +48,19 @@ function readManifest(): SceneManifest {
 
 const srcset = (name: SceneName, widths: number[], ext: string) => widths.map((w) => `/scenes/${name}-${w}.${ext} ${w}w`).join(", ");
 
+/** The formats a scene was encoded in (manifest `formats`; older manifests: AVIF + WebP, or WebP only with alpha). */
+const formatsOf = (m: SceneEntry) => m.formats ?? (m.alpha ? ["webp"] : ["avif", "webp"]);
+
 function Picture({ name, manifest, eager, sizes }: { name: SceneName; manifest: SceneManifest; eager?: boolean; sizes: string }) {
   const m = manifest[name];
   if (!m.widths.length) return null;
   const largest = m.widths[m.widths.length - 1];
+  const formats = formatsOf(m);
   // Held-back pictures carry their sources as data: SceneDirector hands them over once the hero has painted.
   const set = (value: string) => (eager ? { srcSet: value } : { "data-srcset": value });
   return (
     <picture>
-      {!m.alpha ? <source type="image/avif" sizes={sizes} {...set(srcset(name, m.widths, "avif"))} /> : null}
+      {formats.includes("avif") ? <source type="image/avif" sizes={sizes} {...set(srcset(name, m.widths, "avif"))} /> : null}
       <source type="image/webp" sizes={sizes} {...set(srcset(name, m.widths, "webp"))} />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -71,6 +75,22 @@ function Picture({ name, manifest, eager, sizes }: { name: SceneName; manifest: 
     </picture>
   );
 }
+
+/**
+ * `sizes` per layer: the width the layer is drawn at, at its largest scale on screen, so the
+ * browser picks the native 2048 export wherever a screen can use it. A cover box is
+ * max(100vw, 100vh × 16/9). The room is pushed to 2.4× in the hero (SceneDirector, ROOM_MAX),
+ * so it asks for 1.6× cover (on a 1x screen that is already the 2048); the meadow starts the
+ * hand-off at 1.16×.
+ */
+const SIZES: Record<SceneName, string> = {
+  "desk-night": "max(160vw, 284vh)",
+  "meadow-night": "max(116vw, 207vh)",
+  "desk-bluehour": "max(136vw, 242vh)",
+  "desk-dawn": "max(136vw, 242vh)",
+  "grass-fg": "max(100vw, 178vh)",
+  "window-frame": "max(100vw, 178vh)",
+};
 
 function Layer({
   name,
@@ -100,19 +120,46 @@ function Layer({
   } as CSSProperties;
   return (
     <div className={`sc-layer ${className}`} data-scene={name} data-files={m.widths.length ? "" : undefined} style={style}>
-      <Picture name={name} manifest={manifest} eager={eager} sizes="max(100vw, 178vh)" />
+      <Picture name={name} manifest={manifest} eager={eager} sizes={SIZES[name]} />
       {children}
     </div>
   );
 }
 
+const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(3)}%`;
+/** A rect of desk-night (source px) as a box inside its layer, in percentages. */
+const rectStyle = (r: Rect): CSSProperties => ({ left: pct(r.x0, DESK.w), top: pct(r.y0, DESK.h), width: pct(r.x1 - r.x0, DESK.w), height: pct(r.y1 - r.y0, DESK.h) });
+
 function Hotspot({ id, children }: { id: HotspotId; children?: React.ReactNode }) {
-  const r = HOTSPOTS[id];
-  const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(3)}%`;
   return (
-    <div className={`sc-hot sc-hot-${id}`} data-hot={id} style={{ left: pct(r.x0, DESK.w), top: pct(r.y0, DESK.h), width: pct(r.x1 - r.x0, DESK.w), height: pct(r.y1 - r.y0, DESK.h) }}>
+    <div className={`sc-hot sc-hot-${id}`} data-hot={id} style={rectStyle(HOTSPOTS[id])}>
       {children}
     </div>
+  );
+}
+
+/**
+ * THE HUSH (round 5, review P1-2): the paintings came with fireflies painted in, and those must
+ * not compete with the 2,340 that are the roles. The plates cannot be repainted, so the painted
+ * lights are quieted where the roles fly:
+ *   - a highlight knee on the meadow (an SVG transfer filter, sRGB): every channel above 0.5 is
+ *     compressed, so the painted dots lose their glare while grass, hills and sky are untouched.
+ *     It is a paint-time effect inside the layer, rastered once: no per-frame cost.
+ *   - a soft local darkening (.sc-hush) over the sky/grass band of the meadow and over the
+ *     window's sky in the room, under the canvas.
+ * Only the WebGL fireflies reach full brightness, so going out and staying lit both read.
+ */
+function Hush() {
+  return (
+    <svg className="sc-defs" width="0" height="0" focusable="false">
+      <filter id="sc-knee" colorInterpolationFilters="sRGB" x="0" y="0" width="100%" height="100%">
+        <feComponentTransfer>
+          <feFuncR type="table" tableValues="0 0.25 0.5 0.6 0.64" />
+          <feFuncG type="table" tableValues="0 0.25 0.5 0.6 0.64" />
+          <feFuncB type="table" tableValues="0 0.25 0.5 0.6 0.64" />
+        </feComponentTransfer>
+      </filter>
+    </svg>
   );
 }
 
@@ -122,8 +169,8 @@ export function sceneStillCss(): string {
   const still = (name: SceneName) => {
     const m = manifest[name];
     if (!m.widths.length) return null;
-    const w = m.widths.includes(1600) ? 1600 : m.widths[m.widths.length - 1];
-    return m.alpha ? `url(/scenes/${name}-${w}.webp)` : `image-set(url(/scenes/${name}-${w}.avif) type("image/avif"),url(/scenes/${name}-${w}.webp) type("image/webp"))`;
+    const w = m.widths[m.widths.length - 1];
+    return !formatsOf(m).includes("avif") ? `url(/scenes/${name}-${w}.webp)` : `image-set(url(/scenes/${name}-${w}.avif) type("image/avif"),url(/scenes/${name}-${w}.webp) type("image/webp"))`;
   };
   const night = still("desk-night");
   const dawn = still("desk-dawn");
@@ -146,8 +193,12 @@ export function ScenesNight() {
   const manifest = readManifest();
   return (
     <div aria-hidden="true" className="sc sc-night only-motion" data-scenes>
-      <Layer name="meadow-night" manifest={manifest} className="sc-meadow" focus="meadow" />
+      <Hush />
+      <Layer name="meadow-night" manifest={manifest} className="sc-meadow" focus="meadow">
+        <div className="sc-hush sc-hush-meadow" />
+      </Layer>
       <Layer name="desk-night" manifest={manifest} className="sc-room" focus="room" eager>
+        <div className="sc-hush sc-hush-window" style={rectStyle(WINDOW_SKY)} />
         <Hotspot id="window-view" />
         <Hotspot id="desk-lamp" />
         <Hotspot id="laptop-screen">
@@ -185,6 +236,13 @@ export const SCENE_CSS = `
 .sc-img{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .5s linear;user-select:none}
 .sc-img[data-on]{opacity:1}
 .sc-meadow,.sc-blue,.sc-grass{visibility:hidden}
+.sc-defs{position:absolute;width:0;height:0;overflow:hidden}
+.sc-meadow .sc-img{filter:url(#sc-knee)}
+.sc-hush{position:absolute;pointer-events:none}
+.sc-hush-meadow{inset:0;background:radial-gradient(ellipse 70% 42% at 50% 62%,color-mix(in oklab,var(--c-night) 34%,transparent),color-mix(in oklab,var(--c-night) 18%,transparent) 70%,transparent)}
+.sc-hush-window{background:radial-gradient(ellipse 60% 60% at 50% 50%,color-mix(in oklab,var(--c-night) 30%,transparent),color-mix(in oklab,var(--c-night) 12%,transparent) 80%,transparent)}
+.sc-laptop{position:absolute;inset:0;overflow:hidden}
+.sc-laptop-list{position:absolute;left:0;top:0;transform-origin:0 0}
 .sc-grass{background-image:none!important}
 /* The grass is painted in daylight: at night it is in shadow. */
 .sc-grasswrap[data-night] .sc-grass{filter:brightness(.42) saturate(.7) hue-rotate(28deg)}
@@ -195,7 +253,7 @@ export const SCENE_CSS = `
 .sc-grasswrap{overflow:visible;contain:layout style}
 .sc-grass{top:auto;bottom:0}
 .sc-hot{position:absolute}
-.sc-hot-laptop-screen{overflow:hidden;border-radius:calc(var(--r-2xs,2px) * 1.5);background:var(--c-paper-2);opacity:0;transition:opacity .6s linear}
+.sc-hot-laptop-screen{overflow:hidden;contain:strict;border-radius:calc(var(--r-2xs,2px) * 1.5);background:var(--c-paper-2);opacity:0;transition:opacity .6s linear}
 .sc-night[data-lit] .sc-hot-laptop-screen{opacity:1}
 /* The screen is a painted object: its UI sits a touch under the paint, and lights the desk a little. */
 .sc-hot-laptop-screen::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(160deg,color-mix(in oklab,var(--c-on-night) 10%,transparent),transparent 45%,color-mix(in oklab,var(--c-night) 16%,transparent));box-shadow:0 0 calc(var(--w) * .012) color-mix(in oklab,var(--c-paper-2) 30%,transparent)}
