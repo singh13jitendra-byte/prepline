@@ -1,11 +1,10 @@
 /**
- * Prepline product screens. Import the stylesheet once (it pulls in the token
- * fallback), then any screen:
+ * Prepline product screens. Import the stylesheet once, then any screen. Every
+ * colour, family, radius and shadow comes from app/theme.css:
  *
  *   import "@/components/product/product.css";   // done by this barrel
  *   import { MatchesList, Showcase } from "@/components/product";
  */
-import "./tokens.css";
 import "./product.css";
 
 export { MatchesList, type MatchesListProps, type MatchFilters } from "./MatchesList";

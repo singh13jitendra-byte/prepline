@@ -14,57 +14,62 @@
 
 export type Vec3 = [number, number, number];
 
-/** Default theme mirror. Values are exactly as written in app/theme.css (var() chains resolved). */
+/**
+ * Default theme mirror (Night Desk). Values are exactly as written in app/theme.css (var() chains
+ * resolved), at :root, so they are the DAY values of the roles that swap by chapter: --c-match here
+ * is ochre, and lamp inside a night scope. The World reads each role on the side it draws on
+ * (WORLD_COLORS below), so it gets lamp for the fireflies.
+ */
 export const theme = {
   colors: {
-    "--c-paper": "#f6f4ef",
-    "--c-paper-2": "#fffdf8",
-    "--c-ink": "#1b1916",
-    "--c-ink-2": "#5f5a53",
-    "--c-ink-3": "#a8a097",
-    "--c-rule": "#e4dfd5",
-    "--c-night": "#0a1e3c",
-    "--c-night-2": "#061226",
-    "--c-on-night": "#ffffff",
-    "--c-accent": "#b45309",
-    "--c-accent-ink": "#ffffff",
-    "--c-line": "#ffd77a",
-    "--c-line-glow": "#ffb84a",
-    "--c-match": "#ffd77a",
-    "--c-dim": "#fff6e3",
-    "--c-success": "#34b36b",
-    "--c-danger": "#b42318",
-    "--c-focus": "#b45309",
-    "--c-surface": "#ffffff",
-    "--c-accent-night": "#ffd77a",
-    "--art-night-glow": "#0f2a4f",
-    "--art-speck": "#fff6e3",
-    "--art-speck-warm": "color(srgb 1 0.94 0.82)",
-    "--art-speck-cool": "color(srgb 0.8 0.89 1)",
-    "--art-ember": "color(srgb 1 0.74 0.38)",
-    "--art-seat": "color(srgb 0.96 0.66 0.16)",
-    "--art-dust-day": "#1b1916",
-    "--art-lamp-dust": "color(srgb 1 0.8 0.56)",
-    "--art-lamp-deep": "color(srgb 0.8 0.42 0.16)",
-    "--art-lamp-heart": "color(srgb 1 0.74 0.44)",
-    "--art-lamp-day": "color(srgb 1 0.68 0.32)",
-    "--art-dawn-1": "color(srgb 1 0.9 0.66)",
-    "--art-dawn-2": "color(srgb 1 0.77 0.42)",
-    "--art-dawn-3": "color(srgb 0.95 0.6 0.28)",
-    "--art-wake-day": "color(srgb 1 0.7 0.34)",
-    "--art-wake-night": "color(srgb 1 0.56 0.17)",
-    "--art-line-bloom": "color(srgb 1 0.62 0.2)",
-    "--art-line-heat": "color(srgb 1 0.9 0.66)",
-    "--art-line-core": "#fffaf0",
-    "--art-flash-night": "color(srgb 1 0.95 0.86)",
-    "--art-flash-day": "color(srgb 1 0.99 0.95)",
-    "--art-lens": "color(srgb 0.86 0.92 1)",
+    "--c-paper": "#f4eada",
+    "--c-paper-2": "#fbf5ea",
+    "--c-ink": "#12312c",
+    "--c-ink-2": "#56665f",
+    "--c-ink-3": "#6f7d76",
+    "--c-rule": "#dccfb8",
+    "--c-night": "#12312c",
+    "--c-night-2": "#1b3f39",
+    "--c-on-night": "#f4eada",
+    "--c-accent": "#12312c",
+    "--c-accent-ink": "#f4eada",
+    "--c-line": "#f6c945",
+    "--c-line-glow": "transparent",
+    "--c-match": "#7a5600",
+    "--c-dim": "#3c5650",
+    "--c-success": "#1e6b45",
+    "--c-danger": "#a8301f",
+    "--c-focus": "#12312c",
+    "--c-surface": "#fbf5ea",
+    "--c-accent-night": "#f6c945",
+    "--art-night-glow": "#1b3f39",
+    "--art-speck": "#f4eada",
+    "--art-speck-warm": "#f4eada",
+    "--art-speck-cool": "#a9bdb3",
+    "--art-ember": "#f6c945",
+    "--art-seat": "#12312c",
+    "--art-dust-day": "#12312c",
+    "--art-lamp-dust": "#fbe49a",
+    "--art-lamp-deep": "#f6c945",
+    "--art-lamp-heart": "#fbe49a",
+    "--art-lamp-day": "#f6c945",
+    "--art-dawn-1": "#fbf5ea",
+    "--art-dawn-2": "#fbe49a",
+    "--art-dawn-3": "#f6c945",
+    "--art-wake-day": "#f6c945",
+    "--art-wake-night": "#f6c945",
+    "--art-line-bloom": "transparent",
+    "--art-line-heat": "#f6c945",
+    "--art-line-core": "transparent",
+    "--art-flash-night": "#f4eada",
+    "--art-flash-day": "#fbf5ea",
+    "--art-lens": "#f4eada",
   },
   ease: {
     "--ease-out": "cubic-bezier(0.16, 1, 0.3, 1)",
     "--ease-in": "cubic-bezier(0.5, 0, 0.75, 0)",
     "--ease-in-out": "cubic-bezier(0.65, 0, 0.15, 1)",
-    "--ease-spring": "cubic-bezier(0.2, 1.5, 0.4, 1)",
+    "--ease-spring": "cubic-bezier(0.34, 1.4, 0.64, 1)",
   },
 } as const;
 
@@ -298,8 +303,8 @@ export function currentTheme(): string {
 }
 
 /**
- * Apply a theme: `applyTheme("x")` turns on `:root[data-theme="x"]` (app/themes/x.css),
- * `applyTheme("default")` returns to app/theme.css. Dispatches `prepline:theme` on window.
+ * Apply a theme: `applyTheme("x")` turns on `:root[data-theme="x"]` (app/themes/x.css, e.g.
+ * "legacy"), `applyTheme("default")` returns to app/theme.css (Night Desk). Dispatches `prepline:theme` on window.
  */
 export function applyTheme(name: string | null | undefined) {
   if (!hasDom()) return;

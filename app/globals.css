@@ -1,6 +1,7 @@
 /* Theme first: every colour, font, radius, shadow, texture and easing is a token in app/theme.css. */
 @import "./theme.css";
-/* Directions: add `@import "./themes/<name>.css";` here (after theme.css), then applyTheme("<name>"). */
+/* The look before Night Desk: applyTheme("legacy"). Other directions: add `@import "./themes/<name>.css";` here. */
+@import "./themes/legacy.css";
 @import "tailwindcss";
 
 /* Tailwind utilities speak the theme's role names (bg-paper, text-ink, border-rule, font-display ...).
@@ -31,14 +32,20 @@
   --color-success: var(--c-success);
   --color-danger: var(--c-danger);
   --color-focus: var(--c-focus);
+  /* Night Desk palette names, for the few places a role is not enough. Lamp is never text on paper. */
+  --color-lamp: var(--art-lamp);
+  --color-glow: var(--art-glow);
+  --color-ochre: var(--art-ochre);
+  --color-deep: var(--art-deep);
 
   --font-display: var(--font-display);
   --font-text: var(--font-text);
   --font-mono: var(--font-mono);
   --font-accent: var(--font-accent);
+  --font-note: var(--font-accent);
   /* Tailwind's preflight and `font-sans` / `font-serif` read these. */
   --font-sans: var(--font-text);
-  --font-serif: var(--font-accent);
+  --font-serif: var(--font-display);
 
   --radius-xs: var(--r-xs);
   --radius-sm: var(--r-sm);
@@ -72,60 +79,13 @@ body {
   background: var(--c-paper);
   color: var(--c-ink);
   font-family: var(--font-text);
-}
-
-/* Hero pieces wait (invisible) until GSAP has set their starting positions. */
-html.hp [data-hero-hide] {
-  visibility: hidden;
-}
-/* Headline letters lift a little under the pointer once they've landed. */
-.hchar {
-  display: inline-block;
-  transition: transform 0.45s var(--ease-out-soft), color 0.3s;
-}
-@media (hover: hover) {
-  .hchar:hover {
-    transform: translateY(-0.07em) rotate(-3deg);
-    color: var(--c-accent-night);
-  }
-}
-
-/* Endless marquee: the list is doubled, so moving it by half loops seamlessly. */
-.marquee {
-  animation: marquee 38s linear infinite;
-}
-@keyframes marquee {
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-/* Typing caret for streamed prep questions. */
-.caret::after {
-  content: "";
-  display: inline-block;
-  width: 2px;
-  height: 1em;
-  margin-left: 2px;
-  vertical-align: -0.15em;
-  background: currentColor;
-  animation: blink 1s steps(1) infinite;
-}
-@keyframes blink {
-  50% {
-    opacity: 0;
-  }
+  font-weight: var(--weight-text);
+  font-synthesis-weight: none; /* Young Serif has one weight: never fake a bold */
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
-  }
-  .marquee {
-    animation: none;
-  }
-  .caret::after {
-    animation: none;
   }
 }
 
@@ -209,14 +169,29 @@ html.hp [data-hero-hide] {
   letter-spacing: var(--tracking-text);
   font-weight: var(--weight-text);
 }
-@utility type-mono {
-  font-family: var(--font-mono);
-  font-variant-numeric: var(--mono-numeric);
+/* A small label: sentence case, the text face, weight for emphasis. This replaces the old uppercase
+   mono micro-label (type-mono), which Night Desk does not have. Figures inside it are tabular. */
+@utility type-label {
+  font-family: var(--font-text);
+  font-variant-numeric: tabular-nums;
   font-size: var(--fs-micro);
   line-height: var(--leading-micro);
-  letter-spacing: calc(var(--tracking-micro) * var(--mono-tracking));
+  letter-spacing: 0;
   font-weight: var(--weight-label);
-  text-transform: var(--mono-case);
+}
+/* A margin note in the hand-written face (Shantell Sans): twelve words at most, sentence case,
+   on product objects and the Line's label only. Never a heading, a button or a signature. */
+@utility type-note {
+  font-family: var(--font-accent);
+  font-size: var(--fs-small);
+  line-height: 1.25;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+/* Tabular lining figures in the text face: counts, scores, times. (There is no mono face.) */
+@utility type-figures {
+  font-family: var(--font-text);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 @utility type-card {
   font-size: var(--fs-small);
@@ -236,14 +211,12 @@ html.hp [data-hero-hide] {
   left: clamp(20px, 3.4vw, 48px);
   bottom: clamp(16px, 2.6vh, 28px);
   z-index: 2;
-  font-family: var(--font-mono);
-  font-variant-numeric: var(--mono-numeric);
+  font-family: var(--font-text);
   font-size: var(--fs-micro);
   line-height: var(--leading-micro);
-  letter-spacing: calc(var(--tracking-micro) * var(--mono-tracking));
   font-weight: var(--weight-label);
-  text-transform: var(--mono-case);
-  opacity: 0.6;
+  /* secondary text for the chapter it sits in: AA on both */
+  color: var(--c-ink-2);
   pointer-events: none;
 }
 
@@ -304,23 +277,27 @@ html.motion .story-panel[data-focusable]:not([data-current]) {
   pointer-events: none;
 }
 
-/* Static page: chapters are plain blocks, night ones as rounded panels on cream. */
+.story-stage[data-chapter="night"] .story-caption {
+  color: var(--c-on-night-2);
+}
+/* Static page: chapters are plain blocks, night ones as flat pine panels with grain on cream. */
 html:not(.motion) .story-stage[data-chapter="night"] {
   margin: 12px;
   border-radius: var(--r-xl);
-  background: radial-gradient(120% 90% at 50% 0%, var(--c-night) 0%, var(--c-night-2) 100%);
+  background: var(--tex-night), var(--c-night);
   color: var(--c-on-night);
   overflow: clip;
 }
 
 /* ── faces and the Actor (components/story/Actor.tsx, FaceSlot.tsx) ── */
+/* Night objects are solid raised surfaces with a solid keyline. Nothing is glass. */
 [data-skin="night"] {
-  --face-bg: color-mix(in oklab, var(--c-on-night) 8%, transparent);
+  --face-bg: var(--c-night-2);
   --face-fg: var(--c-on-night);
-  --face-muted: color-mix(in oklab, var(--c-on-night) 70%, transparent);
-  --face-border: color-mix(in oklab, var(--c-on-night) 20%, transparent);
+  --face-muted: var(--c-on-night-2);
+  --face-border: var(--c-rule-night);
   --face-accent: var(--c-accent-night);
-  --face-shadow: none;
+  --face-shadow: var(--shadow-1);
 }
 [data-skin="day"] {
   --face-bg: var(--c-paper-2);
@@ -328,27 +305,26 @@ html:not(.motion) .story-stage[data-chapter="night"] {
   --face-muted: var(--c-ink-2);
   --face-border: var(--c-rule);
   --face-accent: var(--c-accent);
-  /* Warm and long. */
+  /* Print: the lamp fill, off register. */
   --face-shadow: var(--shadow-1);
 }
-/* It deepens while the Actor is in flight: --shadow-1 at rest, --shadow-2 in flight. */
-.actor[data-moving] .face[data-skin="day"] > .face-chrome {
+/* In flight the register slips further: --shadow-1 at rest, --shadow-2 while the Actor moves. */
+.actor[data-moving] .face > .face-chrome {
   box-shadow: var(--shadow-2);
 }
-/* The default theme blends continuously: --lift (0, 1, 0) is written on the chrome itself, a leaf,
-   and a custom property resolves where it is declared, so the blend is spelled here from the
-   theme's --shadow-* parts. Named themes (html[data-theme]) get the two steps above. */
-:root:not([data-theme]) .face[data-skin="day"] > .face-chrome {
+/* The legacy theme blends a soft shadow continuously with --lift (0, 1, 0), which the Actor writes
+   on the chrome itself. Night Desk has two hard steps (above) and no blend. */
+:root[data-theme="legacy"] .face[data-skin="day"] > .face-chrome {
   box-shadow: 0 calc(var(--shadow-y) + var(--shadow-dy) * var(--lift, 0)) var(--shadow-blur) var(--shadow-spread)
     color-mix(in oklab, var(--c-shadow) calc(var(--shadow-a) + var(--shadow-da) * var(--lift, 0)), transparent);
 }
 /* The tile at night (nightfall only) is already the prep sheet's cover: lamp-lit paper, not glass.
    Same paper as .sh-face-back in sheet.css, so the sheet can take over without a visible change. */
 .face[data-face="tile"][data-skin="night"] {
-  --face-bg: linear-gradient(180deg, color-mix(in oklab, var(--art-highlight) 50%, transparent), color-mix(in oklab, var(--art-highlight) 0%, transparent) 40%), var(--c-paper-lamp);
+  --face-bg: var(--c-paper-lamp);
   --face-fg: var(--c-ink);
   --face-muted: var(--c-ink-2);
-  --face-border: color-mix(in oklab, var(--art-lamp-edge) 22%, transparent);
+  --face-border: var(--c-ink);
   --face-accent: var(--c-accent);
   --face-chip: var(--c-chip);
   --face-chip-line: var(--c-chip-line);
@@ -365,7 +341,7 @@ html:not(.motion) .story-stage[data-chapter="night"] {
   inset: 0;
   border-radius: var(--face-radius, var(--r-md));
   background: var(--face-bg);
-  border: 1px solid var(--face-border);
+  border: var(--hairline) solid var(--face-border);
   box-shadow: var(--face-shadow);
 }
 .face-clip {
@@ -390,11 +366,8 @@ html:not(.motion) .story-stage[data-chapter="night"] {
   align-items: center;
   justify-content: center;
   background: repeating-linear-gradient(135deg, color-mix(in oklab, var(--art-placeholder) 28%, transparent) 0 10px, color-mix(in oklab, var(--art-placeholder) 16%, transparent) 10px 20px);
-  font-family: var(--font-mono);
-  font-variant-numeric: var(--mono-numeric);
-  font-size: 12px;
-  letter-spacing: calc(0.08em * var(--mono-tracking));
-  text-transform: var(--mono-case);
+  font-family: var(--font-text);
+  font-size: var(--fs-micro);
   color: var(--face-fg);
 }
 
@@ -427,11 +400,6 @@ html.motion .actor-layer {
   perspective: 1400px;
   will-change: transform;
   contain: layout style;
-}
-/* While the Actor is in flight, nothing inside it samples the backdrop (a full re-sample per frame). */
-.actor[data-moving] * {
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
 }
 .actor-flip {
   position: absolute;
