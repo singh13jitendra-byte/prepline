@@ -82,11 +82,23 @@ html.motion[data-chapter="day"] .nav-overlay {
   background: var(--c-night-2);
   border-color: var(--c-rule-night);
 }
-/* Over the hero (and before the story starts) the pill is clear on the painted wall. */
-html.motion[data-beat="hero"] .nav-base,
+/* The pill is solid from the first frame, the hero included: its links are small type, and small
+   type never sits directly on a painting (the type-on-painting rule, app/globals.css). Before the
+   story starts the page is on the night hero, so the base pill wears the night skin there too. */
 html.motion:not([data-beat]) .nav-base {
-  background: transparent;
-  border-color: transparent;
+  --nav-fg: var(--c-on-night);
+  --nav-fg-2: var(--c-on-night-2);
+  --nav-hover: color-mix(in oklab, var(--c-on-night) 8%, transparent);
+  --nav-mark: var(--art-lamp);
+  --nav-tail: var(--art-lamp);
+  --nav-dot: var(--art-lamp);
+  --nav-cta-bg: var(--art-lamp);
+  --nav-cta-fg: var(--art-deep);
+  --nav-cta-print: var(--c-on-night);
+  --nav-focus: var(--art-lamp);
+  color: var(--nav-fg);
+  background: var(--c-night-2);
+  border-color: var(--c-rule-night);
 }
 
 /* the split, during wipes: each skin keeps to its side of the line */

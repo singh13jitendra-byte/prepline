@@ -2322,6 +2322,9 @@
   width: 100%;
   height: 100%;
   overflow: visible;
+  /* 1, or less when this copy would be drawn below its context's minimum scale (see Showcase.tsx).
+     --pp-s is this showcase's own scale, --face-k the story face's, --pp-min the floor (none by default). */
+  --pp-fit: min(1, calc(var(--pp-s, 1) * var(--face-k, 1) / var(--pp-min, 0.001)));
 }
 .pp-showcase-inner {
   position: absolute;

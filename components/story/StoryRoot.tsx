@@ -45,9 +45,14 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { webglAvailable } from "@/lib/gl";
 import { ScrollTrigger } from "@/lib/gsap";
-import { ACTS, beatOf, panelIsCurrent, stageIsActive, story, type ActId, type BeatId } from "@/lib/story";
+import { ACTOR_TRACK, ACTS, BEATS, beatOf, panelIsCurrent, stageIsActive, story, type ActId, type BeatId } from "@/lib/story";
 import { Actor } from "./Actor";
 import { LineScope } from "./LineScope";
+
+/** World layers that read --day-top (and --day-side) in their own CSS. */
+const WORLD_LINE_READERS = ".world-day, .sc-dawnwrap, .cf-dense, .cf-grid, .cf-gold, [data-line-vars]";
+/** Of those, the ones that also read --line-y (it changes on almost every scroll frame). */
+const WORLD_LINE_Y_READERS = ".cf-dense, .cf-grid, .cf-gold, [data-line-vars~='line-y']";
 
 type Props = {
   children: ReactNode;
@@ -119,9 +124,17 @@ export function StoryRoot({ children, world, chrome }: Props) {
 
     /* ── focus → scroll its beat into place ── */
     const onFocusIn = (e: FocusEvent) => {
-      const panel = (e.target as HTMLElement | null)?.closest<HTMLElement>(".story-panel");
+      const target = e.target as HTMLElement | null;
+      const panel = target?.closest<HTMLElement>(".story-panel");
       if (!panel || panel.hasAttribute("data-current")) return;
-      const beat = (panel.dataset.beats ?? "").split(" ")[0] as BeatId;
+      const beats = (panel.dataset.beats ?? "").split(" ").filter(Boolean) as BeatId[];
+      // Land where the focused thing is actually on screen. A control inside a docked face (the
+      // prep sheet's vote buttons, the ticket's form) is only visible on the beats where the
+      // Actor rests on that face: go to the first of those, not to the panel's first beat,
+      // which may be a wipe or a beat where the face has not arrived yet.
+      const slot = target?.closest<HTMLElement>(".face-slot")?.dataset.anchor;
+      const rest = slot ? BEATS.find((b) => ACTOR_TRACK[b.id]?.dock && ACTOR_TRACK[b.id]?.from === slot && ACTOR_TRACK[b.id]?.to === slot)?.id : undefined;
+      const beat = rest ?? beats.find((b) => beatOf(b).kind !== "wipe") ?? beats[0];
       if (beat) story.scrollToBeat(beat, Number(panel.dataset.at ?? 0.6), { duration: 0.9 });
     };
     root.addEventListener("focusin", onFocusIn);
@@ -163,7 +176,12 @@ export function StoryRoot({ children, world, chrome }: Props) {
 
   return (
     <div ref={rootRef} className="story-root">
-      <LineScope>{world}</LineScope>
+      {/* The world is hundreds of nodes (painted scenes, the laptop's live list). The line variables go
+          only to the few layers whose own rules read them: the day backdrop and the dawn scene split at
+          --day-top; the no-WebGL field layers clip at --line-y. A new reader must be added here. */}
+      <LineScope targets={WORLD_LINE_READERS} lineY={WORLD_LINE_Y_READERS}>
+        {world}
+      </LineScope>
       {/* Before the acts in the DOM, so chrome comes first in the tab order. Painting order is by z-index. */}
       {chrome}
       {children}

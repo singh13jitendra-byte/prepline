@@ -167,7 +167,7 @@ export function PrepSheet({
         </nav>
       ) : null}
 
-      <div data-lenis-prevent="" className="pp-prep-body" ref={bodyRef} tabIndex={0} role="region" aria-label="Prep sheet contents">
+      <div data-lenis-prevent="" className="pp-prep-body" ref={bodyRef} role="region" aria-label="Prep sheet contents">
         <section className="pp-prep-sec" id={sections[0].id} aria-labelledby={`${sections[0].id}-h`}>
           <div className="pp-prep-sec-h">
             <h3 id={`${sections[0].id}-h`}>Likely questions</h3>
