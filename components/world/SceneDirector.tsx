@@ -15,7 +15,12 @@
  *   nightfall   desk-night again, framed close on the desk (DESK_CLOSE)
  *   prep        the same close frame, drifting in a few percent
  *   dawn        above the Line the room pulls back and turns to desk-bluehour;
- *               below the Line it is desk-dawn; a flat rectangle of light crosses the wall
+ *               below the Line it is desk-dawn; a flat rectangle of light crosses the wall.
+ *               Delight 7: the hour graduates with the story clock (clock.ts) instead of
+ *               swapping: blue hour comes in slowly (BLUE), the window's horizon pales (TL_WIN),
+ *               first light (TL_FIRST) fills the blue room and warm light gathers just above the
+ *               Line and rises with it (TL_WARM), and the morning uncovered below the Line
+ *               starts dim and clears (TL_DIM).
  *   seat        desk-dawn, the grass at the very bottom
  *
  * It also publishes what the fireflies need (worldBus.scene): the window's glass on screen
@@ -36,6 +41,21 @@ const ss = (a: number, b: number, x: number) => {
 };
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 const io = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
+/**
+ * The time-lapse light at dawn (delight 7), in dawn progress. The story clock runs Thu 1:10 PM →
+ * Fri 6:10 AM over dawn 0–0.2, blue hour to 6:40 at DAWN_WIPE, sunrise (6:58) at about 0.92.
+ *   BLUE      the lamp-lit room turns to desk-bluehour (was a linear 0–0.15 fade)
+ *   TL_WIN    the window's horizon pales from blue to gold
+ *   TL_FIRST  first light, low in the blue room
+ *   TL_WARM   warm light gathers on the floor, then rides just above the Line as it rises
+ *   TL_DIM    below the Line, the uncovered morning clears from dim to full
+ */
+const BLUE: [number, number] = [0.1, 0.36];
+const TL_WIN: [number, number] = [0.16, 0.6];
+const TL_FIRST: [number, number] = [0.2, 0.44];
+const TL_WARM: [number, number] = [0.28, 0.5];
+const TL_DIM: [number, number] = [DAWN_WIPE + 0.02, 0.97];
 
 /** How far down the foreground grass sits, as a fraction of the stage: off screen, in the meadow, under the seat act. */
 const GRASS_OFF = 0.62;
@@ -258,6 +278,11 @@ export function SceneDirector() {
     const washD = slot(q(".sc-wash-day"));
     const sun = slot(q(".sc-sun"));
     const dawn = slot(q(".sc-dawn"));
+    const tlFirst = slot(q(".sc-tl-first"));
+    const tlWarm = slot(q(".sc-tl-warm"));
+    const tlDim = slot(q(".sc-tl-dim"));
+    const tlWin = prop(q(".sc-tl-win"));
+    const tlWinV = prop(tlWin.el);
     let camX = 0;
     let camY = 0;
     let camK = 1;
@@ -355,6 +380,12 @@ export function SceneDirector() {
         grassWrap.el.toggleAttribute("data-night", gn === "1");
       }
       shown(night, nightOn);
+      // The dawn light (delight 7) lives only in the prep/dawn branch below; anywhere else it is off.
+      if (i < ORDER.nightfall || i > ORDER.dawn) {
+        put(tlFirst, false, 0, 0, 0, 1, nearBlue);
+        put(tlWarm, false, 0, 0, 0, 1, nearBlue);
+        set(tlWinV, "visibility", "hidden");
+      }
 
       /* ── Act I ── */
       if (i === ORDER.hero) {
@@ -482,9 +513,19 @@ export function SceneDirector() {
         camK = kk;
         // Blue hour only once its picture is decoded; until then the lamp-lit room holds.
         set(rig, "visibility", "hidden");
-        const bo = i !== ORDER.dawn || !ready(blue) ? 0 : s.scene.id === "desk-lamp" ? (s.scene.kind === "fade" ? clamp01(s.scene.mix) : 0) : 1;
+        // Delight 7: slower and eased (BLUE), so the hour graduates with the clock instead of swapping.
+        const bo = i !== ORDER.dawn || !ready(blue) ? 0 : ss(BLUE[0], BLUE[1], bp);
         put(room, bo < 1, 1, X, Y, kk, nearRoom);
         put(blue, bo > 0, bo, X, Y, kk, nearBlue);
+        // The light of the hour (delight 7), above the Line: the window first, then the room.
+        const lw = i === ORDER.dawn ? ss(TL_WIN[0], TL_WIN[1], bp) : 0;
+        set(tlWinV, "visibility", lw > 0 ? "visible" : "hidden");
+        if (lw > 0) set(tlWin, "opacity", fix(lw, 3));
+        const lf = i === ORDER.dawn && bo > 0 ? ss(TL_FIRST[0], TL_FIRST[1], bp) : 0;
+        put(tlFirst, lf > 0, lf, 0, 0, 1, nearBlue);
+        const lr = i === ORDER.dawn && bo > 0 ? ss(TL_WARM[0], TL_WARM[1], bp) : 0;
+        // Its bottom edge sits on the Line: on the floor while the Line waits there, then rising with it.
+        put(tlWarm, lr > 0, lr, 0, Math.round(Math.min(0, s.dayTop - stageH)), 1, nearBlue);
         put(meadow, false, 0, 0, 0, 1, nearMeadow);
         put(washN, true, mix(0.82, 0.5, back));
         shown(grassWrap, false, nearGrass);
@@ -505,6 +546,9 @@ export function SceneDirector() {
         // The light crosses in whole pixels and 1% steps: about a third of the writes, no visible step.
         put(sun, sp < 1, Math.round(Math.sin(Math.PI * sp) * 34) / 100, Math.round(mix(vw * 0.02, vw * 0.4, sp)), Math.round(-stageH * 0.1), 1);
         put(washD, true, 1);
+        // Below the Line the morning starts dim and cool, and clears as the Line climbs (delight 7).
+        const dim = i === ORDER.dawn ? 1 - ss(TL_DIM[0], TL_DIM[1], bp) : 0;
+        put(tlDim, dim > 0, dim, 0, 0, 1);
         // Above and below the Line it is one camera: the dawn room pulls back with the blue one.
         if (i === ORDER.dawn) put(dawn, true, 1, camX, camY, camK);
         else put(dawn, true, 1, 0, 0, 1);

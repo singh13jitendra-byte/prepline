@@ -1,0 +1,231 @@
+/* TIME CHIP (delight 7, TimeChip.tsx): the story clock on a slip. Both skins are the same fixed
+   box, so a new printed time never changes its size; the hands turn by transform only. */
+.tl {
+  position: fixed;
+  right: 18px;
+  /* Above the beat rail (chrome.css .rail: 148px tall, centred), clear of the 1240px stage grid. */
+  bottom: calc(50svh + 74px + 22px);
+  z-index: var(--z-nav, 5);
+  width: 80px;
+  height: 90px;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  will-change: opacity, transform;
+  contain: layout style;
+  user-select: none;
+}
+html.reduced .tl[data-still] {
+  visibility: visible;
+  opacity: 1;
+}
+.tl .tl-skin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  width: 80px;
+  height: 90px;
+  margin: 0;
+  padding: 9px 4px 8px;
+  border-radius: var(--r-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  contain: layout paint style;
+}
+.tl-skin[data-skin="night"] {
+  --tl-ring: var(--c-on-night-2);
+  --tl-hour: var(--c-on-night);
+  --tl-min: var(--art-lamp);
+  --tl-dim: var(--c-on-night-2);
+}
+.tl-skin[data-skin="day"] {
+  --tl-ring: var(--c-ink-2);
+  --tl-hour: var(--c-ink);
+  --tl-min: var(--c-match);
+  --tl-dim: var(--c-ink-2);
+}
+/* The paper skin, shown below the Line: an overflow box moved down by the cut, its content back up.
+   It reaches past the skin by the print offset (6px 7px), so the print is never cropped. */
+.tl-cut {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
+  overflow: hidden;
+  visibility: hidden;
+  will-change: transform;
+}
+.tl-cutin {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.tl-face {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 36px;
+  height: 36px;
+}
+.tl-dial {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: var(--tl-ring);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.tl-hand {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  display: block;
+  border-radius: var(--r-pill);
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+.tl-hour {
+  width: 2.6px;
+  height: 9.5px;
+  margin-left: -1.3px;
+  background: var(--tl-hour);
+}
+.tl-min {
+  width: 1.8px;
+  height: 13.5px;
+  margin-left: -0.9px;
+  background: var(--tl-min);
+}
+.tl-pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: var(--r-round);
+  background: var(--tl-hour);
+}
+.tl-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  white-space: nowrap;
+}
+.tl-day {
+  font-family: var(--font-accent);
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--tl-dim);
+}
+.tl-time {
+  font-family: var(--font-text);
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: var(--weight-label);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: 0;
+}
+
+/* Below 1400px the stage's 1240px grid reaches too close to the rail for the tall chip (the prep
+   sheet and the ticket would be under it), so phones, narrower desktops and the reduced-motion page
+   get one compact line in the bottom-right corner, on the baseline of the "Illustrative data"
+   caption opposite (.story-caption). */
+@media (max-width: 1399px) {
+  .tl {
+    right: clamp(20px, 3.4vw, 48px);
+    bottom: clamp(14px, 2.4vh, 26px);
+    width: 128px;
+    height: 28px;
+  }
+  .tl .tl-skin {
+    width: 128px;
+    height: 28px;
+    padding: 0 10px 0 5px;
+    border-radius: var(--r-sm);
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 7px;
+  }
+  .tl-face {
+    width: 20px;
+    height: 20px;
+  }
+  .tl-hour {
+    width: 2px;
+    height: 5.5px;
+    margin-left: -1px;
+  }
+  .tl-min {
+    width: 1.5px;
+    height: 7.5px;
+    margin-left: -0.75px;
+  }
+  .tl-pin {
+    width: 3px;
+    height: 3px;
+    margin: -1.5px 0 0 -1.5px;
+  }
+  .tl-text {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 5px;
+  }
+  .tl-day,
+  .tl-time {
+    font-size: var(--fs-micro);
+    line-height: 16px;
+  }
+}
+html.reduced .tl {
+  right: clamp(20px, 3.4vw, 48px);
+  bottom: clamp(14px, 2.4vh, 26px);
+  width: 128px;
+  height: 28px;
+}
+html.reduced .tl .tl-skin {
+  width: 128px;
+  height: 28px;
+  padding: 0 10px 0 5px;
+  border-radius: var(--r-sm);
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 7px;
+}
+html.reduced .tl-face {
+  width: 20px;
+  height: 20px;
+}
+html.reduced .tl-hour {
+  width: 2px;
+  height: 5.5px;
+  margin-left: -1px;
+}
+html.reduced .tl-min {
+  width: 1.5px;
+  height: 7.5px;
+  margin-left: -0.75px;
+}
+html.reduced .tl-pin {
+  width: 3px;
+  height: 3px;
+  margin: -1.5px 0 0 -1.5px;
+}
+html.reduced .tl-text {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 5px;
+}
+html.reduced .tl-day,
+html.reduced .tl-time {
+  font-size: var(--fs-micro);
+  line-height: 16px;
+}

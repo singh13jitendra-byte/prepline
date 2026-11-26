@@ -3,6 +3,7 @@ import path from "node:path";
 import type { CSSProperties } from "react";
 import { LaptopScreen } from "./LaptopScreen";
 import { SceneDirector } from "./SceneDirector";
+import { TimeChip } from "./TimeChip";
 import { DESK, FOCUS, HOTSPOTS, WINDOW_FILES, WINDOW_LAYERS, WINDOW_SKY, SCENE_FALLBACK, SCENE_GROUND, SCENE_NAMES, type HotspotId, type Rect, type SceneEntry, type SceneManifest, type SceneName } from "./sceneGeometry";
 
 /**
@@ -22,6 +23,15 @@ import { DESK, FOCUS, HOTSPOTS, WINDOW_FILES, WINDOW_LAYERS, WINDOW_SKY, SCENE_F
  *   grass-fg       foreground grass: parallax in the meadow, and the bottom of the seat act
  *   desk-bluehour  the same room before dawn (above the Line during the dawn wipe)
  *   desk-dawn      the same room at dawn (below the Line, then the whole seat act)
+ *
+ * Time-lapse light (delight 7): three soft gradient layers and one window tint, faded (and the
+ * warm one lifted) by opacity and transform only, so the hour graduates instead of swapping:
+ *   .sc-tl-win     inside desk-bluehour, over the window's sky: the horizon pales to dawn
+ *   .sc-tl-first   first light low in the blue room
+ *   .sc-tl-warm    warm morning light on the floor, then riding just above the rising Line
+ *   .sc-tl-dim     over desk-dawn: the morning just uncovered below the Line is still dim and
+ *                  cool, and clears as the Line climbs
+ * TimeChip, the story clock, is mounted with the day layers.
  *
  * The manifest is read from disk when the page is rendered (it is static, so: at build).
  * No manifest, or a scene with no files: that layer paints a flat theme-colour ground and the
@@ -258,7 +268,11 @@ export function ScenesNight() {
           <LaptopScreen />
         </Hotspot>
       </Layer>
-      <Layer name="desk-bluehour" manifest={manifest} className="sc-blue" focus="room" />
+      <Layer name="desk-bluehour" manifest={manifest} className="sc-blue" focus="room">
+        <div className="sc-tl-win" style={rectStyle(WINDOW_SKY)} />
+      </Layer>
+      <div className="sc-tl sc-tl-first" />
+      <div className="sc-tl sc-tl-warm" />
       <div className="sc-wash sc-wash-night" />
     </div>
   );
@@ -271,6 +285,7 @@ export function ScenesDay() {
     <>
       <div aria-hidden="true" className="sc sc-dawnwrap only-motion" data-mode="off">
         <Layer name="desk-dawn" manifest={manifest} className="sc-dawn" focus="dawn" />
+        <div className="sc-tl sc-tl-dim" />
         <div className="sc-sun" />
         <div className="sc-wash sc-wash-day" />
       </div>
@@ -278,6 +293,7 @@ export function ScenesDay() {
         <Layer name="grass-fg" manifest={manifest} className="sc-grass" focus="meadow" />
       </div>
       <SceneDirector />
+      <TimeChip />
     </>
   );
 }
@@ -341,6 +357,13 @@ export const SCENE_CSS = `
 .sc-wash-night{background:linear-gradient(180deg,var(--c-night) 0%,var(--c-night) 40%,color-mix(in oklab,var(--c-night) 70%,transparent) 56%,transparent 72%)}
 .sc-wash-day{background:linear-gradient(180deg,var(--c-paper) 0%,color-mix(in oklab,var(--c-paper) 88%,transparent) 36%,color-mix(in oklab,var(--c-paper) 24%,transparent) 60%,transparent 76%)}
 }
+/* Time-lapse light (delight 7). Rastered once; only their opacity (and the warm layer's lift) changes. */
+.sc-tl{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;visibility:hidden;will-change:opacity;pointer-events:none}
+.sc-tl-first{background:linear-gradient(0deg,color-mix(in oklab,var(--art-dawn-1) 24%,transparent) 0%,color-mix(in oklab,var(--art-dawn-1) 10%,transparent) 40%,color-mix(in oklab,var(--art-dawn-1) 4%,transparent) 70%,transparent)}
+/* The warm band rides the Line (its bottom edge is on the Line): the morning's light spills just above it. */
+.sc-tl-warm{will-change:transform,opacity;background:linear-gradient(0deg,color-mix(in oklab,var(--art-dawn-3) 46%,transparent) 0%,color-mix(in oklab,var(--art-dawn-2) 30%,transparent) 14%,color-mix(in oklab,var(--art-dawn-2) 14%,transparent) 32%,color-mix(in oklab,var(--art-dawn-1) 5%,transparent) 50%,transparent 64%)}
+.sc-tl-dim{opacity:1;background:linear-gradient(180deg,color-mix(in oklab,var(--c-night) 52%,transparent),color-mix(in oklab,var(--c-night) 40%,transparent))}
+.sc-tl-win{position:absolute;opacity:0;visibility:hidden;will-change:opacity;pointer-events:none;background:linear-gradient(0deg,color-mix(in oklab,var(--art-dawn-3) 58%,transparent) 0%,color-mix(in oklab,var(--art-dawn-2) 46%,transparent) 22%,color-mix(in oklab,var(--art-dawn-1) 22%,transparent) 52%,transparent 90%);-webkit-mask-image:linear-gradient(90deg,transparent,var(--c-night) 9%,var(--c-night) 91%,transparent);mask-image:linear-gradient(90deg,transparent,var(--c-night) 9%,var(--c-night) 91%,transparent)}
 /* Sunrise: a flat rectangle of light that crosses the wall. A shape, not a glow. */
 .sc-sun{position:absolute;left:0;top:0;width:34vw;height:120%;transform-origin:0 0;opacity:0;will-change:transform,opacity;background:linear-gradient(90deg,transparent,color-mix(in oklab,var(--c-paper-2) 55%,transparent) 18%,color-mix(in oklab,var(--c-paper-2) 55%,transparent) 82%,transparent)}
 html[data-scenes-debug] .sc-hot{outline:2px solid #f0f;background:rgba(255,0,255,.12)} /* token-ok: ?scenes=debug overlay only */
