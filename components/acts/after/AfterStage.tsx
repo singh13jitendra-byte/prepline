@@ -50,11 +50,11 @@ function QuoteSlot() {
 
 function PromiseSlip() {
   return (
-    <section className="af-slip" aria-labelledby="promises-title">
-      <h2 id="promises-title" className="af-slip-h">
+    <section className="slip af-promises" data-size="l" aria-labelledby="promises-title">
+      <h2 id="promises-title" className="af-promises-h">
         {promises.title}
       </h2>
-      <ul className="af-slip-list">
+      <ul className="af-promises-list">
         {promises.items.map((p) => (
           <li key={p.title}>
             <b>{p.title}</b>
@@ -62,7 +62,7 @@ function PromiseSlip() {
           </li>
         ))}
       </ul>
-      <p className="af-slip-note">{promises.note}</p>
+      <p className="af-promises-note">{promises.note}</p>
     </section>
   );
 }

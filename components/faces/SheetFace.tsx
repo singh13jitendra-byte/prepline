@@ -4,8 +4,8 @@
  * SHEET FACE — the Role unfolds into the real prep sheet (storyboard 2.6, round-4 brief).
  *
  * Both hosts render the product's own <PrepSheet skin="day" nav={false}> (components/product),
- * laid out at the face's natural size (560 x 720; on phones a 360-wide layout scaled up, so
- * product text stays at ~14px after the face is scaled to the screen).
+ * laid out at the face's natural size: 560 x 720, and on phones the registered small size,
+ * 360 x 462 (the product's narrow layout at 1:1, so its smallest text stays 11px or more).
  *
  * - host "dock": the real sheet. Votes are controlled from prepState (shared with the demo and
  *   the flying copies); PrepSheet keeps its own buttons, live region and "Tell:" column. The
@@ -21,15 +21,16 @@
  *   the board tile (TileFace), so nightfall grows the tile into this exact picture.
  */
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { registerAnchor, type AnchorId } from "@/lib/anchors";
 import { usePerformance } from "@/lib/perform";
 import { BEATS, clamp01, story, type BeatId } from "@/lib/story";
-import { registerFace, type FaceProps } from "@/components/story/faces";
+import { FaceBoxContext, getFace, registerFace, type FaceProps } from "@/components/story/faces";
+import { FaceFrame } from "@/components/story/FaceSlot";
 import { Icon, Illustrative, KeyValue, PrepSheet, ScoreRule, SourceChip, productData } from "@/components/product";
 import { prepState, usePrepState, type Vote, type Votes } from "@/components/acts/prep/prepState";
-import { TileFace } from "./TileFace";
+import "./TileFace";
 import "./sheet.css";
 
 const SHEET = productData.kestrelSheet;
@@ -38,9 +39,18 @@ const QTEXT = SHEET.questions.map((q) => q.text);
 const Q_BEATS: readonly BeatId[] = ["q1", "q2", "q3"];
 const order = (b: BeatId) => BEATS.findIndex((x) => x.id === b);
 
-/** The folded sheet's cover is the tile face scaled to the folded panel's height (240 / 92). */
-const TILE_H = 92;
-const COVER_SCALE = 240 / TILE_H;
+/** Natural size: 560 x 720 on wide screens; on phones (registered `small`) the product's own
+ *  narrow layout at 360 x 462, laid out 1:1, so its text is never scaled down to a phone. */
+const WIDE = { width: 560, height: 720 };
+const SMALL_FACE = { width: 360, height: 462 };
+
+/** The face's natural size on this screen (three equal panels of h / 3). */
+function useFaceSize(): { w: number; h: number; p: number } {
+  const box = useContext(FaceBoxContext);
+  const w = box?.now.width ?? WIDE.width;
+  const h = box?.now.height ?? WIDE.height;
+  return { w, h, p: h / 3 };
+}
 
 function record(v: Votes): Record<string, Vote> {
   return Object.fromEntries(QIDS.map((id, i) => [id, v[i] ?? null]));
@@ -420,8 +430,11 @@ function SheetDock({ skin }: { skin: FaceProps["skin"] }) {
   const { votes } = usePrepState();
   const beat = story.useBeat();
   const small = useSmall();
+  const { h: H, p: P } = useFaceSize();
   // Phones, from `votes`: the three questions as a checklist with their vote buttons (sheet.css).
   const focus = small && order(beat) >= order("votes") ? "votes" : undefined;
+  const faceH = useRef(H);
+  faceH.current = H;
 
   useLayoutEffect(() => {
     setBody(rootRef.current?.querySelector<HTMLElement>(".pp-prep-body") ?? null);
@@ -454,7 +467,7 @@ function SheetDock({ skin }: { skin: FaceProps["skin"] }) {
       const sheet = root.querySelector<HTMLElement>(".pp-prep");
       if (head && sheet && sheet.offsetHeight > 0) {
         prepState.headPx = head.offsetHeight;
-        prepState.headFace = (head.offsetHeight / sheet.offsetHeight) * 720;
+        prepState.headFace = (head.offsetHeight / sheet.offsetHeight) * faceH.current;
       }
       const rows = Array.from(body.querySelectorAll<HTMLElement>(".pp-q"));
       const opener = body.querySelector<HTMLElement>(".pp-opener");
@@ -563,8 +576,8 @@ function SheetDock({ skin }: { skin: FaceProps["skin"] }) {
     >
       <div className="shx-plate" aria-hidden="true" />
       <Sheet live votes={votes} />
-      <div className="shx-crease" style={{ top: 240 }} aria-hidden="true" />
-      <div className="shx-crease" style={{ top: 480 }} aria-hidden="true" />
+      <div className="shx-crease" style={{ top: P }} aria-hidden="true" />
+      <div className="shx-crease" style={{ top: 2 * P }} aria-hidden="true" />
       {body && rootRef.current
         ? createPortal(
             <div className="shx-overlay" aria-hidden="true">
@@ -596,9 +609,46 @@ function swing(p: number): number {
   return 1 + 0.045 * Math.sin(Math.PI * u) * Math.pow(1 - u, 0.6);
 }
 
+/**
+ * The folded sheet's cover, drawn exactly as the Actor draws the tile at the end of nightfall: the
+ * registered tile face in its own chrome, scaled to the panel the way the engine scales a face to
+ * its box (fit and size from the tile's registration) and clipped to it, its keyline box kept at 2
+ * screen px but bare (the travelling tile eases keyline and print away by then). So the cut from the
+ * travelling tile to this sheet changes nothing on screen (no white card, no jump in type size).
+ */
+function Cover({ skin, w, p }: { skin: FaceProps["skin"]; w: number; p: number }) {
+  const { meta } = getFace("tile");
+  const k = meta.fit === "height" ? p / meta.height : w / meta.width;
+  const cw = meta.fit === "height" ? w / k : meta.width;
+  return (
+    <div className="shx-cover" style={{ "--face-scale": k.toFixed(5), "--cover-cw": `${cw.toFixed(2)}px` } as CSSProperties}>
+      <FaceFrame face="tile" skin={skin} fold={0} progress={1} host="actor" />
+    </div>
+  );
+}
+
+/** The back of the bottom panel: the sheet's verso, ruled for notes. Seen while that panel swings
+ *  open (and shut at dawn), so no panel is ever a blank sheet of paper in flight. */
+function Verso() {
+  return (
+    <div className="shx-verso" data-skin="day">
+      <p className="shx-verso-h">
+        Notes<span className="pp-sep">·</span>
+        {SHEET.interview.when}
+      </p>
+    </div>
+  );
+}
+
+/** Beats where the Actor rests on the docked sheet: its flying copy is kept painted (warm). */
+const WARM_BEATS: ReadonlySet<BeatId> = new Set(["q1", "q2", "q3", "votes"]);
+
 function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
   const beat = story.useBeat();
   const { votes } = usePrepState();
+  const { w: W, h: H, p: P } = useFaceSize();
+  const size = useRef({ W, H, P });
+  size.current = { W, H, P };
   const rootRef = useRef<HTMLDivElement>(null);
   const h2Ref = useRef<HTMLDivElement>(null);
   const h3Ref = useRef<HTMLDivElement>(null);
@@ -618,13 +668,22 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
   useLayoutEffect(() => {
     const y = late ? prepState.scrollEnd : 0;
     rootRef.current?.querySelectorAll<HTMLElement>(".pp-prep-body").forEach((b) => (b.scrollTop = y));
-  }, [late, focus]);
+  }, [late, focus, H]);
 
   useEffect(() => {
     let last = "";
-    return story.frame("line", () => {
-      const f = story.actorState().fold;
-      const key = f.toFixed(4);
+    return story.frame("line", (_t, _dt, s) => {
+      const a = story.actorState();
+      // Warm: the copy is painted (at 0.4% opacity, opened flat so every panel's print is rastered)
+      // before it is needed: at the end of nightfall, before the unfold, and while the real sheet is
+      // docked, before the dawn's take-off. A first paint in the frame a flight starts showed as
+      // blank white panels on a real GPU. sheet.css reads data-warm.
+      const warm = (s.beat === "nightfall" && a.travel >= 0.8 && a.travel < 1) || WARM_BEATS.has(s.beat);
+      const face = rootRef.current?.closest<HTMLElement>(".actor-face");
+      if (face && face.hasAttribute("data-warm") !== warm) face.toggleAttribute("data-warm", warm);
+      const f = warm ? 1 : a.fold;
+      const { P } = size.current;
+      const key = `${f.toFixed(4)}|${P}`;
       if (key === last) return;
       last = key;
       // Panel 2 swings down over the first 55% of the fold, panel 3 follows from 35% (storyboard 2.6).
@@ -640,30 +699,37 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
       // Flat tints, no gradients: the turning panel takes up to 6% pine, its back a little less.
       const s2 = Math.max(0, Math.sin((a2 * Math.PI) / 180));
       const s3 = Math.max(0, Math.sin((a3 * Math.PI) / 180));
-      const set = (k: string, v: number) => {
-        const el = tints.current[k];
+      const set = (n: string, v: number) => {
+        const el = tints.current[n];
         if (el) el.style.opacity = v.toFixed(3);
       };
       set("f2", a2 < 90 ? s2 : 0);
       set("b2", a2 >= 90 ? 0.6 * s2 : 0);
       set("f3", a3 < 90 ? s3 : 0);
       set("b3", a3 >= 90 ? 0.6 * s3 : 0);
-      // The print under the sheet follows its visible extent (a scale: rastered once, never re-laid out).
+      // The print under the sheet follows its visible extent. Folded there is none: the travelling
+      // tile has eased its print away by the end of nightfall (TileFace). It comes up with the fold
+      // to the docked sheet's (--shadow-1, 6/7 of the face's px), so neither hand-over shows a step.
       const r2 = (a2 * Math.PI) / 180;
-      const vis = 240 + Math.max(0, 240 * Math.cos(r2)) + (a2 < 90 ? Math.max(0, 240 * Math.cos(r2 + (a3 * Math.PI) / 180)) : 0);
-      if (plateRef.current) plateRef.current.style.transform = `scaleY(${(Math.max(240, Math.min(720, vis)) / 720).toFixed(4)})`;
+      const vis = P + Math.max(0, P * Math.cos(r2)) + (a2 < 90 ? Math.max(0, P * Math.cos(r2 + (a3 * Math.PI) / 180)) : 0);
+      const plate = plateRef.current;
+      if (plate) {
+        plate.style.height = `${Math.max(P, Math.min(3 * P, vis)).toFixed(1)}px`;
+        plate.style.boxShadow = f >= 0.999 ? "" : `6px 7px 0 0 color-mix(in oklab, var(--art-lamp) ${(f * 100).toFixed(1)}%, transparent)`;
+      }
     });
   }, []);
 
-  const tint = (k: string) => <div ref={(el) => void (tints.current[k] = el)} className="shx-tint" />;
+  const tint = (n: string) => <div ref={(el) => void (tints.current[n] = el)} className="shx-tint" />;
   const slice = (i: number) => (
-    <div className="shx-slice" style={{ top: -240 * i }}>
+    <div className="shx-slice" style={{ top: -P * i }}>
       <SheetPrint
         votes={votes}
         opener={late}
-        foot={i === 2}
-        head={i === 0 || prepState.headFace > 240 * i}
-        body={i > 0 || !(prepState.headFace >= 240)}
+        // Every slice keeps the footer: it sets the body's height, so all three scroll alike.
+        foot
+        head={i === 0 || prepState.headFace > P * i}
+        body={i > 0 || !(prepState.headFace >= P)}
       />
     </div>
   );
@@ -671,7 +737,7 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
 
   return (
     <div ref={rootRef} className="shx" data-host="actor" data-skin={skin} data-focus={focus} data-q1={q(0)} data-q2={q(1)} data-q3={q(2)}>
-      <div ref={plateRef} className="shx-plate" style={{ transform: "scaleY(0.3333)" }} />
+      <div ref={plateRef} className="shx-plate" style={{ height: P }} />
       <div className="shx-3d">
         <div ref={p1Ref} className="shx-panel shx-p1">
           {slice(0)}
@@ -683,20 +749,9 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
             {tint("f2")}
           </div>
           <div ref={back2Ref} className="shx-back">
-            {/* The folded sheet's cover is the board tile itself at this size, so nightfall grows
-                the tile into this exact picture and the hand-over has nothing to dissolve. */}
-            <div className="shx-cover" data-skin="day">
-              <div
-                style={{
-                  width: 560 / COVER_SCALE,
-                  height: TILE_H,
-                  transform: `scale(${COVER_SCALE})`,
-                  transformOrigin: "0 0",
-                }}
-              >
-                <TileFace skin="day" fold={0} progress={1} host="actor" />
-              </div>
-            </div>
+            {/* The folded sheet's cover is the board tile itself, drawn as the Actor draws it, so
+                nightfall grows the tile into this exact picture and the hand-over has nothing to dissolve. */}
+            <Cover skin={skin} w={W} p={P} />
             {tint("b2")}
           </div>
           <div ref={h3Ref} className="shx-hinge shx-h3" style={{ transform: "rotateX(177deg)" }}>
@@ -705,7 +760,10 @@ function SheetFlying({ skin }: { skin: FaceProps["skin"] }) {
               <div className="shx-crease" style={{ top: 0 }} />
               {tint("f3")}
             </div>
-            <div className="shx-back shx-back-plain">{tint("b3")}</div>
+            <div className="shx-back shx-back-plain">
+              <Verso />
+              {tint("b3")}
+            </div>
           </div>
         </div>
       </div>
@@ -717,6 +775,6 @@ function SheetFace({ skin, host }: FaceProps) {
   return host === "dock" ? <SheetDock skin={skin} /> : <SheetFlying skin={skin} />;
 }
 
-registerFace("sheet", SheetFace, { chrome: false, clip: false });
+registerFace("sheet", SheetFace, { ...WIDE, chrome: false, clip: false, small: SMALL_FACE });
 
 export { SheetFace };

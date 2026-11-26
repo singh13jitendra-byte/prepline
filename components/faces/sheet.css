@@ -1,6 +1,7 @@
 /* ══════════════════════════════════════════════════════════════════════════
    SHEET FACE — the real PrepSheet on the lamp-lit desk (Night Desk, round 4).
-   Natural size 560 x 720, three 240px panels. Paper stays paper at night: only
+   Natural size 560 x 720 (phones: the registered small size, 360 x 462), read from
+   --face-w / --face-h; three panels of a third each. Paper stays paper at night: only
    the print offset under it changes with the skin. Tokens only.
    ══════════════════════════════════════════════════════════════════════════ */
 
@@ -8,22 +9,21 @@
   position: absolute;
   inset: 0;
 }
+.shx {
+  --shx-w: var(--face-w, 560px);
+  --shx-h: var(--face-h, 720px);
+  --shx-p: calc(var(--shx-h) / 3);
+}
 .shx-inner {
   position: absolute;
   left: 0;
   top: 0;
-  width: 560px;
-  height: 720px;
+  width: var(--shx-w);
+  height: var(--shx-h);
 }
-/* Phones: the product's own narrow layout (360 wide), scaled up to fill the face, so its 14px
-   text stays about 14px once the face is scaled to the screen. */
+/* Phones: the face is registered small (360 x 462), so the product's own narrow layout is laid
+   out 1:1 and only scaled by the few percent the slot asks for. */
 @media (max-width: 767px) {
-  .shx-inner {
-    width: 360px;
-    height: 463px;
-    transform: scale(1.5556);
-    transform-origin: 0 0;
-  }
   /* The narrow header keeps only its "Illustrative" pill in this row; the page already says
      "Illustrative data", and the 34px go to the questions (review 3, P1-5). */
   .shx .pp-prep-top {
@@ -97,16 +97,16 @@
   position: absolute;
   left: 0;
   top: 0;
-  width: 560px;
-  height: 720px;
+  width: var(--shx-w);
+  height: var(--shx-h);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-1);
   transform-origin: 50% 0;
   pointer-events: none;
 }
+/* The flying copy's plate: height and print are written per fold step (SheetFlying). */
 .shx[data-host="actor"] .shx-plate {
-  box-shadow: var(--shadow-2);
-  will-change: transform;
+  box-shadow: var(--shadow-1);
 }
 
 /* The paper remembers its folds at 240 and 480: a faint valley across the sheet and a
@@ -114,7 +114,7 @@
 .shx-crease {
   position: absolute;
   left: 0;
-  width: 560px;
+  width: var(--shx-w);
   height: 10px;
   margin-top: -5px;
   background: linear-gradient(
@@ -225,16 +225,16 @@ html.motion .shx[data-q3="blank"] .pp-q:nth-child(3) .pp-q-text {
   position: absolute;
   left: 0;
   top: 0;
-  width: 560px;
-  height: 720px;
+  width: var(--shx-w);
+  height: var(--shx-h);
   perspective: 1500px;
   perspective-origin: 50% 20%;
 }
 .shx-panel {
   position: absolute;
   left: 0;
-  width: 560px;
-  height: 240px;
+  width: var(--shx-w);
+  height: var(--shx-p);
   overflow: hidden;
 }
 .shx-p1 {
@@ -244,9 +244,9 @@ html.motion .shx[data-q3="blank"] .pp-q:nth-child(3) .pp-q-text {
 .shx-hinge {
   position: absolute;
   left: 0;
-  top: 240px;
-  width: 560px;
-  height: 240px;
+  top: var(--shx-p);
+  width: var(--shx-w);
+  height: var(--shx-p);
   transform-origin: 50% 0;
   transform-style: preserve-3d;
   /* composited: folding rotates layers, it never repaints the paper */
@@ -271,12 +271,59 @@ html.motion .shx[data-q3="blank"] .pp-q:nth-child(3) .pp-q-text {
 .shx-slice {
   position: absolute;
   left: 0;
-  width: 560px;
-  height: 720px;
+  width: var(--shx-w);
+  height: var(--shx-h);
 }
+/* The cover: the tile face in its own chrome, as the Actor draws it at the end of nightfall.
+   --shx-k is this face's screen scale (the Actor's --face-k on the sheet's content box), so the
+   keyline box stays 2 screen px like the travelling tile's. The print is the plate's. */
 .shx-cover {
   position: absolute;
   inset: 0;
+  --shx-k: var(--face-k, 1);
+}
+.shx-cover .face-content {
+  width: var(--cover-cw) !important;
+}
+/* Bare paper: the travelling tile eases its keyline and print away over nightfall's last quarter
+   (TileFace, faces.css --tile-cover), so the cover keeps the keyline's 2 screen px as paper. */
+.shx-cover .face > .face-chrome {
+  border-width: calc(2px / var(--shx-k));
+  border-color: var(--face-bg);
+  border-radius: var(--r-face-sheet);
+  box-shadow: none;
+}
+.shx-cover .face > .face-clip {
+  border-radius: var(--r-face-sheet);
+}
+/* The verso of the bottom panel: printed, ruled for notes (never a blank panel in flight). */
+.shx-verso {
+  position: absolute;
+  inset: 0;
+  padding: 22px 28px 0;
+  background:
+    repeating-linear-gradient(
+        180deg,
+        transparent 0,
+        transparent 25px,
+        var(--c-rule) 25px,
+        var(--c-rule) calc(25px + var(--hairline)),
+        transparent calc(25px + var(--hairline)),
+        transparent 26px
+      )
+      28px 52px / calc(100% - 56px) calc(100% - 64px) no-repeat,
+    var(--c-paper-2);
+}
+.shx-verso-h {
+  margin: 0;
+  font-family: var(--font-text);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: var(--weight-strong);
+  color: var(--c-ink-2);
+}
+.shx-verso-h .pp-sep {
+  margin: 0 6px;
 }
 /* Flat shading: the panel that is turning takes up to 6% pine. */
 .shx-tint {
@@ -292,4 +339,16 @@ html.motion .shx[data-q3="blank"] .pp-q:nth-child(3) .pp-q-text {
   .shx .pp-q-foot {
     transition: none;
   }
+}
+
+/* Warm (SheetFlying; ticket.css has the ticket's): the flying copy is laid out, painted and rastered before its
+   flight, at 0.4% opacity and facing the viewer, so the first frame of the flight never shows a
+   panel whose print is not there yet. These override the Actor's inline display / visibility /
+   backface only while data-warm is set, which is never while the copy is meant to be seen. */
+html.motion .actor-face[data-face="sheet"][data-warm] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 0.004 !important;
+  backface-visibility: visible !important;
+  pointer-events: none;
 }

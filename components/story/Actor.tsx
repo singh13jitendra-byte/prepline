@@ -87,7 +87,7 @@ function chase(raw: number, on: boolean, length: number, dt: number): number {
 
 function channelValue(c: ActorChannel | undefined, fallback: number, travel: number, raw: number): number {
   if (!c) return fallback;
-  if (c.drive === "travel") return lerp(c.from, c.to, travel);
+  if (c.drive === "travel") return lerp(c.from, c.to, c.range ? clamp01((travel - c.range[0]) / (c.range[1] - c.range[0] || 1)) : travel);
   const k = travelEase(clamp01((raw - (c.delay ?? 0)) / c.duration));
   return lerp(c.from, c.to, k);
 }
