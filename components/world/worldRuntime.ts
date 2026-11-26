@@ -5,7 +5,9 @@
  * Round 4: the world is the fireflies over the painted meadow, and nothing else. One draw
  * call. Each frame the director below turns the store (beat, progress, line, pointer,
  * anchors) and the scene (worldBus.scene: the window's glass, the parallax) into uniforms.
- * Nothing here reads layout: rects come from anchorRect, measured in the store's read phase.
+ * Nothing here reads layout per frame: rects come from anchorRect, measured in the store's read
+ * phase. The one exception is the flight's landing points (delight 3), read once on entering pass2
+ * or ranked, on resize and when the wheel comes to rest near them.
  */
 
 import { anchorElement, anchorRect, watchAnchors, type AnchorId } from "@/lib/anchors";
@@ -14,14 +16,14 @@ import { mountGL, type GLController } from "@/lib/gl";
 import { BEATS, clamp01, story, type BeatId, type StoryState } from "@/lib/story";
 import { onThemeChange, readWorld } from "@/lib/theme";
 import { PICK_RADIUS, worldBus, type RoleTag } from "./bus";
-import { BIG, FIELD_COLORS, LAND_FADE, LAST_LANDING, PASS_DOLLY, ROW_IN, SEATS, STAGGER, buildField, createField, pickSpeck, type FieldData, type FieldUniforms, type Verdict } from "./fieldScene";
+import { BIG, FIELD_COLORS, PASS_DOLLY, SEATS, buildField, createField, pickSpeck, type FieldData, type FieldUniforms, type Verdict } from "./fieldScene";
+import { FLY_START, LAST_ABSORBED, TRAIL_RATE, listDrift } from "./flight";
 
 const ORDER = Object.fromEntries(BEATS.map((b, i) => [b.id, i])) as Record<BeatId, number>;
 const ROW_IDS = Array.from({ length: 12 }, (_, i) => `row-${i + 1}` as AnchorId);
 const RING_IDS = Array.from({ length: SEATS }, (_, i) => `seat-ring-${i + 1}` as AnchorId);
-/** After the last landing the line takes this long to dock as the list rule. */
-const DOCK = 0.6;
-const GATHER_END = Math.max(11 * STAGGER + ROW_IN + LAND_FADE, LAST_LANDING + DOCK) + 0.05;
+/** Beat progress after the last absorption over which the Line's hold under the rule lets go. */
+const DOCK = 0.05;
 const INTRO = 1.6;
 const CLAIM_S = 0.7;
 const ss = (a: number, b: number, x: number) => {
@@ -121,30 +123,63 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
   worldBus.stats.instances = data.count;
   offs.push(onThemeChange(applyColors));
 
-  /* ── timed pieces (the load, the flight, a claimed seat) ── */
+  /* ── timed pieces (the load, a claimed seat) ── */
   let intro = 0;
-  let gatherT = ORDER[story.get().beat] > ORDER.ranked ? GATHER_END : 0;
-  let gatherOn = story.get().beat === "ranked";
   const claim = { seat: 0, t: 1 };
-  let rowRadius = 12;
-  const readRowRadius = () => {
-    const rowEl = anchorElement("row-2") ?? anchorElement("row-1");
-    const r = rowEl ? parseFloat(getComputedStyle(rowEl).borderTopLeftRadius) : NaN;
-    if (r > 0) rowRadius = r;
+
+  /* ── the flight (delight 3): where each of the twelve lands, measured rarely ──
+     The tip of each row's score rule (on phones, rows 7 to 12 are the "6 more" pill). Measured on
+     entering pass2 or ranked, on resize and once each time the wheel comes to rest nearby; between
+     measures the rows only drift with the list's breath (listDrift), which is added per frame. */
+  const land = Array.from({ length: 12 }, () => ({ x: 0, y: 0, has: 0 }));
+  let landDrift = 0;
+  let measureDue = true;
+  let settled = 0;
+  let settledPos = -1;
+  const measureLanding = () => {
+    measureDue = false;
+    landDrift = listDrift();
+    for (let n = 0; n < 12; n++) {
+      const slot = land[n];
+      const el = anchorElement(ROW_IDS[n]);
+      slot.has = 0;
+      if (!el) continue;
+      if (el.classList.contains("rd-more")) {
+        // The "6 more" pill: they merge into its words, a few px apart.
+        const words = el.querySelector("[data-row-in]");
+        const range = document.createRange();
+        if (words) range.selectNodeContents(words);
+        const r = words ? range.getBoundingClientRect() : el.getBoundingClientRect();
+        if (r.width < 1) continue;
+        slot.x = r.left + r.width / 2 + (n - 8.5) * 4;
+        slot.y = r.top + r.height / 2;
+        slot.has = 1;
+        continue;
+      }
+      const fill = el.querySelector<HTMLElement>(".pp-rule-fill");
+      const track = fill?.parentElement;
+      if (!fill || !track) continue;
+      const t = track.getBoundingClientRect();
+      if (t.width < 1) continue;
+      const f = fill.getBoundingClientRect();
+      slot.x = f.width > 0.5 ? f.right : t.left;
+      slot.y = t.top + t.height / 2;
+      slot.has = 1;
+    }
   };
+  const onResize = () => (measureDue = true);
+  window.addEventListener("resize", onResize, { passive: true });
+  offs.push(() => window.removeEventListener("resize", onResize));
+  document.fonts?.ready.then(onResize).catch(() => {});
   offs.push(
-    story.onBeat("ranked", {
-      enter(dir) {
-        readRowRadius();
-        gatherT = dir === 1 ? 0 : GATHER_END;
-        gatherOn = dir === 1;
-      },
-      leave(dir) {
-        gatherT = dir === 1 ? GATHER_END : 0;
-        gatherOn = false;
-      },
-    }),
+    story.onBeat("pass2", { enter: () => (measureDue = true) }),
+    story.onBeat("ranked", { enter: () => (measureDue = true) }),
   );
+  // The flight clock and its lagged copies (the glow trail).
+  let fly = -1;
+  const lag = [-1, -1, -1, -1];
+  // While the twelve are over the list, the canvas sits above the acts (under the Actor).
+  let lifted = false;
   // Act IV dispatches this when a request for a seat succeeds. Since round 5 no firefly sits in the
   // rings at rest (they are printed on the ticket), so this only matters if the seat is claimed
   // while the dawn sweep is still on screen; otherwise it is a no-op behind the paper.
@@ -162,11 +197,11 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
   let watching = "";
   const watchFor = (beat: BeatId) => {
     const i = ORDER[beat];
-    const want = i >= ORDER.pass2 && i <= ORDER.ranked ? "rows" : i >= ORDER.votes && i <= ORDER.dawn ? "seats" : "";
+    const want = i >= ORDER.votes && i <= ORDER.dawn ? "seats" : "";
     if (want === watching) return;
     unwatch?.();
     watching = want;
-    unwatch = want === "rows" ? watchAnchors(ROW_IDS) : want === "seats" ? watchAnchors(RING_IDS) : null;
+    unwatch = want === "seats" ? watchAnchors(RING_IDS) : null;
   };
   watchFor(story.get().beat);
   offs.push(story.onBeatChange(watchFor), () => unwatch?.());
@@ -302,23 +337,40 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     hist.n = Math.min(HN, hist.n + 1);
     if (fu.uHist1.value.w !== t1 || fu.uHist2.value.w !== t2) live = true;
 
-    /* ranked: anticipation is scrubbed, the flight is timed, and the line waits for the last landing */
-    if (gatherOn) {
-      gatherT = Math.min(GATHER_END, gatherT + dt);
-      if (gatherT >= GATHER_END) gatherOn = false;
-      live = true;
-    }
-    fu.uGatherT.value = gatherT;
-    fu.uAnt.value = beat === "ranked" ? 0.08 * ss(0, 0.2, bp) : i > ORDER.ranked ? 0.08 : 0;
-    fu.uRowR.value = rowRadius;
-    worldBus.dockHold = beat === "ranked" ? 1 - ss(0, 1, (gatherT - LAST_LANDING) / DOCK) : 0;
-    if (watching === "rows") {
-      for (let n = 0; n < 12; n++) {
-        const r = anchorRect(ROW_IDS[n]);
-        if (r && r.w > 1) fu.uRows.value[n].set(r.x, r.y, r.w, r.h);
-        else fu.uRows.value[n].set(0, 0, 0, 0);
+    /* ranked (delight 3): the twelve fly to their rows, scrubbed by the wheel; the trail lags in time */
+    const near = i >= ORDER.pass2 && i <= ORDER.ranked;
+    if (near) {
+      // Measure again once each time the wheel comes to rest here (never while it moves).
+      if (pos !== settledPos) {
+        settledPos = pos;
+        settled = 0;
+      } else if (settled >= 0 && ++settled > 8) {
+        settled = -1;
+        measureDue = true;
       }
+      if (measureDue) measureLanding();
     }
+    fly = beat === "ranked" ? bp : i > ORDER.ranked ? 2 : -1;
+    fu.uFly.value = fly;
+    // A jump from far away (a nav link) snaps the trail rather than drawing a streak across the page.
+    const k = 1 - Math.exp(-TRAIL_RATE * dt);
+    for (let n = 0; n < 4; n++) {
+      const ahead = n === 0 ? fly : lag[n - 1];
+      lag[n] = Math.abs(ahead - lag[n]) > 0.5 ? ahead : lag[n] + (ahead - lag[n]) * k;
+      if (Math.abs(ahead - lag[n]) < 1e-4) lag[n] = ahead;
+      else live = true;
+    }
+    fu.uFlyLag.value.set(lag[0], lag[1], lag[2], lag[3]);
+    const drift = listDrift() - landDrift;
+    for (let n = 0; n < 12; n++) fu.uRows.value[n].set(land[n].x, land[n].y + drift, land[n].has, 0);
+    // The Line docks as the list rule only once the last of the twelve is absorbed.
+    worldBus.dockHold = beat === "ranked" ? 1 - ss(LAST_ABSORBED, LAST_ABSORBED + DOCK, bp) : 0;
+    const lift = beat === "ranked";
+    if (lift !== lifted) {
+      lifted = lift;
+      host.toggleAttribute("data-lift", lift);
+    }
+    fu.uOnly12.value = lift ? 1 : 0;
 
     /* dawn: 25 come back up with the day line and ride it toward the seat rings. Since round 5 the
        rings are printed on the ticket stub (acts layer, above this canvas), so the fireflies go out
@@ -377,7 +429,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     /* draw only when it matters: fireflies blink, so outdoors at night is always live */
     const fieldOn = outdoors > 0 && dayTop > 0;
     if (fieldOn || focus.k > 0) live = true;
-    const key = `${L.x.toFixed(1)}|${L.y.toFixed(1)}|${pos.toFixed(3)}|${dayTop.toFixed(1)}|${line.y.toFixed(1)}|${scene.x0.toFixed(1)}|${scene.y0.toFixed(1)}|${scene.px.toFixed(2)}|${ringKey.toFixed(1)}|${fieldOn ? 1 : 0}${seats ? 1 : 0}`;
+    const key = `${drift.toFixed(1)}|${L.x.toFixed(1)}|${L.y.toFixed(1)}|${pos.toFixed(3)}|${dayTop.toFixed(1)}|${line.y.toFixed(1)}|${scene.x0.toFixed(1)}|${scene.y0.toFixed(1)}|${scene.px.toFixed(2)}|${ringKey.toFixed(1)}|${fieldOn ? 1 : 0}${seats ? 1 : 0}`;
     if (key !== lastKey) {
       lastKey = key;
       needs = true;
@@ -439,6 +491,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     gl = null;
     worldBus.glReady = false;
     worldBus.dockHold = 0;
+    host.removeAttribute("data-lift");
     document.documentElement.classList.remove("world-on");
   };
 }

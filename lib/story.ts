@@ -654,8 +654,9 @@ export type ActorMove = {
 
 /** The Actor's journey per beat, transcribed from storyboard section 2. Beats without an entry have no Actor. */
 export const ACTOR_TRACK: Partial<Record<BeatId, ActorMove>> = {
-  // Born as row 1, as the gold speck lands on it.
-  ranked: { from: "row-1", to: "row-1", face: "row", mode: "scrub", fadeIn: [0.22, 0.34] },
+  // Born as row 1 (its selected chrome) once all twelve fireflies have landed in the list and been
+  // absorbed (delight 3, components/world/flight.ts: the last by 0.46), before the line docks.
+  ranked: { from: "row-1", to: "row-1", face: "row", mode: "scrub", fadeIn: [0.46, 0.58] },
   reason: { from: "row-1", to: "card", faceFrom: "row", face: "card", mode: "scrub", range: [0, 0.35] },
   // Does not move: the line cuts it into two skins.
   daybreak: { from: "card", to: "card", face: "card", mode: "scrub" },

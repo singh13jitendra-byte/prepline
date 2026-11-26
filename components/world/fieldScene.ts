@@ -2,6 +2,7 @@ import type * as THREE_NS from "three";
 import type { Three } from "@/lib/gl";
 import type { WorldColorRole } from "@/lib/theme";
 import { LENS_RADIUS } from "./bus";
+import { FLY_DUR, FLY_STAGGER, FLY_START, LAND_T, PATH_T, TRAIL, TRAIL_SMALL } from "./flight";
 
 /** The moth: how far a firefly drifts toward the lantern (a share of its distance, capped in px). */
 const MOTH_PULL = 0.3;
@@ -22,13 +23,16 @@ const EMBER_A = 0.34;
  *   hero        drawn only inside the window's glass (uClip follows the painted window as
  *               the camera pushes through it)
  *   pass 1      read = its own screen y against the Line's y (uT1). Dropped: one last flare,
- *               then it goes out (an ember for a moment) and sinks into the grass. Kept: it stops
- *               blinking, brightens to lamp yellow and settles near its home with a slow drift
- *               and bob, holding its glow (no grid since round 5).
- *   pass 2      the kept are read again from below (uT2): 174 dim and sink, 12 stay lit and grow
+ *               then it goes out like an ember: it cools from lamp to red-amber (--art-ember-cool)
+ *               as it drifts down into the grass, and fades. Kept: it stops blinking, blooms
+ *               once, brightens to lamp yellow and settles near its home with a slow drift and
+ *               bob, holding its glow (no grid since round 5).
+ *   pass 2      the kept are read again from below (uT2): 174 go out as embers, 12 stay lit and grow
  *   afterglow   a firefly just read stays lit for about 0.4s (uHist1, uHist2)
- *   ranked      the 12 fly an arc to the live row rects (uRows) and stretch into the full row:
- *               a flat lamp tint with a lamp border, which hands over to the DOM row
+ *   ranked      delight 3 (flight.ts): the 12 fly, in rank order and scrubbed by the wheel, on a
+ *               bowed, fluttering path to the tip of their row's score rule (uRows), overshoot a
+ *               hair, settle, and are absorbed into it. A short glow trail follows each: lagged
+ *               copies of the flight clock (uFlyLag), drawn as extra instances after the field.
  *   dawn        25 come back up with the day line and ride it toward the seat rings (uRings),
  *               going out as the sweep ends (round 5: the rings are printed on the ticket, so
  *               nothing is drawn in the seat at rest)
@@ -42,23 +46,16 @@ const EMBER_A = 0.34;
 const SPREAD = 1.1;
 /** The dolly the settle points are fitted for (the field's push-in during the passes). */
 export const PASS_DOLLY = 0.13;
-/**
- * The ranked flight, shared with Act I (components/acts/read/ReadPanel.tsx):
- * speck i leaves STAGGER * i seconds after `ranked` entry, flies FLIGHT seconds and lands as the
- * full row rect. The DOM row i fades in from ROW_IN + STAGGER * i over LAND_FADE seconds, and the
- * firefly's lamp border fades into the row's own border over the same window.
- */
-export const STAGGER = 0.05;
-export const FLIGHT = 0.55;
-export const ROW_IN = 0.65;
-export const LAND_FADE = 0.18;
-/** Seconds after `ranked` entry at which the last speck has landed. */
-export const LAST_LANDING = 11 * STAGGER + FLIGHT;
 export const SEATS = 25;
 export const BIG = 1e6;
 
 export type FieldData = {
+  /** Fireflies (the roles). Instances past `count` are the twelve's glow trails. */
   count: number;
+  /** Instances drawn: count + 12 * trail. */
+  total: number;
+  /** Glow-trail copies per one of the twelve. */
+  trail: number;
   mid: number;
   /** Instance index of the brightest of the twelve (rank 1): the first of the twelve. */
   first: number;
@@ -136,13 +133,24 @@ export function buildField(small: boolean): FieldData {
   // Draw order: dust first, the kept above it, the gold last.
   all.sort((p, q) => p.kind - q.kind || p.rank - q.rank);
 
-  const a = new Float32Array(count * 4);
-  const b = new Float32Array(count * 4);
+  // The glow trails (delight 3): copies of the twelve, after everything else. kind 2 + k marks
+  // trail copy k (1..trail) of the firefly of the same rank; they share its home and seed.
+  const trail = small ? TRAIL_SMALL : TRAIL;
+  const total = count + 12 * trail;
+  const a = new Float32Array(total * 4);
+  const b = new Float32Array(total * 4);
   all.forEach((s, i) => {
     a.set([s.x, s.y, s.z, s.seed], i * 4);
     b.set([0, 0, s.kind, s.rank], i * 4);
   });
-  return { count, mid, first: count - 12, a, b };
+  for (let k = 1; k <= trail; k++) {
+    gold.forEach((s, r) => {
+      const i = count + (k - 1) * 12 + r;
+      a.set([s.x, s.y, s.z, s.seed], i * 4);
+      b.set([0, 0, 2 + k, r], i * 4);
+    });
+  }
+  return { count, total, trail, mid, first: count - 12, a, b };
 }
 
 /**
@@ -164,6 +172,12 @@ export function fitSettle(data: FieldData, w: number, canvasH: number, stageH = 
     b[i * 4] = Math.min(w - 24, Math.max(24, px));
     b[i * 4 + 1] = Math.min(y1, Math.max(y0, py));
   }
+  // The trails settle where their firefly does.
+  for (let i = count; i < data.total; i++) {
+    const head = count - 12 + b[i * 4 + 3];
+    b[i * 4] = b[head * 4];
+    b[i * 4 + 1] = b[head * 4 + 1];
+  }
 }
 
 const vert = /* glsl */ `
@@ -181,10 +195,10 @@ const vert = /* glsl */ `
   uniform vec2 uPar;
   uniform float uField;
   uniform float uIntro;
-  uniform float uAnt;
-  uniform float uGatherT;
-  uniform vec4 uRows[12];
-  uniform float uRowR;
+  uniform float uFly;     // ranked beat progress (-1 before it, 2 after it): the flight clock
+  uniform vec4 uFlyLag;   // the same clock, lagged in time, one per trail copy
+  uniform float uOnly12;  // 1 while the canvas is lifted over the list: only the twelve are drawn
+  uniform vec4 uRows[12]; // landing point per rank: x, y (CSS px), has (1 when the row is laid out)
   uniform vec3 uLens;   // the lantern: x, y (CSS px), how lit 0..1
   uniform vec4 uFocus;  // the firefly being named: instance id (-1 none), held x, y, hold 0..1
   uniform vec4 uRings[${SEATS}];
@@ -198,6 +212,7 @@ const vert = /* glsl */ `
   uniform vec3 ucGold;  // --c-match (night): lamp
   uniform vec3 ucSeat;  // --art-seat: a seat by day
   uniform vec3 ucEdge;  // --c-on-night: a landed row's border
+  uniform vec3 ucEmber; // --art-ember-cool: a set-aside firefly cooling as it sinks
 
   varying vec2 vP;
   varying vec2 vBox;
@@ -268,6 +283,7 @@ const vert = /* glsl */ `
     float gone = 0.0;
     float seatK = 0.0;
     float aside = 0.0; // 0..1: read and set aside (gone out)
+    float inFlight = 0.0; // one of the twelve, on its way to its row (or absorbed in it)
     float field = uField;
     vec2 box = vec2(0.0);
     float rad = 0.0;
@@ -279,16 +295,18 @@ const vert = /* glsl */ `
     float glow = afterglow(P0.y, uT1, uHist1, 1.0);
 
     if (kind < 0.5) {
-      // Dropped: one last flash, then it goes out: a dim ember for a moment, falling into the grass.
+      // Dropped: it brightens for a moment (one last flare), then goes out like an ember: it cools
+      // from lamp to red-amber as it drifts down into the grass, and fades.
       float dim = e1 * (1.0 - glow * 0.85);
       aside = smoothstep(0.5, 0.9, e1);
-      float ember = smoothstep(0.2, 0.5, e1) * (1.0 - smoothstep(0.6, 1.0, e1)) * (1.0 - glow);
+      float ember = smoothstep(0.1, 0.34, e1) * (1.0 - smoothstep(0.5, 1.0, e1)) * (1.0 - glow * 0.5);
+      float cool = smoothstep(0.16, 0.62, e1);
       P.y += e1 * (34.0 + 80.0 * h3);
       P.x += sin(e1 * 3.0 + h1 * 6.283) * 5.0 * e1;
-      alpha = mix(alpha, 0.0, dim) + (flare * 0.8 + glow * 0.4) * (1.0 - e1) + ember * 0.16;
-      radius = mix(radius, r0 * 0.55, dim) + flare * 0.9;
-      col = mix(col, ucGold, max(glow, flare) * 0.75);
-      col = mix(col, ucWarm * 0.55, ember);
+      alpha = mix(alpha, 0.0, dim) + (flare * 0.9 + glow * 0.4) * (1.0 - e1) + ember * (0.34 + 0.24 * z);
+      radius = mix(radius, mix(r0 * 0.55, max(r0 * 0.85, 1.5), ember), dim) + flare * 1.1;
+      col = mix(col, ucGold, max(glow, flare) * 0.85);
+      col = mix(col, ucEmber, cool * (1.0 - flare * 0.7));
     } else {
       float r2 = clamp((G.y - uT2) / uBand, 0.0, 1.0) * r1;
       float e2 = r2 * r2 * (3.0 - 2.0 * r2);
@@ -302,17 +320,20 @@ const vert = /* glsl */ `
       );
       float breathe = 1.0 + 0.06 * sin(uTime * (0.35 + 0.2 * h3) + h2 * 6.283);
       P = mix(P0, G + settle, e1);
-      radius = mix(radius, 4.4 * breathe, e1) + flare * 1.0;
-      alpha = mix(alpha, 0.98, e1);
+      // Kept: one bloom as the Line reads it, then a steady lamp.
+      radius = mix(radius, 4.4 * breathe, e1) + flare * 1.8;
+      alpha = max(mix(alpha, 0.98, e1), flare);
       col = mix(col, min(ucGold * 1.12, vec3(1.0)), e1);
       if (kind < 1.5) {
         float dim2 = e2 * (1.0 - glow2 * 0.85);
         aside = smoothstep(0.5, 0.9, e2);
-        float ember2 = smoothstep(0.2, 0.5, e2) * (1.0 - smoothstep(0.6, 1.0, e2)) * (1.0 - glow2);
+        float ember2 = smoothstep(0.1, 0.34, e2) * (1.0 - smoothstep(0.5, 1.0, e2)) * (1.0 - glow2 * 0.5);
+        float cool2 = smoothstep(0.16, 0.62, e2);
         P.y += e2 * (34.0 + 80.0 * h3);
-        alpha = mix(alpha, 0.0, dim2) + (flare2 * 0.6 + glow2 * 0.35) * (1.0 - e2) + ember2 * 0.16;
-        radius = mix(radius, 1.4, dim2) + flare2 * 0.8;
-        col = mix(col, ucWarm * 0.55, ember2);
+        alpha = mix(alpha, 0.0, dim2) + (flare2 * 0.8 + glow2 * 0.35) * (1.0 - e2) + ember2 * 0.5;
+        radius = mix(radius, mix(1.4, 2.4, ember2), dim2) + flare2 * 1.0;
+        col = mix(col, ucGold, flare2 * 0.8);
+        col = mix(col, ucEmber, cool2 * (1.0 - flare2 * 0.7));
 
         // Dawn: 25 of them come back up, ride the Line as it brings the day, and are left
         // in the seat rings as it passes them.
@@ -333,30 +354,52 @@ const vert = /* glsl */ `
           field = max(field, seatK);
         }
       } else {
-        // The twelve: lamp, a little larger, steady. No halo.
+        // The twelve: lamp, a little larger, steady. No halo. kind 2 is the firefly; 3.. its trail.
+        float trail = kind - 2.0;
         radius *= mix(1.0, 2.3, e2) * (1.0 + 0.3 * sin(PI * clamp(glow2 * 1.2, 0.0, 1.0)));
 
-        // Ranked: fly an arc to the live row rect and stretch from a light into the full row.
-        vec4 row = uRows[int(slot + 0.5)];
-        float has = step(1.0, row.z);
-        float t0 = uGatherT - slot * ${STAGGER.toFixed(2)};
-        float tr = travelEase(clamp(t0 / ${FLIGHT.toFixed(2)}, 0.0, 1.0));
-        float travel = max(uAnt, tr) * has;
-        vec2 C = row.xy + row.zw * 0.5;
-        vec2 d = C - G;
-        float dist = length(d);
-        vec2 n = dist > 1.0 ? vec2(d.y, -d.x) / dist : vec2(0.0);
-        if (n.y > 0.0) n = -n;
-        P = mix(G, C, travel) + n * 0.06 * dist * sin(PI * travel);
-        shape = smoothstep(0.3, 1.0, tr) * has;
-        float landed = clamp((t0 - ${ROW_IN.toFixed(2)}) / ${LAND_FADE.toFixed(2)}, 0.0, 1.0);
-        border = shape;
-        flat_ = shape;
-        edgeCol = mix(ucGold, ucEdge, landed);
-        alpha = mix(alpha, 0.5, shape); // a flat lamp fill: it reads on the paper panel and on night
-        gone = mix(landed, clamp(uGatherT / 0.3, 0.0, 1.0), 1.0 - has);
-        box = mix(vec2(radius), row.zw * 0.5, shape);
-        rad = min(mix(radius, uRowR, shape), min(box.x, box.y));
+        // Ranked (delight 3): it flies to its row in rank order, scrubbed by the wheel, and is
+        // absorbed into the tip of the row's score rule: the dots become the product.
+        vec4 tgt = uRows[int(slot + 0.5)];
+        float has = step(0.5, tgt.z);
+        float lead = ${FLY_START.toFixed(3)} + slot * ${FLY_STAGGER.toFixed(3)};
+        float tH = clamp((uFly - lead) / ${FLY_DUR.toFixed(3)}, 0.0, 1.0);
+        float clk = trail < 0.5 ? uFly : dot(uFlyLag, vec4(equal(vec4(trail), vec4(1.0, 2.0, 3.0, 4.0))));
+        float t = clamp((clk - lead) / ${FLY_DUR.toFixed(3)}, 0.0, 1.0);
+        vec2 A = P;
+        vec2 d = tgt.xy - A;
+        float dist = max(length(d), 1.0);
+        vec2 dir = d / dist;
+        vec2 n = vec2(dir.y, -dir.x);
+        if (n.y > 0.0) n = -n; // the path bows upward, like a light tossed from the hand
+        vec2 Cc = (A + tgt.xy) * 0.5 + n * (0.16 + 0.1 * h2) * dist;
+        float u = travelEase(clamp(t / ${PATH_T.toFixed(2)}, 0.0, 1.0));
+        vec2 Q = mix(mix(A, Cc, u), mix(Cc, tgt.xy, u), u);
+        vec2 arrive = normalize(tgt.xy - Cc + vec2(0.0001));
+        float air = sin(PI * clamp(t / ${LAND_T.toFixed(2)}, 0.0, 1.0));
+        // A small dip back before it leaves; it sails a hair past the dot and settles onto it.
+        Q -= dir * 6.0 * sin(PI * clamp(t / 0.14, 0.0, 1.0));
+        Q += arrive * min(0.035 * dist, 9.0) * sin(PI * clamp((t - 0.56) / ${(LAND_T - 0.56).toFixed(2)}, 0.0, 1.0));
+        // A firefly never flies straight: a slow weave along the path and a quick flutter in time.
+        Q += n * sin(t * 17.0 + h1 * 6.283) * 4.0 * air;
+        Q += vec2(sin(uTime * 6.3 + h3 * 6.283), cos(uTime * 4.9 + h4 * 6.283)) * 1.8 * air;
+        P = mix(A, Q, has);
+        inFlight = has * step(0.0005, tH);
+        float absorb = smoothstep(${LAND_T.toFixed(2)}, 1.0, t);
+        float pop = sin(PI * clamp((t - ${(LAND_T - 0.06).toFixed(2)}) / 0.12, 0.0, 1.0));
+        radius = mix(radius, radius * 0.6, smoothstep(0.0, 0.2, t) * has);
+        radius = mix(radius, 1.0, absorb * has) + pop * 1.4 * has;
+        alpha = mix(alpha, 1.0, max(air, pop) * has);
+        col = mix(col, min(ucGold * 1.15, vec3(1.0)), max(air, pop) * has);
+        // Absorbed: drawn no more. With no row to go to (not laid out) it simply goes out.
+        gone = has * step(0.9999, t) + (1.0 - has) * smoothstep(0.0, 0.3, tH);
+        if (trail > 0.5) {
+          // The glow trail: a lagged copy, fainter and smaller, gone as soon as the wheel rests.
+          float lagK = clamp(abs(tH - t) * 30.0, 0.0, 1.0);
+          alpha *= 0.4 * pow(0.6, trail - 1.0) * lagK * step(0.0005, t) * (1.0 - absorb) * has;
+          radius *= 0.92 - 0.12 * trail;
+          gone = has * step(0.9999, t) + (1.0 - has);
+        }
       }
     }
 
@@ -364,7 +407,7 @@ const vert = /* glsl */ `
     // ones already set aside (gone out in the grass) glow again faintly as embers where the lamp
     // finds them, so the reader can ask them why. Mirrored on the CPU by pickSpeck below.
     float dl = distance(P, uLens.xy);
-    float lk = uLens.z * (1.0 - smoothstep(${(LENS_RADIUS * 0.3).toFixed(1)}, ${LENS_RADIUS.toFixed(1)}, dl)) * (1.0 - shape) * (1.0 - seatK);
+    float lk = uLens.z * (1.0 - smoothstep(${(LENS_RADIUS * 0.3).toFixed(1)}, ${LENS_RADIUS.toFixed(1)}, dl)) * (1.0 - inFlight) * (1.0 - seatK) * step(kind, 2.5);
     P += (uLens.xy - P) / max(dl, 1.0) * min(dl * ${MOTH_PULL.toFixed(2)}, ${MOTH_MAX.toFixed(1)}) * lk;
     radius *= 1.0 + 0.18 * lk;
     alpha = mix(alpha, max(alpha, 0.85), lk * step(0.02, alpha + lit) * (1.0 - aside));
@@ -373,7 +416,7 @@ const vert = /* glsl */ `
     radius = mix(radius, max(radius, 1.8), lk * aside);
 
     // Named: it stops for the reader and holds still beside its tag, lit (an ember stays an ember).
-    float fk = step(abs(float(gl_InstanceID) - uFocus.x), 0.5) * uFocus.w * (1.0 - shape) * (1.0 - seatK);
+    float fk = step(abs(float(gl_InstanceID) - uFocus.x), 0.5) * uFocus.w * (1.0 - inFlight) * (1.0 - seatK);
     P = mix(P, uFocus.yz, fk);
     alpha = mix(alpha, mix(1.0, 0.62, aside), fk);
     radius = mix(radius, max(radius, mix(3.6, 2.4, aside)), fk);
@@ -381,6 +424,8 @@ const vert = /* glsl */ `
     // Load: they come out a few at a time.
     alpha *= smoothstep(h3 * 0.7, h3 * 0.7 + 0.3, uIntro);
     alpha *= (1.0 - gone) * field;
+    // Lifted over the list (ranked): only the twelve and their trails, never an ember over the copy.
+    alpha *= mix(1.0, step(1.5, kind), uOnly12);
     dayA *= 1.0 - gone;
 
     if (shape <= 0.0) {
@@ -461,10 +506,10 @@ export type FieldUniforms = {
   uPar: { value: THREE_NS.Vector2 };
   uField: { value: number };
   uIntro: { value: number };
-  uAnt: { value: number };
-  uGatherT: { value: number };
+  uFly: { value: number };
+  uFlyLag: { value: THREE_NS.Vector4 };
+  uOnly12: { value: number };
   uRows: { value: THREE_NS.Vector4[] };
-  uRowR: { value: number };
   uLens: { value: THREE_NS.Vector3 };
   uFocus: { value: THREE_NS.Vector4 };
   uRings: { value: THREE_NS.Vector4[] };
@@ -476,6 +521,7 @@ export type FieldUniforms = {
   ucGold: { value: THREE_NS.Vector3 };
   ucSeat: { value: THREE_NS.Vector3 };
   ucEdge: { value: THREE_NS.Vector3 };
+  ucEmber: { value: THREE_NS.Vector3 };
 };
 
 /** Field uniform ← world colour role (lib/theme.ts WORLD_COLORS). */
@@ -484,6 +530,7 @@ export const FIELD_COLORS = {
   ucGold: "match",
   ucSeat: "seat",
   ucEdge: "edge",
+  ucEmber: "emberCool",
 } as const satisfies Partial<Record<keyof FieldUniforms, WorldColorRole>>;
 
 export function createField(THREE: Three, data: FieldData, width: number, height: number) {
@@ -495,7 +542,7 @@ export function createField(THREE: Three, data: FieldData, width: number, height
   attrB.setUsage(THREE.DynamicDrawUsage);
   geo.setAttribute("aA", new THREE.InstancedBufferAttribute(data.a, 4));
   geo.setAttribute("aB", attrB);
-  geo.instanceCount = data.count;
+  geo.instanceCount = data.total;
 
   const v3 = () => new THREE.Vector3(1, 1, 1);
   const uniforms: FieldUniforms = {
@@ -513,10 +560,10 @@ export function createField(THREE: Three, data: FieldData, width: number, height
     uPar: { value: new THREE.Vector2(0, 0) },
     uField: { value: 1 },
     uIntro: { value: 0 },
-    uAnt: { value: 0 },
-    uGatherT: { value: 0 },
+    uFly: { value: -1 },
+    uFlyLag: { value: new THREE.Vector4(-1, -1, -1, -1) },
+    uOnly12: { value: 0 },
     uRows: { value: Array.from({ length: 12 }, () => new THREE.Vector4(0, 0, 0, 0)) },
-    uRowR: { value: 12 },
     uLens: { value: new THREE.Vector3(0, 0, 0) },
     uFocus: { value: new THREE.Vector4(-1, 0, 0, 0) },
     uRings: { value: Array.from({ length: SEATS }, () => new THREE.Vector4(0, 0, 0, 0)) },
@@ -528,6 +575,7 @@ export function createField(THREE: Three, data: FieldData, width: number, height
     ucGold: { value: v3() },
     ucSeat: { value: v3() },
     ucEdge: { value: v3() },
+    ucEmber: { value: v3() },
   };
 
   const material = new THREE.ShaderMaterial({
@@ -600,6 +648,8 @@ export function pickSpeck(data: FieldData, u: FieldUniforms, x: number, y: numbe
     const z = a[o + 2];
     const persp = 0.5 + z;
     const kind = b[o + 2];
+    // One of the twelve on its way to its row (or absorbed in it) is never named (delight 3).
+    if (kind > 1.5 && u.uFly.value > FLY_START + b[o + 3] * FLY_STAGGER) continue;
     const hx = w / 2 + a[o] * w * SPREAD * (1 + dolly * persp) + par.x * persp;
     // Cheap reject before the trigonometry (drift is under 40px, the pull under 15); the kept
     // settle elsewhere, so they are always tested.

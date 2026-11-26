@@ -11,8 +11,9 @@
  *   ranked layer  H2 left; right, the list header on night, `ranked-rule` under it, and
  *                 the matches panel: cream paper (the product's MatchesList skin) with
  *                 the <ol> of 12 MatchRows. In the first 15% of `ranked` the counter
- *                 flies into the header ("12 fit your portfolio"). The rows fade in over
- *                 the World's landed bars in rank order.
+ *                 flies into the header ("12 fit your portfolio"). Delight 3: the twelve
+ *                 kept fireflies fly into the list in rank order (scrubbed), and each row
+ *                 prints and ignites as its firefly lands on its score rule (data-lit).
  *   reason layer  H2 left; the `card` slot centred over the list. Row 1 (the Actor)
  *                 lifts out and becomes the RoleDetail card in the first 35%; when it
  *                 lands the numeral counts to 9, the Line fills the rule, the rows of
@@ -21,8 +22,9 @@
  * Static (reduced motion): the three figures side by side, then the ranked list,
  * then the reason card with its chips. No counting, no typing.
  *
- * World timing contract (for the speck flight): rows land at
- * RANK_LAND_START + i * RANK_STAGGER seconds after `ranked` entry (i = 0 for row 1).
+ * Flight contract with the World (components/world/flight.ts): row i ignites at landAt(i - 1)
+ * of `ranked` beat progress, the frame its firefly touches down. On phones rows 7 to 12 are
+ * folded into the "6 more" pill, which ignites with the seventh.
  */
 
 import { useEffect, useRef, type CSSProperties } from "react";
@@ -36,17 +38,10 @@ import { MatchRow, productData } from "@/components/product";
 import { getRow1Hover, setRow1Hover } from "./RowView";
 import { cardShow, offsetIn, setMask, softAbove, span, useActorExtra, usePerformanceAt, useScrub } from "./runtime";
 import { ease } from "@/lib/theme";
+import { landAt, listDrift } from "@/components/world/flight";
 
-/**
- * Flight contract with the World (review P1-W3): gold speck i leaves at 0.05·i s, flies 0.55 s
- * and lands as a full-row bar at 0.55 + 0.05·i s. DOM row i fades in over it at
- * RANK_LAND_START + i * RANK_STAGGER = 0.65 + 0.05·i s, over RANK_FADE.
- */
-export const RANK_LAND_START = 0.65;
-/** Seconds between rows landing. */
-export const RANK_STAGGER = 0.05;
-/** Seconds each DOM row takes to fade in over its landed bar. */
-export const RANK_FADE = 0.18;
+/** Beat progress (`ranked`) at which each row's firefly touches down: the row prints and ignites. */
+const LAND = Array.from({ length: 12 }, (_, i) => landAt(i));
 /** Beat progress at which the reason card finishes its travel (ACTOR_TRACK.reason.range[1]). */
 const REASON_AT = ACTOR_TRACK.reason?.range?.[1] ?? 0.35;
 /** The row → card travel (ACTOR_TRACK.reason, scrubbed), 0..1, outside the beat 0 (before) or 1. */
@@ -61,7 +56,7 @@ function reasonTravel(s: Readonly<StoryState>): number {
 const FLIP = [0.36, 0.5, 0.64] as const;
 const easeIn = (x: number) => x * x;
 const easeOut = (x: number) => 1 - (1 - x) * (1 - x);
-const BIRTH = ACTOR_TRACK.ranked?.fadeIn ?? [0.22, 0.34];
+const BIRTH = ACTOR_TRACK.ranked?.fadeIn ?? [0.46, 0.58];
 
 const fig = storyCopy.common.figures;
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
@@ -134,7 +129,11 @@ export function ReadPanel() {
     reason: NodeListOf<HTMLElement>;
     list: HTMLElement | null;
     panel: HTMLElement | null;
+    rows: HTMLElement[];
+    more: HTMLElement | null;
   } | null>(null);
+  /** The beat index of the previous scrub frame: a row ignites only when the wheel carries it there. */
+  const lastBeat = useRef(-1);
   const morph = useRef({ dn: { x: 0, y: 0, s: 1 }, st: { x: 0, y: 0, s: 1 } });
 
   /* ── rows 2..12 anchors; on small screens rows 7..12 hide and their specks land on "and 6 more" ── */
@@ -219,6 +218,8 @@ export function ReadPanel() {
       reason: root.querySelectorAll<HTMLElement>(".rd-copy-reason"),
       list: root.querySelector<HTMLElement>(".rd-list-wrap"),
       panel: root.querySelector<HTMLElement>(".rd-panel"),
+      rows: Array.from(root.querySelectorAll<HTMLElement>("li.rd-row")).sort((a, b) => Number(a.dataset.row) - Number(b.dataset.row)),
+      more: root.querySelector<HTMLElement>("li.rd-more"),
     });
     const setAll = (els: NodeListOf<HTMLElement>, prop: string, v: string) => els.forEach((el) => set(el, prop, v));
 
@@ -280,6 +281,21 @@ export function ReadPanel() {
     setAll(tg.ranked, "--h2a", span(r, 0.05, 0.2).toFixed(4));
     setAll(tg.ranked, "--b2a", span(r, 0.1, 0.26).toFixed(4));
 
+    // Delight 3: each row prints as its firefly lands on its score rule, and ignites (a quick lamp
+    // flash behind the rule, read.css) only when the wheel carried it there: a jump or a load past
+    // the moment shows the rows lit, quietly. Written only when a row's state changes.
+    const before = lastBeat.current;
+    lastBeat.current = i;
+    const carried = before >= I.pass2 && before <= I.ranked && i === I.ranked;
+    const litAt = (n: number) => i > I.ranked || (i === I.ranked && r >= LAND[n]);
+    const light = (el: HTMLElement | null, on: boolean) => {
+      if (!el || el.hasAttribute("data-lit") === on) return;
+      if (on) el.setAttribute("data-lit", carried ? "ignite" : "");
+      else el.removeAttribute("data-lit");
+    };
+    tg.rows.forEach((el, n) => light(el, litAt(n)));
+    light(tg.more, litAt(6));
+
     // Row 1 before the Actor is born: the real row shows, then hands over.
     const birth = i === I.ranked ? span(r, BIRTH[0], BIRTH[1]) : i > I.ranked ? 1 : 0;
     const row1 = row1Ref.current;
@@ -301,7 +317,7 @@ export function ReadPanel() {
     // The list: it breathes up through `ranked` and `reason`, and falls back behind the card.
     // One inline transform and opacity on the wrapper (it holds all twelve rows).
     if (tg.list) {
-      const y = 10 - 22 * story.breathOf("ranked", 0.15) - 10 * story.breathOf("reason", 0);
+      const y = listDrift();
       const tf = `translate3d(0,${y.toFixed(2)}px,0) scale(${(1 - 0.04 * j).toFixed(4)})`;
       if (tg.list.style.transform !== tf) tg.list.style.transform = tf;
       // The list steps back BEFORE the card lifts: it starts dimming in the last stretch of `ranked`
@@ -352,18 +368,12 @@ export function ReadPanel() {
     );
   });
 
-  /* ── ranked: the rows land in rank order ── */
+  /* ── ranked: the paper panel is laid down first, so the fireflies land on paper. Opacity only: the
+     World measures the rows' landing points once, and a moving panel would leave them behind.
+     The rows themselves print as their fireflies land (the scrub above). ── */
   usePerformance("ranked", (tl) => {
-    const list = listRef.current;
-    if (!list) return;
-    const rows = Array.from(list.querySelectorAll<HTMLElement>("[data-row-in]"));
-    // The paper panel is laid down first, so the World's bars land on paper.
-    const panel = list.closest<HTMLElement>(".rd-panel");
-    if (panel) tl.fromTo(panel, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.45, ease: ease.out }, 0.1);
-    rows.forEach((el, n) => {
-      const at = RANK_LAND_START + n * RANK_STAGGER;
-      tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: RANK_FADE, ease: ease.outGentle }, at);
-    });
+    const panel = listRef.current?.closest<HTMLElement>(".rd-panel");
+    if (panel) tl.fromTo(panel, { opacity: 0 }, { opacity: 1, duration: 0.45, ease: ease.out }, 0.05);
   });
 
   /* ── reason: score, meter, chips, privacy (starts when the card lands) ── */

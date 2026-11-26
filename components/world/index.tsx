@@ -35,6 +35,9 @@ const CSS = `
 ${SCENE_CSS}
 .world-canvas{position:fixed;top:0;left:0;width:100%;height:100vh;height:100lvh;z-index:var(--z-world);pointer-events:none;opacity:0;transition:opacity .4s linear}
 html.world-on .world-canvas{opacity:1}
+/* Delight 3: while the twelve fly into the list (ranked), the canvas sits over the acts and under the
+   Actor, so they land on the paper. Toggled once at each end of the beat; only the twelve draw then. */
+.world-canvas[data-lift]{z-index:var(--z-actor)}
 
 /* No WebGL: the passes still read as many lights becoming few, in the meadow beats only. */
 .cf{position:fixed;inset:0;z-index:var(--z-world);pointer-events:none;visibility:hidden;background-color:var(--c-line)}

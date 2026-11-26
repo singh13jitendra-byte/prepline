@@ -151,6 +151,7 @@
   --art-speck-warm: #f4eada; /* WebGL: unread */
   --art-speck-cool: #a9bdb3; /* a few sage ones among them */
   --art-ember: #f6c945; /* a firefly just read */
+  --art-ember-cool: #d9622b; /* a firefly set aside, cooling as it sinks: red-amber, night only (delight 3) */
   --art-seat: #12312c; /* a claimed seat, by day: pine */
   --art-dust-day: var(--c-ink); /* specks by day */
   --art-lamp-dust: #fbe49a; /* dust the lamp catches */

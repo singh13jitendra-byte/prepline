@@ -47,6 +47,7 @@ export const theme = {
     "--art-speck-warm": "#f4eada",
     "--art-speck-cool": "#a9bdb3",
     "--art-ember": "#f6c945",
+    "--art-ember-cool": "#d9622b",
     "--art-seat": "#12312c",
     "--art-dust-day": "#12312c",
     "--art-lamp-dust": "#fbe49a",
@@ -87,6 +88,7 @@ export const WORLD_COLORS = {
   speckWarm: ["--art-speck-warm", "night"], // field: an unread speck
   speckCool: ["--art-speck-cool", "night"], // field: the few cool ones
   ember: ["--art-ember", "night"], // field: just read (afterglow)
+  emberCool: ["--art-ember-cool", "night"], // field: a set-aside firefly cooling as it sinks
   match: ["--c-match", "night"], // field: the twelve, kept specks in the lens, seats at night
   edge: ["--c-on-night", "night"], // field: a landed row's border, as it hands over to the DOM glass
   lampDust: ["--art-lamp-dust", "night"], // field: dust the lamp catches

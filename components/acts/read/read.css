@@ -567,9 +567,89 @@ html.motion .rd-list-wrap {
      transform and opacity written by ReadPanel: no custom property for twelve rows to inherit. */
   transform: translate3d(0, 10px, 0);
 }
-html.motion [data-row-in],
 html.motion .rd-panel {
   opacity: 0;
+}
+
+/* ── Delight 3: the fireflies become the jobs ──
+   A row prints the moment its firefly lands on its score rule (ReadPanel writes data-lit, once per
+   change), and ignites: a quick lamp flash behind the rule that settles back to paper. Lamp is a
+   fill here, never a line or text on cream. On phones the "6 more" pill takes fireflies 7 to 12 and
+   keeps a soft lamp glow. Static pages never get html.motion, so their rows are simply there. */
+html.motion .rd-row,
+html.motion .rd-more {
+  isolation: isolate;
+}
+html.motion :is(.rd-row, .rd-more) [data-row-in] {
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+html.motion :is(.rd-row, .rd-more)[data-lit] [data-row-in] {
+  opacity: 1;
+}
+html.motion .rd-row::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  right: calc(var(--row-s, 1) * 6px);
+  width: calc(var(--row-s, 1) * 134px);
+  height: calc(var(--row-s, 1) * 30px);
+  border-radius: var(--r-pill);
+  background: var(--art-lamp);
+  opacity: 0;
+  transform: translateY(-50%);
+  transform-origin: 34% 50%;
+  pointer-events: none;
+}
+html.motion .rd-row[data-lit="ignite"]::before {
+  animation: rd-ignite 0.9s var(--ease-out) both;
+}
+@keyframes rd-ignite {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scaleX(0.3);
+  }
+  18% {
+    opacity: 0.92;
+    transform: translateY(-50%) scaleX(1.02);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) scaleX(1);
+  }
+}
+html.motion .rd-more [data-row-in] {
+  display: inline-block;
+  margin-left: -8px;
+  padding: 2px 8px;
+}
+html.motion .rd-more [data-row-in]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--r-pill);
+  background: var(--art-glow);
+}
+html.motion .rd-more[data-lit="ignite"] [data-row-in]::before {
+  animation: rd-more-glow 1.1s var(--ease-out) both;
+}
+@keyframes rd-more-glow {
+  0% {
+    background: var(--art-lamp);
+    transform: scale(0.6);
+  }
+  20% {
+    background: var(--art-lamp);
+    transform: scale(1.04);
+  }
+  100% {
+    background: var(--art-glow);
+    transform: scale(1);
+  }
 }
 /* Row 1 before the Actor is born: the real row lands with the others, then hands over. */
 html.motion .rd-row1[data-prebirth] .face-slot {
@@ -694,7 +774,12 @@ html:not(.motion) .rd-card-obj {
 
 @media (prefers-reduced-motion: reduce) {
   .pl-row-box,
-  .rd-digits {
+  .rd-digits,
+  [data-row-in] {
     transition: none;
+  }
+  .rd-row::before,
+  .rd-more [data-row-in]::before {
+    animation: none;
   }
 }
