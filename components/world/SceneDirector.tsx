@@ -49,7 +49,14 @@ function put(p: Put, visible: boolean, opacity = 1, tx = 0, ty = 0, k = 1) {
   const el = p.el;
   if (!el) return;
   const v = visible && opacity > 0.004 ? "visible" : "hidden";
-  if (v !== p.v) el.style.visibility = p.v = v;
+  // Hidden layers leave the render tree entirely (display, not visibility), so the GPU lets go of
+  // their tiles: several full-screen paintings kept as invisible composited layers starved the
+  // visible one of tile memory and it dropped out in blocks (seen as flicker on the hero).
+  if (v !== p.v) {
+    el.style.visibility = v;
+    el.style.display = v === "hidden" ? "none" : "";
+    p.v = v;
+  }
   if (v === "hidden") return;
   const o = opacity >= 0.996 ? "1" : opacity.toFixed(3);
   if (o !== p.o) el.style.opacity = p.o = o;
@@ -177,7 +184,7 @@ export function SceneDirector() {
       if (Math.abs(par.x - wantX) < 0.0005) par.x = wantX;
       if (Math.abs(par.y - wantY) < 0.0005) par.y = wantY;
 
-      const key = `${s.pos.toFixed(3)}|${s.line.daySide}|${s.chapter}|${par.x.toFixed(4)}|${par.y.toFixed(4)}`;
+      const key = `${s.pos.toFixed(3)}|${s.line.daySide}|${s.chapter}|${(par.x * 26).toFixed(1)}|${(par.y * 16).toFixed(1)}`;
       if (key === lastKey) return;
       lastKey = key;
 
@@ -215,8 +222,10 @@ export function SceneDirector() {
         const restX = small ? Math.min(0, Math.max(vw - k0 * roomBox.w, HERO_SMALL.laptopAt * vw - k0 * 0.704 * roomBox.w)) + k0 * qx : roomBox.x + qx;
         const restY = small ? stageH - k0 * roomBox.h + k0 * qy : roomBox.y + qy;
         const kk = k0 * Math.pow(S / k0, p);
-        const toX = mix(restX, cx, p) - par.x * 12 * (1 - p);
-        const toY = mix(restY, cy, p) - par.y * 8 * (1 - p);
+        // The room itself never follows the pointer: sub-pixel moves of a detailed painting (and the
+        // live list on the laptop) shimmer and read as flicker. Only the fireflies lean (scene.px/py).
+        const toX = mix(restX, cx, p);
+        const toY = mix(restY, cy, p);
         const ro = 1 - ss(0.8, 0.98, p);
         const RX = tx(roomBox, qx, toX, kk);
         const RY = ty(roomBox, qy, toY, kk);
