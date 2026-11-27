@@ -5,8 +5,10 @@
  *                  timed, the camera's GSAP move included, advances by that dt on a paused timeline
  *                  this engine owns, so a hidden tab or an off-screen host freezes the lot, and a
  *                  test can step it frame by frame.
- *   heroes         one job each: the full model, its own rig (flock.ts), a curl-noise wander with
- *                  banking, hovering pauses, a slow lantern pulse.
+ *   role fireflies one job each, its own rig (flock.ts), a curl-noise wander with banking, hovering
+ *                  pauses, a slow lantern pulse. Each is drawn as the far (LOD) model; the full hero
+ *                  model is a handful of slots, lent to the chosen firefly and the few nearest the
+ *                  lens, and swapped in through a complementary screen-door over a few frames.
  *   far flock      the LOD model on shared rigs, on cheap closed paths; behind them, sprites that
  *                  wander and pulse entirely in their vertex shader (scenery.ts Glows).
  *   focus          pointer rays against enlarged bounding spheres. A firefly under the pointer for
@@ -41,6 +43,8 @@ const DWELL = 0.07;
 const DWELL_RETARGET = 0.16;
 /** Seconds the pointer may be off the chosen firefly before the focus is left. */
 const GRACE = 0.45;
+/** Seconds a firefly takes to change between the far model and the hero model. */
+const SWAP = 0.16;
 /** Fireflies keep this far (world units) from the line between the lens and the chosen one. */
 const CLEAR = 1.35;
 /** Camera move progress at which the job is revealed (onFocus fires). Sooner between two fireflies: the card is already open. */
@@ -57,8 +61,10 @@ const LEAVE = 3;
 
 export type Quality = {
   phone: boolean;
-  /** Most hero fireflies drawn (each is one job). */
+  /** Most role fireflies drawn (each is one job). */
   heroes: number;
+  /** How many of the nearest wear the full hero model (the chosen one always does; two more slots cover hand-overs). */
+  full: number;
   lod: number;
   lodRigs: number;
   sprites: number;
@@ -73,8 +79,8 @@ export type Quality = {
 
 export function pickQuality(phone: boolean, dpr: number): Quality {
   return phone
-    ? { phone, heroes: 18, lod: 36, lodRigs: 4, sprites: 160, maxDpr: 2, samples: 0, bloomLevels: 3, bloomStart: 4, mist: 1, dof: false }
-    : { phone, heroes: 60, lod: 110, lodRigs: 8, sprites: 340, maxDpr: 2, samples: dpr >= 1.75 ? 2 : 4, bloomLevels: 5, bloomStart: 2, mist: 3, dof: true };
+    ? { phone, heroes: 18, full: 1, lod: 36, lodRigs: 4, sprites: 160, maxDpr: 2, samples: 0, bloomLevels: 3, bloomStart: 4, mist: 1, dof: false }
+    : { phone, heroes: 60, full: 3, lod: 110, lodRigs: 8, sprites: 340, maxDpr: 2, samples: dpr >= 1.75 ? 2 : 4, bloomLevels: 5, bloomStart: 2, mist: 3, dof: true };
 }
 
 export type FocusSource = "pointer" | "touch" | "api";
@@ -133,6 +139,12 @@ type Agent = {
   blinkAt: number;
   /** When it was last the chosen one (for handing a firefly to another job on phones). */
   usedAt: number;
+  /** Its hero-model slot, or -1 while it is drawn as the far model. */
+  slot: number;
+  /** 0 the far model .. 1 the hero model. */
+  mix: number;
+  /** It should be wearing the hero model. */
+  want: boolean;
   lamp: THREE.Vector3;
 };
 
@@ -259,7 +271,14 @@ export class Meadow {
   private timeline = gsap.timeline({ paused: true, autoRemoveChildren: true });
   private scenery: Scenery;
   private post: Post;
+  /** The role fireflies as the far model: one instance and one rig each. */
+  private bodies: Flock;
+  /** The hero model: a few slots, lent to the chosen firefly and the nearest (see `casting`). */
   private heroes: Flock;
+  /** slot → agent index, or -1. */
+  private slots: Int16Array;
+  private castAt = 0;
+  private order: number[] = [];
   private far: Flock;
   private halos: Glows;
   private sprites: Glows;
@@ -372,11 +391,18 @@ export class Meadow {
     /* ── fireflies ── */
     const jobs = opts.jobs;
     const count = Math.max(1, Math.min(quality.heroes, jobs.length));
-    this.heroes = new Flock(models.hero, count, count, this.shared, { order: 5, wingDepth: quality.dof });
+    const slots = Math.min(count, quality.full + 2);
+    this.bodies = new Flock(models.lod, count, count, this.shared, { order: 5, wingDepth: quality.dof });
+    this.heroes = new Flock(models.hero, slots, slots, this.shared, { order: 5, wingDepth: quality.dof });
+    this.slots = new Int16Array(slots).fill(-1);
     this.far = new Flock(models.lod, quality.lod, quality.lodRigs, this.shared, { order: 4, wingDepth: false });
-    this.heroes.scatter(this.rand);
+    this.bodies.scatter(this.rand);
     this.far.scatter(this.rand);
-    this.scene.add(this.far.group, this.heroes.group);
+    this.scene.add(this.far.group, this.bodies.group, this.heroes.group);
+    for (let s = 0; s < slots; s++) {
+      this.heroes.setFx(s, 0, 0, 0);
+      this.heroes.setMatrix(s, M.makeScale(0, 0, 0));
+    }
     this.halos = new Glows({ count: count + quality.lod, dynamic: true, core: 0.5 }, this.shared);
     this.sprites = new Glows({ count: quality.sprites, dynamic: false, core: 1.4 }, this.shared);
     this.halos.mesh.renderOrder = 10;
@@ -398,7 +424,7 @@ export class Meadow {
     this.stats.source = models.hero.source;
     this.stats.lodSource = models.lod.source;
     this.stats.missing = models.missing.join(",");
-    this.stats.triangles = models.hero.triangles * count + models.lod.triangles * quality.lod;
+    this.stats.triangles = models.hero.triangles * slots + models.lod.triangles * (count + quality.lod);
     if (opts.intro === "veil") this.presence = 1;
   }
 
@@ -499,13 +525,17 @@ export class Meadow {
         tint: look.tint,
         blinkAt: 1 + rand() * 4,
         usedAt: -1,
+        slot: -1,
+        mix: 0,
+        want: false,
         lamp: new THREE.Vector3(),
       };
       this.carrier[i] = i;
       this.agents.push(a);
-      this.heroes.setRig(i, i);
-      this.heroes.setTint(i, a.tint[0], a.tint[1], a.tint[2]);
+      this.bodies.setRig(i, i);
+      this.bodies.setTint(i, a.tint[0], a.tint[1], a.tint[2]);
       this.halos.tint.setXYZ(i, a.tint[0], a.tint[1], a.tint[2]);
+      this.order.push(i);
     }
   }
 
@@ -639,7 +669,8 @@ export class Meadow {
     const look = this.tintFor(this.opts.jobs[job].fit);
     a.tint = look.tint;
     a.base = look.base;
-    this.heroes.setTint(best, a.tint[0], a.tint[1], a.tint[2]);
+    this.bodies.setTint(best, a.tint[0], a.tint[1], a.tint[2]);
+    if (a.slot >= 0) this.heroes.setTint(a.slot, a.tint[0], a.tint[1], a.tint[2]);
     this.halos.tint.setXYZ(best, a.tint[0], a.tint[1], a.tint[2]);
     this.halos.tint.needsUpdate = true;
     return best;
@@ -681,8 +712,11 @@ export class Meadow {
     a.mode = HELD;
     a.usedAt = this.time;
     a.noticeT = 0;
-    this.heroes.rigs[i].w.notice = 0;
-    this.heroes.notice(i);
+    this.bodies.rigs[i].w.notice = 0;
+    this.bodies.notice(i);
+    if (a.slot >= 0) this.heroes.notice(a.slot);
+    // The hero model, now: the swap is done long before the camera arrives.
+    this.castAt = 0;
     if (source === "pointer" && this.ptr.inside && !this.docked) {
       // Land it where the pointer is, so the pointer is still on it when the camera arrives.
       this.comp = { x: clamp((this.ptr.x / this.w) * 2 - 1, -0.5, 0.5), y: clamp(1 - (this.ptr.y / this.h) * 2, -0.2, 0.3) };
@@ -991,15 +1025,81 @@ export class Meadow {
     }
   }
 
+  /**
+   * Who wears the hero model. In order: the chosen firefly, the few nearest the lens, then any
+   * that still wear it while flying off. A firefly changes model through a complementary
+   * screen-door over SWAP seconds (flock.ts), and a slot is free again once its firefly is back
+   * to the far model, so nothing is ever cut.
+   */
+  private casting(dt: number) {
+    const agents = this.agents;
+    const slots = this.slots;
+    const cam = this.rig.camera.position;
+    if (this.time >= this.castAt) {
+      this.castAt = this.time + 0.25;
+      // Nearest first; a firefly that already has the part keeps it against a near tie.
+      const score = (i: number) => agents[i].pos.distanceToSquared(cam) * (agents[i].slot >= 0 ? 0.8 : 1);
+      this.order.sort((a, b) => score(a) - score(b));
+      for (const a of agents) a.want = false;
+      let left = slots.length;
+      if (this.sel >= 0) {
+        agents[this.sel].want = true;
+        left--;
+      }
+      let near = this.quality.full;
+      for (const i of this.order) {
+        if (near <= 0 || left <= 0) break;
+        const a = agents[i];
+        // Not the ones about to pass the lens: they are fading out anyway.
+        if (a.want || a.pos.distanceToSquared(cam) < HERO * HERO * 4) continue;
+        a.want = true;
+        near--;
+        left--;
+      }
+      for (const i of this.order) {
+        if (left <= 0) break;
+        const a = agents[i];
+        if (!a.want && a.slot >= 0 && a.mode === LEAVE) {
+          a.want = true;
+          left--;
+        }
+      }
+    }
+    const step = dt / SWAP;
+    for (let i = 0; i < agents.length; i++) {
+      const a = agents[i];
+      if (a.want && a.slot < 0) {
+        const s = slots.indexOf(-1);
+        if (s >= 0) {
+          slots[s] = i;
+          a.slot = s;
+          a.mix = 0;
+          this.heroes.adopt(s, this.bodies.rigs[i], a.noticeT);
+          this.heroes.setTint(s, a.tint[0], a.tint[1], a.tint[2]);
+        }
+      }
+      if (a.slot < 0) continue;
+      a.mix = a.want ? Math.min(1, a.mix + step) : Math.max(0, a.mix - step);
+      if (a.mix <= 0 && !a.want) {
+        this.heroes.setFx(a.slot, 0, 0, 0);
+        this.heroes.setMatrix(a.slot, M.makeScale(0, 0, 0));
+        slots[a.slot] = -1;
+        a.slot = -1;
+      }
+    }
+  }
+
   private simulate(dt: number, pres: number) {
     const agents = this.agents;
     const n = agents.length;
     const time = this.time;
     const cam = this.rig.camera;
     const heroes = this.heroes;
+    const bodies = this.bodies;
     const halos = this.halos;
     const model = this.models.hero;
     const reduced = this.opts.reduced;
+    this.casting(dt);
     const dimOthers = this.shared.uFocus.value;
     const F = 0.13;
     // While the camera is on one firefly the others keep out of its shot: clear of the line from
@@ -1108,7 +1208,7 @@ export class Meadow {
       a.roll += (rollT - a.roll) * (1 - Math.exp(-dt * 5));
 
       /* ── its rig ── */
-      const rg = heroes.rigs[i];
+      const rg = bodies.rigs[i];
       if (a.noticeT >= 0) {
         a.noticeT += dt;
         // `notice` plays once over the hover; it fades out into the loop it ends on.
@@ -1119,8 +1219,15 @@ export class Meadow {
         }
       }
       rg.w.hover = a.hoverW * (1 - rg.w.notice);
+      const slot = a.slot;
+      if (slot >= 0) {
+        const hr = heroes.rigs[slot];
+        hr.w.notice = rg.w.notice;
+        hr.w.hover = rg.w.hover;
+      }
       if (time > a.blinkAt) {
-        heroes.blink(i);
+        // Only the hero model has eyelids.
+        if (slot >= 0) heroes.blink(slot);
         a.blinkAt = time + 1.8 + this.rand() * 4.5;
       }
 
@@ -1133,7 +1240,8 @@ export class Meadow {
       V.set(a.pos.x, a.pos.y + bob, a.pos.z);
       const size = HERO * (1 + 0.06 * a.sel) * Math.max(born, 1e-4);
       M.compose(V, Q, S.setScalar(size));
-      heroes.setMatrix(i, M);
+      bodies.setMatrix(i, M);
+      if (slot >= 0) heroes.setMatrix(slot, M);
       a.lamp.copy(model.lamp).applyMatrix4(M);
 
       a.phase += a.rate * dt;
@@ -1146,7 +1254,10 @@ export class Meadow {
       const dist = Math.hypot(cx, cy, cz);
       const near = held ? 1 : ss(HERO * 1.4, HERO * 3.4, dist);
       // Wings in fast flight are a blur; hovering, they are there to see.
-      heroes.setFx(i, lantern, near, a.sel, 0.62 + 0.38 * a.hoverW);
+      const wing = 0.62 + 0.38 * a.hoverW;
+      // The far body is drawn exactly where the hero model taking its place is not.
+      bodies.setFx(i, lantern, a.mix > 0 ? -a.mix : near, a.sel, wing);
+      if (slot >= 0) heroes.setFx(slot, lantern, Math.min(a.mix, near), a.sel, wing);
 
       const others = 1 - 0.4 * dimOthers * (1 - a.sel);
       halos.pos.setXYZ(i, a.lamp.x, a.lamp.y, a.lamp.z);
@@ -1192,14 +1303,18 @@ export class Meadow {
   /** Run the rigs' clips for the step just advanced, and hand the frame's buffers to the GPU. */
   private animate() {
     const heroes = this.heroes;
+    const bodies = this.bodies;
     const far = this.far;
     const show = this.presence > 0.002;
-    heroes.group.visible = far.group.visible = this.halos.mesh.visible = this.sprites.mesh.visible = show;
+    heroes.group.visible = bodies.group.visible = far.group.visible = this.halos.mesh.visible = this.sprites.mesh.visible = show;
     if (!show) return;
     const dt = this.lastDt;
-    for (let i = 0; i < heroes.rigs.length; i++) heroes.advance(i, dt);
+    for (let i = 0; i < bodies.rigs.length; i++) bodies.advance(i, dt);
+    // Only the hero rigs that are on stage.
+    for (let s = 0; s < this.slots.length; s++) if (this.slots[s] >= 0) heroes.advance(s, dt);
     for (let i = 0; i < far.rigs.length; i++) far.advance(i, dt);
     heroes.commit();
+    bodies.commit();
     far.commit();
     this.halos.pos.needsUpdate = this.halos.look.needsUpdate = this.halos.drift.needsUpdate = true;
   }
@@ -1263,6 +1378,7 @@ export class Meadow {
     this.timeline.kill();
     this.rig.dispose();
     this.heroes.dispose();
+    this.bodies.dispose();
     this.far.dispose();
     this.halos.dispose();
     this.sprites.dispose();
