@@ -226,11 +226,12 @@ void main() {
   vec3 day = t.rgb / t.a;
   // The page's night grade on the daylight painting: brightness(.42) saturate(.7) hue-rotate(28deg), in sRGB.
   vec3 lin = ffToLinear(clamp(uGrade * day, 0.0, 1.0));
-  // The chosen firefly lights the blades near it, falling off with the square of the distance.
+  // The chosen firefly lights the blades near it: a pool under it, not the whole foreground. The
+  // grass plane is only a few units wide on screen, so the pool is measured across it and kept tight.
   vec3 toKey = uKey.xyz - vWorld;
-  float d2 = dot(toKey, toKey);
+  float d2 = dot(toKey.xy, toKey.xy);
   vec3 albedo = ffToLinear(day);
-  lin += albedo * uKeyColor * (uKey.w * 0.9 / (1.0 + d2 * 0.22));
+  lin += albedo * uKeyColor * (uKey.w * 0.22 / (1.0 + d2 * 2.5));
   // A breath of moonlight along the tips.
   lin += albedo * uRimColor * (0.05 * tip * uPresence);
   float a = t.a * uOpacity;

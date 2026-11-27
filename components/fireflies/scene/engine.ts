@@ -27,14 +27,15 @@ import { Post } from "./post";
 import { CLOSE_FOV, CameraRig, WIDE_FOV, type Composition } from "./rig";
 import { DEPTH, Glows, Scenery, type Layout } from "./scenery";
 import { readFfColors, type FfColors } from "./tokens";
+import { FIT_LINE } from "../jobs";
 import type { FireflyFraming, FireflyJob } from "./types";
 
 /* ───────────────────────────────────────────────────────────── tuning ── */
 
 /** A hero firefly's height in world units. */
 const HERO = 0.62;
-/** Fit at and above which a lantern is lamp yellow ("kept"). Below it fades to the paler light. */
-const KEPT_FIT = 6;
+/** Fit at and above which a lantern is lamp yellow (the roles that fit). Below it fades to the paler light. */
+const KEPT_FIT = FIT_LINE;
 /** Seconds the pointer must rest on a firefly before it is chosen (from the wide shot / from a close-up). */
 const DWELL = 0.07;
 const DWELL_RETARGET = 0.16;
@@ -42,8 +43,9 @@ const DWELL_RETARGET = 0.16;
 const GRACE = 0.45;
 /** Fireflies keep this far (world units) from the line between the lens and the chosen one. */
 const CLEAR = 1.35;
-/** Camera move progress at which the job is revealed (onFocus fires). */
+/** Camera move progress at which the job is revealed (onFocus fires). Sooner between two fireflies: the card is already open. */
 const REVEAL_AT = 0.56;
+const REVEAL_AT_SWITCH = 0.32;
 /** The page's meadow at the end of pass 2 (SceneDirector: scale 1 + 0.06u, grass GRASS_LOW − 0.02u, u ≈ 0.51). */
 export const PAGE_FRAMING: FireflyFraming = { meadowScale: 1.0305, grassLow: 0.2898 };
 
@@ -293,6 +295,8 @@ export class Meadow {
   private sel = -1;
   private source: FocusSource = "pointer";
   private revealed = false;
+  private switching = false;
+  private docked = false;
   private focusT = 0;
   private target = new THREE.Vector3();
   private comp: Composition = { x: 0, y: 0 };
@@ -648,9 +652,14 @@ export class Meadow {
     if (i >= 0) this.focus(i, "api");
   }
 
+  /** The card is a bottom sheet here (a phone, a short window): fireflies are framed in the top third, clear of it. */
+  setDocked(on: boolean) {
+    this.docked = on;
+  }
+
   private defaultComp(): Composition {
-    // Narrow: the firefly high, the card under it. Wide: left of centre, the card to its right.
-    return this.w / this.h < 0.8 ? { x: 0, y: 0.44 } : { x: -0.24, y: 0.04 };
+    // Docked: the firefly high, the sheet under it. Otherwise left of centre, the card to its right.
+    return this.docked ? { x: 0, y: this.w / this.h < 0.8 ? 0.6 : 0.5 } : { x: -0.24, y: 0.04 };
   }
 
   private focus(i: number, source: FocusSource) {
@@ -658,11 +667,10 @@ export class Meadow {
       this.source = source;
       return;
     }
+    // From one firefly to another the host hears no "left" in between: the card switches, it does not close.
     const prev = this.sel;
-    if (prev >= 0) {
-      this.letGo(prev);
-      this.emit(-1, 0, 0, 0);
-    }
+    if (prev >= 0) this.letGo(prev);
+    this.switching = prev >= 0 && this.revealed;
     const a = this.agents[i];
     this.sel = i;
     this.source = source;
@@ -675,7 +683,7 @@ export class Meadow {
     a.noticeT = 0;
     this.heroes.rigs[i].w.notice = 0;
     this.heroes.notice(i);
-    if (source === "pointer" && this.ptr.inside) {
+    if (source === "pointer" && this.ptr.inside && !this.docked) {
       // Land it where the pointer is, so the pointer is still on it when the camera arrives.
       this.comp = { x: clamp((this.ptr.x / this.w) * 2 - 1, -0.5, 0.5), y: clamp(1 - (this.ptr.y / this.h) * 2, -0.2, 0.3) };
     } else this.comp = this.defaultComp();
@@ -816,7 +824,8 @@ export class Meadow {
       this.wasHot = isHot;
       this.opts.onHot?.(isHot);
     }
-    if (this.sel >= 0 && this.source === "pointer") {
+    // Where the card docks the firefly is moved up out of the pointer's way, so a hover holds until a click elsewhere.
+    if (this.sel >= 0 && this.source === "pointer" && !this.docked) {
       let on = p.parked;
       if (!on && p.inside) {
         this.setRay(p.x, p.y);
@@ -940,7 +949,8 @@ export class Meadow {
     this.shared.uRimDir.value.set(-0.55, 0.62, 0.56).transformDirection(cam.matrixWorldInverse);
 
     // The chosen lantern as a light in the scene. It outlives the focus by a moment, as it flies off.
-    const keyWant = sel >= 0 ? 0.55 + 1.65 * selAmt : 0;
+    // Without the camera move the whole foreground is in its reach: it is turned down, or the meadow would change its grade.
+    const keyWant = sel >= 0 ? (0.55 + 1.65 * selAmt) * (this.opts.reduced ? 0.35 : 1) : 0;
     this.keyLevel += (keyWant - this.keyLevel) * (1 - Math.exp(-dt * (sel >= 0 ? 4 : 2.2)));
     if (sel >= 0) this.key.copy(this.agents[sel].lamp);
     this.shared.uKey.value.set(this.key.x, this.key.y, this.key.z, this.keyLevel < 0.004 ? 0 : this.keyLevel);
@@ -964,16 +974,18 @@ export class Meadow {
     /* ── tell the host where the chosen one is ── */
     if (sel >= 0) {
       const a = this.agents[sel];
-      if (!this.revealed && (this.opts.reduced ? this.focusT > 0.12 : rig.progress >= REVEAL_AT || !rig.moving)) this.revealed = true;
+      if (!this.revealed && (this.opts.reduced ? this.focusT > 0.12 : rig.progress >= (this.switching ? REVEAL_AT_SWITCH : REVEAL_AT) || !rig.moving)) this.revealed = true;
       if (this.revealed) {
-        V.copy(a.pos).project(cam);
+        // The anchor is the lantern (the artist's GlowAnchor): the card opens out of the light.
+        V.copy(a.lamp).project(cam);
         const dist = a.pos.distanceTo(cam.position);
         const r = (this.models.hero.radius * HERO) / (perPx * Math.max(dist, 0.1));
-        // While the camera is still arriving, the anchor is where the firefly will land.
+        // While the camera is still arriving, the anchor is where the lantern will land.
         const arriving = !this.opts.reduced && rig.progress < 1;
+        const closePx = ((2 * Math.tan(THREE.MathUtils.degToRad(CLOSE_FOV) / 2)) / this.h) * rig.closeDistance();
         const x = arriving ? this.landing.x : (V.x * 0.5 + 0.5) * this.w;
-        const y = arriving ? this.landing.y : (1 - (V.y * 0.5 + 0.5)) * this.h;
-        const rr = arriving ? (this.models.hero.radius * HERO) / (((2 * Math.tan(THREE.MathUtils.degToRad(CLOSE_FOV) / 2)) / this.h) * rig.closeDistance()) : r;
+        const y = arriving ? this.landing.y - (this.models.hero.lamp.y * HERO) / closePx : (1 - (V.y * 0.5 + 0.5)) * this.h;
+        const rr = arriving ? (this.models.hero.radius * HERO) / closePx : r;
         this.emit(a.job, x, y, rr);
       }
     }

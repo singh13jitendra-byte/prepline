@@ -1,32 +1,18 @@
 /**
  * THE SCENE'S PUBLIC TYPES — the contract in research/fireflies-contract.md, plus optional extras.
  *
- * `FireflyJob` is owned by components/fireflies/jobs.ts (the card and data builder). Until that
- * file is merged this is a structural copy of the contract's shape, so the scene compiles on its
- * own and their type is assignable to it. After the merge, replace the body below with
- *   export type { FireflyJob } from "../jobs";
+ * `FireflyJob` is owned by components/fireflies/jobs.ts (the card and data builder).
  */
 
-export type FireflyJob = {
-  id: string;
-  title: string;
-  company: string;
-  city: string;
-  mode: "On-site" | "Hybrid" | "Remote";
-  level: string;
-  posted: string;
-  salary?: string;
-  /** 0–10. The scene reads only this (and `id`): 6 and up glow lamp yellow, the rest paler. */
-  fit: number;
-  reasons: { label: string; text: string }[];
-  gap?: string;
-  source: string;
-};
+export type { FireflyJob } from "../jobs";
+import type { FireflyJob } from "../jobs";
 
 /**
  * Where the focused firefly is, in CSS px, viewport coordinates.
- * `x, y` are the contract. `r` is extra: the firefly's radius on screen (wings included), so a card
- * can stand clear of it. In a close-up it is about 13% of the viewport height.
+ * `x, y` are the contract: the centre of its lantern (the model's GlowAnchor), which is where the
+ * card's leader starts. `r` is extra: the radius on screen of a circle round the whole firefly,
+ * wings and antennae included (about 18% of the viewport height in a close-up). A card that should
+ * stand clear of the wings wants a gap of about `0.75 * r + 16`.
  */
 export type FireflyAnchor = { x: number; y: number; r?: number };
 
@@ -45,7 +31,8 @@ export type FireflySceneProps = {
   /**
    * The focused job and where its firefly is. Called when a firefly is revealed (as the camera
    * arrives on it), again whenever the anchor has moved by more than a pixel, and with
-   * (null, null) the moment the focus is left.
+   * (null, null) the moment the focus is left. Going from one firefly straight to another there
+   * is no (null, null) in between: the next call carries the new job.
    */
   onFocus: (job: FireflyJob | null, anchor: { x: number; y: number } | null) => void;
   /** Assets loaded and decoded, shaders compiled, first frame drawn. */
@@ -63,6 +50,11 @@ export type FireflySceneProps = {
   intro?: "match" | "veil";
   /** The painting's layout in the wide shot. Default: the page's meadow at the end of pass 2. */
   framing?: Partial<FireflyFraming>;
+  /**
+   * Where the job card docks as a bottom sheet (a media query). There a focused firefly is framed
+   * in the top third, clear of the sheet. Default: the card's own JOBCARD_DOCK_QUERY.
+   */
+  dockQuery?: string;
   /** The scene could not start (no WebGL2, or a load failed). The accessible list still works. */
   onError?: (reason: string) => void;
 };

@@ -10,6 +10,8 @@ import { Lab } from "./Lab";
  *   ?reduced=1                   the reduced-motion version, whatever the system says
  *   ?standin=1                   the procedural stand-in, even when public/fireflies/*.glb exist
  *   ?dpr=1.5                     pin the pixel ratio (the scene otherwise adapts, capped at 2)
+ *   ?intro=match                 as the story mounts it: idle until window.__ffLab.setActive(true),
+ *                                then up from the painted meadow, and back down to it on false
  */
 export const metadata: Metadata = {
   title: "Prepline lab · the firefly meadow",

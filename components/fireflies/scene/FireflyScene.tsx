@@ -19,6 +19,10 @@
  *                  drives the camera through the ref: focusJob(id) / clearFocus().
  *   the pointer    leaving the scene for another element (the card, the list) keeps the focus;
  *                  leaving the window, or resting on empty meadow, lets it go after a short grace.
+ *   re-target      from one firefly straight to another, onFocus goes (jobA) → (jobB) with no
+ *                  (null) between, so a card switches instead of closing and opening.
+ *   docked card    where the card is a bottom sheet (`dockQuery`), a focused firefly is framed in
+ *                  the top third, and a hover holds until a click or tap on empty meadow.
  *
  * Debug (lab and tests): window.__ff is the engine (stats, state, freeze, step, screenOf).
  */
@@ -31,6 +35,8 @@ import "./scene.css";
 
 export type { FireflyAnchor, FireflyFraming, FireflyJob, FireflySceneHandle, FireflySceneProps } from "./types";
 
+/** Where components/fireflies/card docks as a bottom sheet (its JOBCARD_DOCK_QUERY; kept in step by hand). */
+const DOCK_QUERY = "(max-width: 839px), (max-height: 519px)";
 /** A tap: the pointer went down and came up in nearly the same place, quickly. */
 const TAP_SLOP = 10;
 const TAP_MS = 700;
@@ -119,6 +125,13 @@ const FireflyScene = forwardRef<FireflySceneHandle, FireflySceneProps>(function 
         io.observe(el);
         document.addEventListener("visibilitychange", vis);
         offs.push(() => (io.disconnect(), document.removeEventListener("visibilitychange", vis)));
+
+        /* ── where the card docks, fireflies are framed above it ── */
+        const dock = window.matchMedia(live.current.dockQuery ?? DOCK_QUERY);
+        const onDock = () => made.setDocked(dock.matches);
+        onDock();
+        dock.addEventListener("change", onDock);
+        offs.push(() => dock.removeEventListener("change", onDock));
 
         /* ── size ── */
         const ro = new ResizeObserver(() => {

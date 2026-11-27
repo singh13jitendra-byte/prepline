@@ -176,7 +176,7 @@ const FRAG_LIGHT = /* glsl */ `
   #ifdef FF_WING
     // A wing is a thin membrane: the lantern shines through it, and it catches the moon at a glancing angle.
     // Where the card is clear it stays clear (the wing's outline is painted into its alpha).
-    if (diffuseColor.a < 0.03) discard;
+    if (diffuseColor.a < 0.12) discard;
     float ffLum = dot(ffLamp, vec3(0.3, 0.6, 0.1));
     outgoingLight += vTint * ffLum * 1.6;
     // vFx.y: the wing's own opacity (lower in fast flight, which reads as motion blur).
