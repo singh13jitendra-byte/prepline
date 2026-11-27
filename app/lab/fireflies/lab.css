@@ -1,0 +1,76 @@
+/*
+ * The lab page around the firefly scene. Tokens only (app/theme.css). Everything here is opaque
+ * paper or flat night: nothing is glass, nothing is blurred. The light is in the canvas.
+ * The card and the list bring their own styles (components/fireflies/card/card.css).
+ */
+.ffm {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--ff-veil);
+  color: var(--c-on-night);
+}
+.ffm-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.ffm-loading {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--leading-small);
+  font-weight: var(--weight-label);
+  color: var(--c-on-night-2);
+  white-space: nowrap;
+}
+/* The hint: small type on a painting, so it carries its own ground (a night slip). */
+.ffm-hint {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(18px, 4vh, 40px);
+  z-index: 2;
+  margin: 0;
+  translate: -50% 8px;
+  font-size: var(--fs-small);
+  line-height: var(--leading-small);
+  font-weight: var(--weight-label);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--dur-3) var(--ease-out),
+    translate var(--dur-3) var(--ease-out),
+    visibility 0s linear var(--dur-3);
+}
+.ffm-hint[data-on] {
+  opacity: 1;
+  translate: -50% 0;
+  visibility: visible;
+  transition-delay: 1.6s, 1.6s, 1.6s;
+}
+
+.ffm-hud {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: 5;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--c-night);
+  color: var(--c-on-night-2);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-micro);
+  line-height: 1.5;
+  pointer-events: none;
+}

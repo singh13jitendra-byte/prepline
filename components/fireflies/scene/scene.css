@@ -1,0 +1,36 @@
+/*
+ * The 3D meadow's host (FireflyScene.tsx). The canvas is the whole picture; this only places it.
+ * Colours come from app/theme.css (--ff-*). Nothing here is written per frame.
+ */
+.ffs {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  contain: strict;
+  /* A tap chooses a firefly; a vertical drag still scrolls the page under the scene. */
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.ffs:not([data-active]) {
+  pointer-events: none;
+}
+.ffs[data-hot] {
+  cursor: pointer;
+}
+.ffs > canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Shown only while the scene is up (or winding back to the painting): an idle scene covers nothing. */
+  visibility: hidden;
+}
+.ffs[data-on] > canvas {
+  visibility: visible;
+}
+/* The lab: a dark veil until everything is decoded, then the scene fades in from it once (in the canvas). */
+.ffs[data-intro="veil"] {
+  background: var(--ff-veil);
+}

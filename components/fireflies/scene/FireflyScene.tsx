@@ -1,172 +1,273 @@
 "use client";
 
-// STUB — replace with the 3D scene builder's file (branch `fireflies-3d`) at merge.
-//
-// A flat stand-in with the contract's exact interface (research/fireflies-contract.md): one glowing
-// dot per job, drifting over whatever is behind the host (it is transparent). Hovering or tapping
-// a dot focuses it and reports its centre as the anchor; a click on empty meadow lets go. It exists
-// so the explore stop (components/acts/explore) can be built and checked before the real scene is.
-//
-// What it honours, and the real scene must too:
-//   active        renders (animates) and takes pointer input only while true
-//   onFocus       (job, anchor) on focus, with the anchor in viewport CSS px; (null, null) on leaving
-//   onReady       once, after the first frame (`?ffdelay=<ms>` delays it here, to rehearse a slow load)
-//   reducedMotion nothing drifts
-//   ref           focusJob(id) / clearFocus()
-//   scroll        no wheel or touch handler, no data-lenis-prevent, touch-action: pan-y
+/**
+ * <FireflyScene /> — the 3D firefly meadow (research/fireflies-contract.md, builder 2).
+ *
+ * This file is only the shell: a host element, the pointer wiring and one loop. The scene itself
+ * (three.js, the models, the shaders) is engine.ts, imported on mount, so none of it weighs on the
+ * page until a FireflyScene is mounted.
+ *
+ *   one loop       a single gsap.ticker callback calls engine.frame(dt). No React state changes per
+ *                  frame, ever: the only thing that reaches React is `onFocus`.
+ *   onFocus        (job, anchor) as the camera arrives on a firefly, again when the anchor has
+ *                  moved by more than a pixel (it rarely does: the camera follows the firefly), and
+ *                  (null, null) the moment the focus is left. `anchor` also carries `r`, the
+ *                  firefly's radius on screen (types.ts).
+ *   pausing        nothing is drawn while `active` is false (after the scene has wound back to the
+ *                  painted meadow), while the host is off screen, or while the tab is hidden.
+ *   keyboard       the canvas is decorative (aria-hidden, never focusable). The accessible list
+ *                  drives the camera through the ref: focusJob(id) / clearFocus().
+ *   the pointer    leaving the scene for another element (the card, the list) keeps the focus;
+ *                  leaving the window, or resting on empty meadow, lets it go after a short grace.
+ *   re-target      from one firefly straight to another, onFocus goes (jobA) → (jobB) with no
+ *                  (null) between, so a card switches instead of closing and opening.
+ *   docked card    where the card is a bottom sheet (`dockQuery`), a focused firefly is framed in
+ *                  the top third, and a hover holds until a click or tap on empty meadow.
+ *
+ * Debug (lab and tests): window.__ff is the engine (stats, state, freeze, step, screenOf).
+ */
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type CSSProperties } from "react";
-import type { FireflyJob } from "../jobs";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { gsap } from "@/lib/gsap";
+import type { Meadow } from "./engine";
+import type { FireflyAnchor, FireflySceneHandle, FireflySceneProps } from "./types";
+import "./scene.css";
 
-export type FireflySceneProps = {
-  /** render and accept pointer input only while true */
-  active: boolean;
-  /** from components/fireflies/jobs.ts */
-  jobs: FireflyJob[];
-  /** anchor: CSS px, viewport coords of the focused firefly, updated while focused */
-  onFocus: (job: FireflyJob | null, anchor: { x: number; y: number } | null) => void;
-  /** assets loaded and decoded, first frame drawn */
-  onReady?: () => void;
-  reducedMotion?: boolean;
-  className?: string;
-};
+export type { FireflyAnchor, FireflyFraming, FireflyJob, FireflySceneHandle, FireflySceneProps } from "./types";
 
-export type FireflySceneHandle = {
-  focusJob: (id: string) => void;
-  clearFocus: () => void;
-};
+/** Where components/fireflies/card docks as a bottom sheet (its JOBCARD_DOCK_QUERY; kept in step by hand). */
+const DOCK_QUERY = "(max-width: 839px), (max-height: 519px)";
+/** A tap: the pointer went down and came up in nearly the same place, quickly. */
+const TAP_SLOP = 10;
+const TAP_MS = 700;
 
-const STUB_CSS = `
-.ffs{touch-action:pan-y;pointer-events:none;overflow:hidden}
-.ffs[data-active]{pointer-events:auto}
-.ffs-dot{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;display:grid;place-items:center;cursor:pointer;animation:ffs-drift var(--ffs-t,9s) var(--ease-in-out-sym) var(--ffs-d,0s) infinite alternate;animation-play-state:paused}
-.ffs[data-active]:not([data-still]) .ffs-dot:not([data-on]){animation-play-state:running}
-.ffs-glow{width:9px;height:9px;border-radius:var(--r-round);background:var(--art-speck);opacity:.72;transition:transform var(--dur-2) var(--ease-out),opacity var(--dur-2) var(--ease-out)}
-.ffs-dot[data-kept] .ffs-glow{width:14px;height:14px;background:var(--art-lamp);opacity:1;box-shadow:0 0 0 6px color-mix(in oklab,var(--art-lamp) 22%,transparent),0 0 0 14px color-mix(in oklab,var(--art-lamp) 9%,transparent)}
-.ffs-dot[data-on] .ffs-glow{transform:scale(1.9);opacity:1}
-@keyframes ffs-drift{from{transform:translate3d(var(--ffs-x0,-10px),var(--ffs-y0,6px),0)}to{transform:translate3d(var(--ffs-x1,12px),var(--ffs-y1,-8px),0)}}
-`;
-
-/** A deterministic 0..1 from an index and a salt. */
-const hash = (i: number, salt: number) => {
-  const x = Math.sin((i + 1) * salt) * 43758.5453;
-  return x - Math.floor(x);
-};
-
-const FireflyScene = forwardRef<FireflySceneHandle, FireflySceneProps>(function FireflyScene({ active, jobs, onFocus, onReady, reducedMotion, className }, ref) {
+const FireflyScene = forwardRef<FireflySceneHandle, FireflySceneProps>(function FireflyScene(props, ref) {
+  const { active, jobs, reducedMotion, className, intro = "match", framing } = props;
   const host = useRef<HTMLDivElement>(null);
-  const [focused, setFocused] = useState<string | null>(null);
-  const focusedRef = useRef<string | null>(null);
-  const cb = useRef({ onFocus, onReady });
-  cb.current = { onFocus, onReady };
+  const meadow = useRef<Meadow | null>(null);
+  // The latest props, for callbacks that outlive a render (the engine is not rebuilt for them).
+  const live = useRef(props);
+  live.current = props;
+  const jobsKey = jobs.map((j) => j.id).join("|");
+  const meadowScale = framing?.meadowScale;
+  const grassLow = framing?.grassLow;
 
-  // Where each dot lives: spread over the middle of the host, clear of the nav and the bottom cue.
-  const dots = useMemo(
-    () =>
-      jobs.map((job, i) => ({
-        job,
-        left: 8 + hash(i, 12.9898) * 84,
-        top: 20 + hash(i, 78.233) * 58,
-        style: {
-          "--ffs-t": `${(7 + hash(i, 3.71) * 6).toFixed(1)}s`,
-          "--ffs-d": `${(-hash(i, 9.13) * 8).toFixed(1)}s`,
-          "--ffs-x0": `${(-8 - hash(i, 5.3) * 14).toFixed(0)}px`,
-          "--ffs-y0": `${(4 + hash(i, 6.1) * 10).toFixed(0)}px`,
-          "--ffs-x1": `${(8 + hash(i, 7.7) * 14).toFixed(0)}px`,
-          "--ffs-y1": `${(-4 - hash(i, 8.9) * 12).toFixed(0)}px`,
-        } as CSSProperties,
-      })),
-    [jobs],
-  );
-
-  const report = useCallback(
-    (id: string | null) => {
-      if (id === null) {
-        cb.current.onFocus(null, null);
-        return;
-      }
-      const el = host.current?.querySelector<HTMLElement>(`[data-job="${CSS.escape(id)}"]`);
-      const job = jobs.find((j) => j.id === id);
-      if (!el || !job) return;
+  useEffect(() => {
+    const el = host.current;
+    if (!el) return;
+    let dead = false;
+    let m: Meadow | null = null;
+    const offs: (() => void)[] = [];
+    const rect = { left: 0, top: 0 };
+    const measure = () => {
       const r = el.getBoundingClientRect();
-      cb.current.onFocus(job, { x: r.left + r.width / 2, y: r.top + r.height / 2 });
-    },
-    [jobs],
-  );
-
-  const focus = useCallback(
-    (id: string | null) => {
-      if (focusedRef.current === id) return;
-      focusedRef.current = id;
-      setFocused(id);
-      // Measured a frame later: the dot has stopped drifting by then (data-on pauses it).
-      requestAnimationFrame(() => {
-        if (focusedRef.current === id) report(id);
-      });
-    },
-    [report],
-  );
-
-  useImperativeHandle(ref, () => ({ focusJob: (id) => focus(jobs.some((j) => j.id === id) ? id : null), clearFocus: () => focus(null) }), [focus, jobs]);
-
-  // Inactive: it lets go of whatever it held.
-  useEffect(() => {
-    if (!active) focus(null);
-  }, [active, focus]);
-
-  // The anchor follows the dot when the window changes size.
-  useEffect(() => {
-    if (!focused) return;
-    const onResize = () => report(focused);
-    window.addEventListener("resize", onResize, { passive: true });
-    return () => window.removeEventListener("resize", onResize);
-  }, [focused, report]);
-
-  // Ready after the first frame. `?ffdelay=1500` holds it back, to rehearse a slow load.
-  useEffect(() => {
-    const delay = Number(new URLSearchParams(window.location.search).get("ffdelay")) || 0;
-    let raf = 0;
-    const timer = window.setTimeout(() => {
-      raf = requestAnimationFrame(() => cb.current.onReady?.());
-    }, delay);
-    return () => {
-      window.clearTimeout(timer);
-      cancelAnimationFrame(raf);
+      rect.left = r.left;
+      rect.top = r.top;
+      return r;
     };
-  }, []);
+    const reduced = reducedMotion ?? window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const phone = window.matchMedia("(max-width: 767px)").matches || (window.matchMedia("(pointer: coarse)").matches && Math.min(window.screen.width, window.screen.height) < 600);
+    const list = live.current.jobs;
+    el.dataset.state = "loading";
 
-  return (
-    <div
-      ref={host}
-      className={`ffs${className ? ` ${className}` : ""}`}
-      data-ff-stub=""
-      data-active={active ? "" : undefined}
-      data-still={reducedMotion ? "" : undefined}
-      onPointerDown={(e) => {
-        if (active && e.target === e.currentTarget) focus(null);
-      }}
-    >
-      <style dangerouslySetInnerHTML={{ __html: STUB_CSS }} />
-      {dots.map(({ job, left, top, style }) => (
-        <i
-          key={job.id}
-          className="ffs-dot"
-          data-job={job.id}
-          data-kept={job.fit >= 6 ? "" : undefined}
-          data-on={focused === job.id ? "" : undefined}
-          style={{ left: `${left.toFixed(2)}%`, top: `${top.toFixed(2)}%`, ...style }}
-          onPointerEnter={(e) => {
-            if (active && e.pointerType === "mouse") focus(job.id);
-          }}
-          onPointerDown={() => {
-            if (active) focus(job.id);
-          }}
-        >
-          <span className="ffs-glow" />
-        </i>
-      ))}
-    </div>
+    void (async () => {
+      try {
+        if (!list.length) throw new Error("no-jobs");
+        const { Meadow: Engine, PAGE_FRAMING } = await import("./engine");
+        if (dead) return;
+        let focused = -1;
+        const made = await Engine.create({
+          host: el,
+          jobs: list,
+          reduced,
+          phone,
+          intro,
+          framing: { ...PAGE_FRAMING, ...live.current.framing },
+          onFocus: (job, x, y, r) => {
+            if (job < 0) {
+              focused = -1;
+              live.current.onFocus(null, null);
+              return;
+            }
+            if (focused !== job) measure();
+            focused = job;
+            const anchor: FireflyAnchor = { x: rect.left + x, y: rect.top + y, r };
+            live.current.onFocus(list[job], anchor);
+          },
+          onHot: (hot) => el.toggleAttribute("data-hot", hot),
+        });
+        if (dead) {
+          made.dispose();
+          return;
+        }
+        m = meadow.current = made;
+        (window as unknown as { __ff?: Meadow }).__ff = made;
+        el.appendChild(made.canvas);
+        made.setActive(live.current.active);
+
+        /* ── the one loop ── */
+        let on = false;
+        const tick = (_time: number, deltaMs: number) => {
+          made.frame(deltaMs / 1000);
+          const run = made.running;
+          if (run !== on) el.toggleAttribute("data-on", (on = run));
+        };
+        gsap.ticker.add(tick);
+        offs.push(() => gsap.ticker.remove(tick));
+
+        /* ── pause off screen and in a hidden tab ── */
+        let seen = true;
+        const vis = () => made.setVisible(seen && !document.hidden);
+        const io = new IntersectionObserver((entries) => {
+          seen = entries[entries.length - 1].isIntersecting;
+          vis();
+        });
+        io.observe(el);
+        document.addEventListener("visibilitychange", vis);
+        offs.push(() => (io.disconnect(), document.removeEventListener("visibilitychange", vis)));
+
+        /* ── where the card docks, fireflies are framed above it ── */
+        const dock = window.matchMedia(live.current.dockQuery ?? DOCK_QUERY);
+        const onDock = () => made.setDocked(dock.matches);
+        onDock();
+        dock.addEventListener("change", onDock);
+        offs.push(() => dock.removeEventListener("change", onDock));
+
+        /* ── size ── */
+        const ro = new ResizeObserver(() => {
+          const r = measure();
+          if (r.width < 1 || r.height < 1) return;
+          made.resize(r.width, r.height);
+          made.redraw();
+        });
+        ro.observe(el);
+        offs.push(() => ro.disconnect());
+
+        /* ── pointer ── */
+        const down = { x: 0, y: 0, t: 0, id: -1 };
+        const onMove = (e: PointerEvent) => {
+          if (e.pointerType === "touch" || !live.current.active) return;
+          made.pointerMove(e.clientX - rect.left, e.clientY - rect.top, true);
+        };
+        const onEnter = () => measure();
+        const onLeave = (e: PointerEvent) => {
+          if (e.pointerType === "touch") return;
+          const to = e.relatedTarget;
+          made.pointerLeave(to instanceof Element && !el.contains(to));
+        };
+        const onDown = (e: PointerEvent) => {
+          if (!e.isPrimary || e.button > 0) return;
+          measure();
+          down.x = e.clientX;
+          down.y = e.clientY;
+          down.t = performance.now();
+          down.id = e.pointerId;
+        };
+        const onUp = (e: PointerEvent) => {
+          if (e.pointerId !== down.id || !live.current.active) return;
+          down.id = -1;
+          if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > TAP_SLOP || performance.now() - down.t > TAP_MS) return;
+          made.tap(e.clientX - rect.left, e.clientY - rect.top, e.pointerType === "touch");
+        };
+        const onCancel = () => (down.id = -1);
+        el.addEventListener("pointermove", onMove, { passive: true });
+        el.addEventListener("pointerenter", onEnter, { passive: true });
+        el.addEventListener("pointerleave", onLeave, { passive: true });
+        el.addEventListener("pointerdown", onDown, { passive: true });
+        el.addEventListener("pointerup", onUp, { passive: true });
+        el.addEventListener("pointercancel", onCancel, { passive: true });
+        offs.push(() => {
+          el.removeEventListener("pointermove", onMove);
+          el.removeEventListener("pointerenter", onEnter);
+          el.removeEventListener("pointerleave", onLeave);
+          el.removeEventListener("pointerdown", onDown);
+          el.removeEventListener("pointerup", onUp);
+          el.removeEventListener("pointercancel", onCancel);
+        });
+
+        /* ── a lost context: say so; the host can remount (change `key`) ── */
+        const onLost = (e: Event) => {
+          e.preventDefault();
+          made.setVisible(false);
+          el.dataset.state = "failed";
+          live.current.onFocus(null, null);
+          live.current.onError?.("context-lost");
+        };
+        made.canvas.addEventListener("webglcontextlost", onLost);
+        offs.push(() => made.canvas.removeEventListener("webglcontextlost", onLost));
+
+        el.dataset.state = "ready";
+        live.current.onReady?.();
+      } catch (err) {
+        if (dead) return;
+        el.dataset.state = "failed";
+        live.current.onError?.(err instanceof Error ? err.message : String(err));
+      }
+    })();
+
+    return () => {
+      dead = true;
+      offs.forEach((off) => off());
+      if (m) {
+        const w = window as unknown as { __ff?: Meadow };
+        if (w.__ff === m) delete w.__ff;
+        m.dispose();
+      }
+      meadow.current = null;
+      el.removeAttribute("data-on");
+      el.removeAttribute("data-hot");
+    };
+    // The engine is rebuilt only when what it is built from changes: the set of jobs, the motion mode, the intro.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobsKey, reducedMotion, intro]);
+
+  useEffect(() => {
+    meadow.current?.setActive(active);
+  }, [active]);
+
+  useEffect(() => {
+    if (meadowScale === undefined && grassLow === undefined) return;
+    const m = meadow.current;
+    if (!m) return;
+    m.setFraming({ meadowScale, grassLow });
+    m.redraw();
+  }, [meadowScale, grassLow]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      focusJob: (id: string) => {
+        const m = meadow.current;
+        if (!m) return;
+        m.focusJob(live.current.jobs.findIndex((j) => j.id === id));
+      },
+      clearFocus: () => meadow.current?.clearFocus(),
+      matchPage: () => {
+        const el = host.current;
+        const m = meadow.current;
+        const painted = document.querySelector<HTMLElement>(".sc-meadow");
+        const grass = document.querySelector<HTMLElement>(".sc-grass");
+        if (!el || !m || !painted) return false;
+        const box = el.getBoundingClientRect();
+        const pr = painted.getBoundingClientRect();
+        if (pr.width < 1 || box.width < 1) return false;
+        const ar = pr.width / pr.height;
+        const next: { meadowScale: number; grassLow?: number } = { meadowScale: pr.width / Math.max(box.width, box.height * ar) };
+        const gr = grass?.getBoundingClientRect();
+        if (gr && gr.width > 1) {
+          // The grass's cover box stands on the bottom edge; what is left is how far it has been lowered.
+          const gh = Math.max(box.width, (box.height * gr.width) / gr.height) / (gr.width / gr.height);
+          next.grassLow = (gr.top - box.top - (box.height - gh)) / box.height;
+        }
+        m.setFraming(next);
+        m.redraw();
+        return true;
+      },
+    }),
+    [],
   );
+
+  return <div ref={host} aria-hidden="true" className={className ? `ffs ${className}` : "ffs"} data-intro={intro} data-active={active ? "" : undefined} />;
 });
 
 export default FireflyScene;

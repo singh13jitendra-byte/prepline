@@ -193,6 +193,26 @@
   --art-plate-shadow: var(--art-lamp); /* the ticket's print */
   --art-placeholder: var(--c-ink-3);
 
+  /* ── art direction: the meadow in 3D (components/fireflies; read at runtime by its tokens.ts) ──
+     The one scene where light is allowed to glow: real firefly characters over the painted meadow.
+     A kept firefly's lantern is --art-ember with an --art-lamp-heart core; a set-aside one is
+     --art-speck-cool. Only what the palette above does not have is named here. The DOM around the
+     scene (the role card, the hint) keeps this theme's rules: opaque paper, print, nothing blurred. */
+  --ff-veil: #040d0c; /* the black the scene fades in from, once */
+  --ff-sky: #0d2a2c; /* sky above the painting's top edge */
+  --ff-fog: #1a423f; /* night haze: far fireflies sink into it */
+  --ff-mist: #6fa79b; /* low mist catching the moon */
+  --ff-moon: #dcefe2; /* the moon's glow */
+  --ff-rim: #a9d8cf; /* moonlight on a firefly's edge */
+  /* The stand-in character, until public/fireflies/firefly.glb lands (standin.ts). */
+  --ff-skin: #f0b676; /* head */
+  --ff-shell: #6a4126; /* cap and thorax */
+  --ff-limb: #36241a; /* arms, legs, antennae, smile */
+  --ff-cheek: #ec8a70; /* blush */
+  --ff-wing: #e4f3ea; /* wing membrane */
+  --ff-eye: #160d09; /* pupil */
+  --ff-eye-white: #fff7ea; /* sclera and the catchlight */
+
   /* ── type ── */
   --font-display: "Young Serif", "Iowan Old Style", Georgia, serif;
   --font-text: "Hanken Grotesk Variable", "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;

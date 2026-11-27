@@ -1,0 +1,653 @@
+/*
+ * The firefly's job card and the "All roles" list (components/fireflies/card).
+ *
+ * Both are product objects: `.pp` roots on the night skin, drawn with the classes of
+ * components/product/product.css (RoleDetail's header, rule, reason rows and footer; MatchesList's
+ * rows). Only what the product does not already have is styled here, and only with theme tokens.
+ *
+ * Night Desk rules hold: the card is opaque at every frame, its depth is the hard print offset,
+ * nothing is blurred. The reveal is a clip and a scale, never a fade (except under reduced motion,
+ * where it is a fade and nothing else). The "light" is one flat lamp wash that crosses the card
+ * once, behind the type.
+ *
+ * What moves: `.ffc-pos` and `.ffc-leader` get a transform from JobCard.tsx (only when a value
+ * changes; nothing is written at rest). Everything else is CSS state: [data-open], [data-side],
+ * [data-lead], [data-swap], and one height transition on the card when a switch changes its size.
+ */
+
+/* ── the layer ─────────────────────────────────────────────────────────── */
+
+.ffc {
+  --ffc-w: 400px;
+  --ffc-unfold: 380ms;
+  --ffc-fold: 240ms;
+  position: fixed;
+  inset: 0;
+  z-index: var(--ffc-z, var(--z-nav, 5));
+  pointer-events: none;
+}
+
+/* The leader: a thin lamp line from the firefly to the card's near edge. JobCard.tsx places and
+   scales the outer box; the inner one draws out from the firefly and back. */
+.ffc-leader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 2px;
+  margin-top: -1px;
+  transform-origin: 0 50%;
+  visibility: hidden;
+}
+.ffc-leader > i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--art-lamp);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  transition: transform var(--dur-1) var(--ease-in);
+}
+.ffc:is([data-open], [data-closing]) .ffc-leader {
+  visibility: visible;
+}
+.ffc[data-open][data-lead] .ffc-leader > i {
+  transform: none;
+  transition: transform 200ms var(--ease-out-soft);
+}
+
+.ffc-pos {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--ffc-w);
+  visibility: hidden;
+}
+.ffc:is([data-open], [data-closing]) .ffc-pos {
+  visibility: visible;
+  will-change: transform;
+}
+
+/* The fold: the card opens out of the side the firefly is on. The clip leaves room for the print
+   (6px 7px) so the offset is revealed with the card, not after it. */
+.ffc-fold {
+  transform-origin: 0 var(--ffc-oy, 40%);
+  transform: scale(0.94);
+  clip-path: inset(-12px 100% -20px -12px);
+}
+/* Closed, nothing transitions: a new side is taken at once, so the next unfold starts from it. */
+.ffc[data-closing] .ffc-fold {
+  transition:
+    transform var(--ffc-fold) var(--ease-in-out-sym),
+    clip-path var(--ffc-fold) var(--ease-in-out-sym);
+}
+.ffc[data-side="left"] .ffc-fold {
+  transform-origin: 100% var(--ffc-oy, 40%);
+  clip-path: inset(-12px -20px -20px 100%);
+}
+.ffc[data-open] .ffc-fold {
+  transform: none;
+  clip-path: inset(-12px -20px -20px -12px);
+  transition:
+    transform var(--ffc-unfold) var(--ease-out-soft) 60ms,
+    clip-path var(--ffc-unfold) var(--ease-out-soft) 60ms;
+}
+
+/* ── the card ──────────────────────────────────────────────────────────── */
+
+.pp.ffc-card {
+  height: auto;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  pointer-events: none;
+}
+.ffc[data-open] .pp.ffc-card {
+  pointer-events: auto;
+}
+.pp.ffc-card:focus-visible {
+  outline: 2px solid var(--pp-focus);
+  outline-offset: 3px;
+}
+
+/* The light crossing the card once: a flat lamp wash behind the type. */
+.ffc-sweep {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--art-lamp) 9%, transparent) 30%,
+    color-mix(in oklab, var(--art-lamp) 24%, transparent) 50%,
+    color-mix(in oklab, var(--art-lamp) 9%, transparent) 70%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+}
+.ffc[data-open] .ffc-sweep {
+  animation: ffc-sweep 760ms var(--ease-in-out-sym) 120ms 1 both;
+}
+.ffc[data-open][data-side="left"] .ffc-sweep {
+  animation-name: ffc-sweep-l;
+}
+@keyframes ffc-sweep {
+  0% {
+    opacity: 1;
+    transform: translateX(-100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(100%);
+  }
+}
+@keyframes ffc-sweep-l {
+  0% {
+    opacity: 1;
+    transform: translateX(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-100%);
+  }
+}
+
+/* Everything that belongs to one job. A switch takes it out, swaps it, and brings it back, so two
+   jobs are never on the card at once. The card itself stays solid throughout. */
+.ffc-body {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  transition: opacity 200ms var(--ease-out);
+}
+.ffc[data-swap="out"] .ffc-body {
+  opacity: 0;
+  transition: opacity 110ms var(--ease-in);
+}
+
+/* The type settles a beat after the paper: six small steps. */
+.ffc[data-open] .ffc-s {
+  animation: ffc-settle 320ms var(--ease-out-soft) both;
+  animation-delay: calc(170ms + var(--i, 0) * 38ms);
+}
+@keyframes ffc-settle {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+}
+
+/* header */
+.ffc-card .pp-role-h {
+  padding: 14px 16px 10px;
+}
+.ffc-card .pp-role-t {
+  align-items: flex-start;
+  padding-right: 36px;
+}
+.ffc-where {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 3px;
+}
+.ffc-card .pp-role-id .ffc-where p {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ffc-card .pp-kv {
+  flex-wrap: nowrap;
+  gap: 8px 22px;
+  margin-top: 10px;
+}
+.ffc-card .pp-kv dd {
+  font-weight: var(--weight-label);
+}
+.ffc-card .pp-kv dd[data-none] {
+  font-weight: var(--weight-text);
+  color: var(--pp-fg-2);
+  white-space: normal;
+}
+.ffc-card .pp-role-rule {
+  width: 100%;
+  margin-top: 8px;
+}
+.ffc-card .pp-role-rule .pp-rule-track {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+}
+/* A role that was set aside keeps the rule and loses the lamp: its fill is the quiet text colour. */
+.ffc-card[data-fits="false"] .pp-rule-fill {
+  background: var(--pp-fg-2);
+}
+
+/* Close: a 32px target in the corner, outside the part that swaps. */
+.ffc-x {
+  appearance: none;
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--pp-fg);
+  background: var(--pp-bg);
+  border: var(--hairline) solid var(--pp-rule-strong);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+.ffc-x:hover {
+  background: var(--pp-bg-3);
+  border-color: var(--pp-strong);
+}
+.ffc-x:active {
+  transform: translateY(1px);
+}
+
+/* reasons */
+.ffc-card .pp-claims {
+  padding: 10px 16px 6px;
+  gap: 0;
+}
+.ffc-why {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 6px;
+}
+.ffc-card .pp-reasons .pp-h3 {
+  padding: 0;
+  color: var(--pp-fg);
+  font-weight: var(--weight-strong);
+}
+.ffc-src {
+  margin: 0;
+  font-size: var(--pp-fs-micro);
+  line-height: 16px;
+  color: var(--pp-fg-2);
+  white-space: nowrap;
+}
+.ffc-card .pp-reason {
+  grid-template-columns: 12px minmax(0, 1fr);
+  column-gap: 10px;
+  padding: 5px 0 6px;
+}
+.ffc-mark {
+  justify-self: center;
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: var(--r-round);
+  background: var(--pp-mark);
+}
+.ffc-card[data-fits="false"] .ffc-mark {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--pp-fg-2);
+}
+.ffc-card .ffc-mark[data-gap] {
+  width: 9px;
+  height: 2px;
+  margin-top: 8px;
+  border-radius: 0;
+  background: var(--pp-warn);
+  box-shadow: none;
+}
+.ffc-reason-l {
+  font-size: var(--pp-fs-micro);
+  line-height: 16px;
+  font-weight: var(--weight-label);
+  color: var(--pp-fg-2);
+}
+.ffc-reason-l[data-gap] {
+  color: var(--pp-warn);
+}
+.ffc-card .pp-reason-t {
+  white-space: normal;
+  text-wrap: pretty;
+}
+
+/* footer */
+.ffc-card .pp-role-f {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 16px 11px;
+}
+.ffc-card .pp-role-f .pp-quiet {
+  margin-top: 0;
+}
+.ffc-card .pp-role-f .pp-quiet {
+  transition: color var(--dur-2) var(--ease-out);
+}
+.ffc-card .pp-role-f .pp-quiet[data-nudge] {
+  color: var(--pp-fg);
+}
+/* "View posting" opens nothing: it presses, holds a beat, and the note beside it lights up. */
+.ffc-card .pp-btn[data-pressed] {
+  transform: translateY(1px);
+  background: color-mix(in oklab, var(--pp-accent) 78%, var(--pp-bg));
+  border-color: color-mix(in oklab, var(--pp-accent) 78%, var(--pp-bg));
+}
+
+/* ── docked: phones and short screens get a bottom sheet ───────────────── */
+
+@media (max-width: 839px), (max-height: 519px) {
+  .ffc-leader {
+    display: none;
+  }
+  .ffc-pos {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    width: auto;
+  }
+  .ffc-fold,
+  .ffc[data-side="left"] .ffc-fold {
+    transform-origin: 50% 100%;
+    transform: translateY(104%);
+    clip-path: none;
+  }
+  .ffc[data-closing] .ffc-fold {
+    transition: transform var(--ffc-fold) var(--ease-in-out-sym);
+  }
+  .ffc[data-open] .ffc-fold {
+    transform: none;
+    clip-path: none;
+    transition: transform var(--ffc-unfold) var(--ease-out-soft);
+  }
+  .pp.ffc-card {
+    max-height: min(78vh, 620px);
+    max-height: min(78dvh, 620px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-width: var(--pp-keyline-w) 0 0;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    box-shadow: none;
+  }
+  .ffc-sweep {
+    background: linear-gradient(
+      0deg,
+      transparent 0%,
+      color-mix(in oklab, var(--art-lamp) 9%, transparent) 30%,
+      color-mix(in oklab, var(--art-lamp) 24%, transparent) 50%,
+      color-mix(in oklab, var(--art-lamp) 9%, transparent) 70%,
+      transparent 100%
+    );
+  }
+  .ffc[data-open] .ffc-sweep,
+  .ffc[data-open][data-side="left"] .ffc-sweep {
+    animation-name: ffc-sweep-up;
+  }
+  .ffc-x {
+    width: 40px;
+    height: 40px;
+    top: 8px;
+    right: 8px;
+  }
+  .ffc-card .pp-role-t {
+    padding-right: 44px;
+  }
+  .ffc-card .pp-btn[data-size="sm"] {
+    height: 40px;
+    padding: 0 16px;
+    font-size: var(--pp-fs-body);
+  }
+}
+@keyframes ffc-sweep-up {
+  0% {
+    opacity: 1;
+    transform: translateY(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-100%);
+  }
+}
+
+/* ══ All roles ════════════════════════════════════════════════════════════ */
+
+.ffl {
+  --ffl-w: 348px;
+  --ffl-inset: 16px;
+  --ffl-top: 16px;
+}
+/* The button: a small pill with its own ground (type never sits on the painting). */
+.pp.ffl-toggle {
+  position: fixed;
+  left: var(--ffl-inset);
+  bottom: var(--ffl-inset);
+  z-index: var(--ffl-z, var(--z-nav, 5));
+  container-type: normal;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  background: none;
+}
+.ffl-toggle .pp-btn {
+  height: 36px;
+  gap: 8px;
+  border-color: var(--pp-rule-strong);
+}
+.ffl-toggle .pp-btn:hover {
+  background: var(--pp-bg-3);
+  border-color: var(--pp-strong);
+}
+.ffl-toggle .pp-btn[aria-expanded="true"] {
+  background: var(--pp-bg-3);
+  border-color: var(--pp-strong);
+}
+
+.pp.ffl-panel {
+  position: fixed;
+  left: var(--ffl-inset);
+  top: var(--ffl-top);
+  bottom: calc(var(--ffl-inset) + 46px);
+  z-index: var(--ffl-z, var(--z-nav, 5));
+  width: min(var(--ffl-w), calc(100vw - 2 * var(--ffl-inset)));
+  height: auto;
+  visibility: hidden;
+  transform: translateX(calc(-100% - var(--ffl-inset) - 12px));
+  transition:
+    transform var(--dur-2) var(--ease-in-out-sym),
+    visibility 0s linear var(--dur-2);
+}
+.ffl[data-open] .pp.ffl-panel {
+  visibility: visible;
+  transform: none;
+  transition:
+    transform 340ms var(--ease-out-soft),
+    visibility 0s;
+}
+.ffl-panel .pp-mh {
+  position: relative;
+  padding: 14px 56px 12px 16px;
+  border-bottom: var(--pp-keyline-w) solid var(--pp-strong);
+}
+.ffl-panel .pp-mh .pp-meta {
+  margin: 2px 0 0;
+}
+.ffl-panel .pp-mh b {
+  font-weight: var(--weight-label);
+  color: var(--pp-match);
+}
+.ffl-panel .ffc-x {
+  top: 12px;
+  right: 12px;
+}
+.ffl-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--pp-rule-strong) transparent;
+}
+.ffl-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ffl-list > li + li {
+  border-top: var(--hairline) solid var(--pp-rule);
+}
+.ffl-sub {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 7px 16px 6px 38px;
+  font-size: var(--pp-fs-micro);
+  line-height: 16px;
+  font-weight: var(--weight-label);
+  color: var(--pp-fg-2);
+  background: var(--pp-bg-2);
+  border-top: var(--hairline) solid var(--pp-rule);
+  border-bottom: var(--hairline) solid var(--pp-rule);
+}
+.ffl-sub:first-child {
+  border-top: 0;
+}
+.ffl-list .pp-mrow {
+  --pp-mgrid: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 52px;
+  padding: 7px 16px 7px 14px;
+}
+.ffl-list .pp-mrow .pp-rule-track {
+  display: block;
+}
+.ffl-list .pp-mrow .pp-rule {
+  --pp-rule-w: 44px;
+}
+.ffl-list .pp-mrow-reason {
+  display: block;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ffl-dot {
+  justify-self: center;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-round);
+  background: var(--pp-mark);
+}
+.ffl-dot[data-aside] {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--pp-fg-2);
+}
+.ffl-list .pp-mrow[data-aside] .pp-rule-fill {
+  background: var(--pp-fg-2);
+}
+
+@media (max-width: 839px), (max-height: 519px) {
+  .pp.ffl-toggle {
+    top: var(--ffl-top);
+    bottom: auto;
+  }
+  .ffl-toggle .pp-btn {
+    height: 40px;
+  }
+  .pp.ffl-panel {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    height: min(72vh, 640px);
+    height: min(72dvh, 640px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-width: var(--pp-keyline-w) 0 0;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    box-shadow: none;
+    transform: translateY(104%);
+  }
+  .ffl-panel .ffc-x {
+    width: 40px;
+    height: 40px;
+    top: 8px;
+    right: 8px;
+  }
+  .ffl-list .pp-mrow {
+    min-height: 56px;
+  }
+}
+
+/* ── reduced motion: a fade, and nothing else ──────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .ffc {
+    --ffc-unfold: 160ms;
+    --ffc-fold: 160ms;
+  }
+  .ffc-fold,
+  .ffc[data-side="left"] .ffc-fold {
+    transform: none;
+    clip-path: none;
+    opacity: 0;
+  }
+  .ffc[data-closing] .ffc-fold {
+    transition: opacity var(--ffc-fold) linear;
+  }
+  .ffc[data-open] .ffc-fold {
+    transform: none;
+    clip-path: none;
+    opacity: 1;
+    transition: opacity var(--ffc-unfold) linear;
+  }
+  .ffc-leader > i,
+  .ffc[data-open][data-lead] .ffc-leader > i {
+    transform: none;
+    opacity: 0;
+    transition: opacity var(--ffc-fold) linear;
+  }
+  .ffc[data-open][data-lead] .ffc-leader > i {
+    opacity: 1;
+  }
+  .ffc[data-open] .ffc-sweep,
+  .ffc[data-open][data-side="left"] .ffc-sweep {
+    animation: none;
+  }
+  .ffc[data-open] .ffc-s {
+    animation: none;
+  }
+  .ffc-body,
+  .ffc[data-swap="out"] .ffc-body {
+    transition-duration: 120ms;
+    transition-timing-function: linear;
+  }
+  .ffc-x:active,
+  .ffc-card .pp-btn[data-pressed] {
+    transform: none;
+  }
+  .pp.ffl-panel,
+  .ffl[data-open] .pp.ffl-panel {
+    transform: none;
+    opacity: 0;
+    transition:
+      opacity 160ms linear,
+      visibility 0s linear 160ms;
+  }
+  .ffl[data-open] .pp.ffl-panel {
+    opacity: 1;
+    transition:
+      opacity 160ms linear,
+      visibility 0s;
+  }
+}
