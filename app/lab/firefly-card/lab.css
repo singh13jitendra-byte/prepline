@@ -1,0 +1,106 @@
+/* The bench for the firefly card. Tokens only. */
+.fflab {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--c-night);
+  color: var(--c-on-night);
+  touch-action: none;
+}
+.fflab-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
+}
+/* The stand-in firefly: the anchor is its centre. */
+.fflab-dot {
+  appearance: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-round);
+  background: radial-gradient(closest-side, var(--art-lamp-heart) 0 18%, var(--art-lamp) 19% 26%, color-mix(in oklab, var(--art-lamp) 34%, transparent) 27%, transparent 100%);
+  cursor: grab;
+  touch-action: none;
+}
+.fflab-dot:active {
+  cursor: grabbing;
+}
+.fflab-dot:focus-visible {
+  outline: 2px solid var(--c-focus-night);
+  outline-offset: 2px;
+}
+.fflab-tools {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: min(520px, calc(100vw - 32px));
+  font-size: var(--fs-micro);
+  line-height: var(--leading-micro);
+}
+.fflab-tools p {
+  flex: 0 1 auto;
+  margin: 0 0 2px;
+  padding: 3px 8px;
+  border-radius: var(--r-xs);
+  background: var(--c-night);
+  color: var(--c-on-night-2);
+}
+.fflab-tools button {
+  appearance: none;
+  height: 28px;
+  padding: 0 10px;
+  font: inherit;
+  font-weight: var(--weight-label);
+  color: var(--c-on-night);
+  background: var(--c-night-2);
+  border: var(--hairline) solid var(--c-rule-night);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+.fflab-tools button:hover {
+  border-color: var(--c-on-night-2);
+}
+.fflab-tools button:focus-visible {
+  outline: 2px solid var(--c-focus-night);
+  outline-offset: 2px;
+}
+.fflab-cap {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  padding: 3px 8px;
+  font-size: var(--fs-micro);
+  line-height: var(--leading-micro);
+  color: var(--c-on-night-2);
+  background: var(--c-night);
+  border-radius: var(--r-xs);
+  pointer-events: none;
+}
+@media (max-width: 839px) {
+  .fflab-tools {
+    top: 64px;
+    left: 12px;
+    right: 12px;
+    justify-content: flex-start;
+  }
+  .fflab-tools p {
+    display: none;
+  }
+  .fflab-cap {
+    display: none;
+  }
+}
