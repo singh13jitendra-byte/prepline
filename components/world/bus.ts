@@ -54,6 +54,13 @@ export const worldBus = {
   scene: { x0: -1e5, y0: -1e5, x1: 1e5, y1: 1e5, field: 1, px: 0, py: 0, push: 1, bx: 0, by: 0, breeze: 0 },
   /** 1 while the ranked flight is in the air (the line waits), easing to 0 after the last landing. */
   dockHold: 0,
+  /**
+   * The explore stop (components/acts/explore, behind ?explore=1): how far the 3D meadow has taken
+   * over from the dot field, 0 (the dots, as at the end of pass 2) to 1 (the 3D scene alone).
+   * ExploreStage is the only writer; without the flag it stays 0. The canvas fades the field by it
+   * (the lantern is out for the whole stop: Lantern.tsx).
+   */
+  explore: { k: 0 },
   /** Last measured numbers, for the debug console (window.__world). */
   stats: { calls: 0, dpr: 0, frameMs: 0, cpuMs: 0, gpuMs: -1, rendered: 0, skipped: 0, instances: 0 },
 };

@@ -113,6 +113,13 @@
  * Reduced motion (html.reduced): the store does not run. `get()` keeps its
  * initial state with flags.reduced = true, useBeat() stays "hero", performances
  * sit in their end state, and scrollToBeat jumps to the beat's panel.
+ *
+ * THE EXPLORE STOP (fireflies, research/fireflies-contract.md) — behind `?explore=1`. With the flag
+ * the beat `explore` is inserted between `pass2` and `ranked`: a sticky pause of EXPLORE_VH units
+ * in which the 3D meadow takes over from the dot field (components/acts/explore). Everything else
+ * is keyed by beat and beat progress, so it re-times by itself; outside `explore` every frame is
+ * the frame the story shows without the flag at the same beat and progress. Without the flag
+ * `explore` is not in BEATS at all: test EXPLORE before asking the store about it.
  */
 
 import { useCallback, useSyncExternalStore } from "react";
@@ -127,6 +134,7 @@ export type BeatId =
   | "hero"
   | "pass1"
   | "pass2"
+  | "explore"
   | "ranked"
   | "reason"
   | "daybreak"
@@ -232,7 +240,7 @@ export type StoryState = {
  * With the three wipes (190), the seat stage scrolling away (100) and the footer
  * (its own height) the document is about 12.2 viewports, before the founder note.
  */
-export const BEATS: readonly Beat[] = [
+const BASE_BEATS: readonly Beat[] = [
   // 85 since round 4: about 14 to stretch the underline, then 70 for the push through the window.
   { id: "hero", act: "read", vh: 85, kind: "beat" },
   { id: "pass1", act: "read", vh: 100, kind: "beat" },
@@ -255,6 +263,35 @@ export const BEATS: readonly Beat[] = [
   // The seat stage scrolling away (100) plus the footer (about 60). Not pinned.
   { id: "footer", act: "seat", vh: 160, kind: "beat" },
 ];
+
+/**
+ * The explore stop is switched on by `?explore=1`. It is read once, in the browser, when this
+ * module loads; the server always renders the story without it (Stage.tsx puts the live section
+ * lengths in place before anything measures). It needs WebGL: without it there is nothing to
+ * explore, so the stop is left out and the story runs as it always has.
+ */
+export const EXPLORE: boolean = (() => {
+  if (typeof window === "undefined") return false;
+  try {
+    if (new URLSearchParams(window.location.search).get("explore") !== "1") return false;
+    const c = document.createElement("canvas");
+    return Boolean(c.getContext("webgl2") ?? c.getContext("webgl"));
+  } catch {
+    return false;
+  }
+})();
+/** Scroll length of the explore stop, in story units: about 2.7 viewports of sticky pause. */
+export const EXPLORE_VH = 270;
+/**
+ * The hand-offs inside `explore`, as beat progress. Over IN the dot field gives way to the 3D
+ * meadow (and the Line leaves for the top edge); over OUT it comes back, so `ranked` starts from
+ * the end state of `pass2`. One pair of numbers, so the Line, the World and the stage agree.
+ */
+export const EXPLORE_IN: readonly [number, number] = [0.04, 0.1];
+export const EXPLORE_OUT: readonly [number, number] = [0.9, 0.96];
+
+const EXPLORE_BEAT: Beat = { id: "explore", act: "read", vh: EXPLORE_VH, kind: "beat" };
+export const BEATS: readonly Beat[] = EXPLORE ? BASE_BEATS.flatMap((b) => (b.id === "ranked" ? [EXPLORE_BEAT, b] : [b])) : BASE_BEATS;
 
 /** Beat lengths are multiplied by this under 768px (applied in CSS through --u). */
 export const MOBILE_SCALE = 0.85;
@@ -374,6 +411,9 @@ export function beatPosition(id: BeatId, at = 0): number {
  */
 export function panelIsCurrent(beats: readonly BeatId[], current: BeatId): boolean {
   if (beats.includes(current)) return true;
+  // The explore stop is a pause inside the panel that shows the passes and the list: that panel
+  // stays up through it (its counter is what the stop hands back to `ranked`).
+  if (current === "explore" && beats.includes("pass2") && beats.includes("ranked")) return true;
   const i = BEAT_INDEX[current];
   if (BEATS[i].kind !== "wipe") return false;
   const before = BEATS[i - 1]?.id;
@@ -472,6 +512,8 @@ const Y = (y: number): LineTarget => ({ y, weight: FULL_W });
  * morning comes up under it (LINE_TRACK.dawn, SCENE_TRACK.dawn). One number, so the three agree.
  */
 export const DAWN_WIPE = 0.45;
+/** Just above the top edge, wobble included: where the Line waits out the explore stop. */
+const LINE_OFF = -0.02;
 
 /** Scrubbed line moves per beat, transcribed from storyboard section 2. Tuned at integration against real anchors. */
 export const LINE_TRACK: Record<BeatId, readonly LineMove[]> = {
@@ -484,6 +526,13 @@ export const LINE_TRACK: Record<BeatId, readonly LineMove[]> = {
   ],
   pass1: [{ range: [0, 1], from: Y(0.14), to: Y(0.9), label: copy.pass1.lineLabel }],
   pass2: [{ range: [0, 1], from: Y(0.9), to: Y(0.14), label: copy.pass2.lineLabel }],
+  // The explore stop (flag): the reading is done, so the Line leaves over the top edge while the 3D
+  // meadow comes up (the whole stage is the scene's and its cards'), and is back at its reading
+  // position before `ranked`, which starts from there. No label: nothing is being read.
+  explore: [
+    { range: [EXPLORE_IN[0] - 0.02, EXPLORE_IN[1]], from: Y(0.14), to: Y(LINE_OFF), label: copy.explore.lineLabel },
+    { range: [EXPLORE_OUT[0], EXPLORE_OUT[1] + 0.02], from: Y(LINE_OFF), to: Y(0.14), label: copy.explore.lineLabel },
+  ],
   // Docks from below. It first pulls in to a short stub at the right end of the list, clear of the
   // "12 fit your portfolio" header, drops just under the rule, then rises onto it while drawing leftward.
   ranked: [
@@ -564,6 +613,8 @@ export const SCENE_TRACK: Record<BeatId, { scene: SceneId; moves?: readonly Scen
   hero: { scene: "desk-night", moves: [{ range: [0.16, 0.92], to: "meadow-night", kind: "push" }] },
   pass1: { scene: "meadow-night" },
   pass2: { scene: "meadow-night" },
+  // The painted meadow stays; the 3D meadow is laid over it (components/acts/explore).
+  explore: { scene: "meadow-night" },
   ranked: { scene: "meadow-night" },
   reason: { scene: "meadow-night" },
   daybreak: { scene: "meadow-night", moves: [{ range: [0.2, 1], to: "paper", kind: "wipe" }] },
@@ -854,6 +905,15 @@ const SCENE_RUNS: SceneRun[] = [];
   SCENE_RUNS.push({ id: current, start: runStart, end: TOTAL });
 }
 
+/**
+ * The explore stop adds no scene time: a painting holds still while the 3D meadow is over it, so the
+ * two can be laid out to coincide at both hand-offs, and outside the stop the painting's slow push
+ * is exactly what it is without the flag. Without the flag this is the identity.
+ */
+const HOLD_AT = EXPLORE ? BEAT_START.explore : 0;
+const HOLD_LEN = EXPLORE ? EXPLORE_VH : 0;
+const sceneTime = (pos: number) => pos - Math.min(HOLD_LEN, Math.max(0, pos - HOLD_AT));
+
 function computeScene(pos: number) {
   const sc = state.scene;
   let run = 0;
@@ -868,7 +928,8 @@ function computeScene(pos: number) {
     kind = move.kind;
     mix = clamp01((pos - move.at) / (move.until - move.at || 1));
   }
-  const progress = clamp01((pos - r.start) / (r.end - r.start || 1));
+  const t0 = sceneTime(r.start);
+  const progress = clamp01((sceneTime(pos) - t0) / (sceneTime(r.end) - t0 || 1));
   if (sc.id !== r.id || sc.to !== to || sc.mix !== mix || sc.progress !== progress) dirty = true;
   sc.id = r.id;
   sc.to = to;

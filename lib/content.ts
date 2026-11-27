@@ -234,6 +234,27 @@ export const story = {
     lineLabel: "Portfolio fit",
   },
 
+  /**
+   * NEW (fireflies). The explore stop between `pass2` and `ranked`, behind `?explore=1`
+   * (components/acts/explore): the twelve are held for a moment and the market they came from
+   * comes up as fireflies you can read, one role each.
+   */
+  explore: {
+    /** Name of the stop for screen readers (the region around the list of roles). */
+    label: "The market the twelve came from",
+    line: "Twelve fit. Here’s the market they came from.",
+    /** Fine pointers. */
+    hint: "Hover a firefly to read the role",
+    /** Touch. */
+    hintTouch: "Tap a firefly to read the role",
+    /** At the bottom of the stage through the whole stop. */
+    cue: "Scroll to see your twelve",
+    /** Beat rail tick, between "Read" and "Rank". */
+    rail: "Explore",
+    /** The Line leaves for the top edge during the stop: it has no note. */
+    lineLabel: "",
+  },
+
   ranked: {
     h2: "Twelve worth an evening.",
     body: "Scored out of 10 against your portfolio. The other 2,328 never reach your screen.",

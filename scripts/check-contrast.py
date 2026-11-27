@@ -86,6 +86,8 @@ def main():
     ap.add_argument("--strict", action="store_true")
     ap.add_argument("--all", action="store_true")
     args = ap.parse_args()
+    if "explore=1" in args.url:  # the fireflies stop (?explore=1): measure its copy too
+        BEATS.insert(2, ("explore", 0.5))
     fails = 0
     total = 0
     with sync_playwright() as p:

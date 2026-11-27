@@ -7,31 +7,34 @@
  * it is drawn in both skins during a wipe and split at the line.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { storyCopy } from "@/lib/content";
-import { BEATS, story, type BeatId } from "@/lib/story";
+import { BEATS, EXPLORE, story, type BeatId } from "@/lib/story";
 import "./chrome.css";
 
+type Tick = { label: string; beat: BeatId };
 const idx = (b: BeatId) => BEATS.findIndex((x) => x.id === b);
-const RAIL = storyCopy.nav.rail as readonly { label: string; beat: BeatId }[];
-const HREF: Record<string, string> = { hero: "#read", ranked: "#read", saved: "#board", unfold: "#prep", seat: "#join" };
+const RAIL = storyCopy.nav.rail as readonly Tick[];
+/** With the explore stop (?explore=1, known after mount only) it has a tick of its own, before "Rank". */
+const RAIL_EXPLORE: readonly Tick[] = RAIL.flatMap((r) => (r.beat === "ranked" ? [{ label: storyCopy.explore.rail, beat: "explore" as BeatId }, r] : [r]));
+const HREF: Record<string, string> = { hero: "#read", explore: "#read", ranked: "#read", saved: "#board", unfold: "#prep", seat: "#join" };
 /** Where each tick lands inside its beat. */
-const AT: Record<string, number> = { hero: 0, ranked: 0.7, saved: 0.85, unfold: 0.95, seat: 0.6 };
+const AT: Record<string, number> = { hero: 0, explore: 0.3, ranked: 0.7, saved: 0.85, unfold: 0.95, seat: 0.6 };
 
-function activeTick(beat: BeatId): number {
+function activeTick(rail: readonly Tick[], beat: BeatId): number {
   const i = idx(beat);
   let k = 0;
   // The last section whose first beat has been reached (a tick stays lit through the wipe after it).
-  RAIL.forEach((r, n) => {
+  rail.forEach((r, n) => {
     if (i >= idx(r.beat)) k = n;
   });
   return k;
 }
 
-function Ticks({ live }: { live: boolean }) {
+function Ticks({ rail, live }: { rail: readonly Tick[]; live: boolean }) {
   return (
     <>
-      {RAIL.map((r) => (
+      {rail.map((r) => (
         <li key={r.label}>
           <a
             href={HREF[r.beat]}
@@ -54,28 +57,32 @@ function Ticks({ live }: { live: boolean }) {
 
 export function BeatRail() {
   const ref = useRef<HTMLElement>(null);
+  // The server never knows the flag: the extra tick is added after mount.
+  const [explore, setExplore] = useState(false);
+  useEffect(() => setExplore(EXPLORE), []);
+  const rail = explore ? RAIL_EXPLORE : RAIL;
   useEffect(() => {
     const el = ref.current;
     if (!el || story.reduced()) return;
     const apply = (beat: BeatId) => {
-      const k = activeTick(beat);
+      const k = activeTick(rail, beat);
       el.querySelectorAll<HTMLElement>(".rail-link").forEach((a) => {
-        const on = a.dataset.rail === RAIL[k].beat;
+        const on = a.dataset.rail === rail[k].beat;
         if (on) a.setAttribute("aria-current", "true");
         else a.removeAttribute("aria-current");
       });
     };
     apply(story.get().beat);
     return story.onBeatChange(apply);
-  }, []);
+  }, [rail]);
 
   return (
-    <nav ref={ref} className="rail only-motion" aria-label={storyCopy.nav.railLabel}>
+    <nav ref={ref} className="rail only-motion" aria-label={storyCopy.nav.railLabel} data-explore={explore ? "" : undefined}>
       <ul className="rail-copy rail-base">
-        <Ticks live />
+        <Ticks rail={rail} live />
       </ul>
       <ul className="rail-copy rail-overlay" aria-hidden="true">
-        <Ticks live={false} />
+        <Ticks rail={rail} live={false} />
       </ul>
     </nav>
   );

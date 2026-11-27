@@ -654,6 +654,10 @@ html:not(.motion) .nav-cta-ignite {
   pointer-events: none;
   font-family: var(--font-text);
 }
+/* With the explore stop (?explore=1) there are six ticks: one more step, downwards. */
+.rail[data-explore] {
+  height: 179px;
+}
 .rail-copy {
   position: absolute;
   inset: 0;

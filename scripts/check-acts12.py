@@ -108,6 +108,8 @@ with sync_playwright() as p:
         for _ in range(40):
             info = pg.evaluate("() => window.__story.get()")
             order = ["hero", "pass1", "pass2", "ranked", "reason", "daybreak", "saved", "applied", "interview", "hinge", "nightfall", "unfold", "q1", "q2", "q3", "votes", "dawn", "seat", "footer"]
+            if "explore=1" in URL:  # the fireflies stop (?explore=1): one more beat
+                order.insert(order.index("ranked"), "explore")
             if order.index(info["beat"]) > order.index(beat) or (info["beat"] == beat and info["beatProgress"] > 0.85):
                 break
             pg.mouse.wheel(0, 900)

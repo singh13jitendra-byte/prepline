@@ -28,6 +28,7 @@
  */
 
 import { useEffect, useRef, type CSSProperties } from "react";
+import { ExploreMount } from "@/components/acts/explore/ExploreMount";
 import { FaceSlot } from "@/components/story/FaceSlot";
 import { Panel } from "@/components/story/Stage";
 import { rankedRoles, storyCopy } from "@/lib/content";
@@ -515,6 +516,9 @@ export function ReadPanel() {
             </ul>
           </div>
         </div>
+
+        {/* ── the explore stop (?explore=1 only; nothing without the flag) ── */}
+        <ExploreMount />
 
         {/* ── ranked ── */}
         <div className="rd-ranked">

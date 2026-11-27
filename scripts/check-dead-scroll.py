@@ -29,7 +29,14 @@ ap.add_argument("--threshold", type=float, default=0.15)
 ap.add_argument("--settle", type=int, default=1350, help="ms to wait after each step")
 ap.add_argument("--quiet", action="store_true", help="print dead steps and the summary only")
 args = ap.parse_args()
-URL = args.url.rstrip("/") + "/?world=css"
+# A query on the base URL is kept (?explore=1, the fireflies stop).
+_base, _, _query = args.url.partition("?")
+URL = _base.rstrip("/") + "/?world=css" + ("&" + _query if _query else "")
+# The hold of the explore stop is a pause to explore in, by design: the scene moves on its own
+# clock and the wheel only fills the cue's rule. Its steps are counted apart, not as dead scroll.
+EXPLORE = "explore=1" in _query
+HOLD = (0.1, 0.9)
+held = 0
 
 with sync_playwright() as p:
     b = p.chromium.launch()
@@ -46,7 +53,9 @@ with sync_playwright() as p:
         pg.wait_for_timeout(args.settle)
         im = Image.open(io.BytesIO(pg.screenshot())).convert("L").resize((360, 225))
         beat, prog = pg.evaluate("(() => { const s = window.__story.get(); return [s.beat, s.beatProgress]; })()")
-        if prev is not None and beat != "footer":
+        if EXPLORE and beat == "explore" and HOLD[0] < prog < HOLD[1]:
+            held += 1
+        elif prev is not None and beat != "footer":
             steps += 1
             d = ImageStat.Stat(ImageChops.difference(im, prev)).mean[0]
             is_dead = d < args.threshold
@@ -60,6 +69,8 @@ with sync_playwright() as p:
 
 per_beat = Counter(beat for _, beat, _, _ in dead)
 print(f"\n{len(dead)} dead {args.step}px steps of {steps} inside pins ({len(dead) * args.step}px)")
+if EXPLORE:
+    print(f"  ({held} steps in the explore stop's hold are not counted: a pause by design)")
 for beat, n in per_beat.items():
     span = [f"{pr:.2f}" for _, bt, pr, _ in dead if bt == beat]
     print(f"  {beat:10s} {n}  at progress {', '.join(span)}")

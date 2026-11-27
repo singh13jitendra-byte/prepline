@@ -112,7 +112,8 @@ export function Lantern() {
       const fine = s.pointer.fine && !s.flags.coarse;
       // Night is above the day line: the whole screen in a night beat, the top part under a sweep.
       const night = s.pointer.y < s.dayTop;
-      const want = fine && worldBus.pointerMoved && s.pointer.inside && night ? 1 : 0;
+      // Out for the whole explore stop (?explore=1; the 3D meadow has its own hover). No flag, no such beat.
+      const want = fine && worldBus.pointerMoved && s.pointer.inside && night && s.beat !== "explore" ? 1 : 0;
 
       // How long the pointer has been still (the store moves the target; nothing else does).
       if (s.pointer.x !== lastPx || s.pointer.y !== lastPy) {

@@ -410,6 +410,12 @@ def main():
     args = ap.parse_args()
     if args.shots:
         args.shots.mkdir(parents=True, exist_ok=True)
+    # The fireflies stop: with ?explore=1 in the URL there is one more beat, 2.7 viewports long.
+    # (scripts/check-explore.py checks the stop itself.) Without it nothing here changes.
+    extra = 0.0
+    if "explore=1" in args.url:
+        BEATS.insert(BEATS.index("ranked"), "explore")
+        extra = 2.7
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(args=CHROMIUM_ARGS)
@@ -420,7 +426,7 @@ def main():
         check(s["beat"] == "hero" and s["chapter"] == "night", f"desktop: starts on hero at night, got {s['beat']} {s['chapter']}")
         total = page.evaluate("() => document.documentElement.scrollHeight / innerHeight")
         print(f"document height: {total:.2f} viewports")
-        check(12.6 < total < 13.6, f"desktop: the document is about 13.1 viewports tall (story + founder note + footer), got {total:.2f}")
+        check(12.6 + extra < total < 13.6 + extra, f"desktop: the document is about {13.1 + extra:.1f} viewports tall (story + founder note + footer), got {total:.2f}")
         ends = page.evaluate("() => [...document.querySelectorAll('.story-act')].map((e) => Math.round(e.getBoundingClientRect().bottom + scrollY))")
         foot = page.evaluate("() => Math.round(document.querySelector('main ~ footer, body > footer').getBoundingClientRect().top + scrollY)")
         after = page.evaluate("() => { const a = document.querySelector('.af'); return a ? Math.round(a.getBoundingClientRect().bottom + scrollY) : null }")

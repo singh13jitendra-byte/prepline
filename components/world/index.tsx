@@ -50,6 +50,8 @@ html.world-on .world-canvas{opacity:1}
 html[data-beat="pass1"] .cf-dense{visibility:visible;clip-path:inset(var(--line-y) 0 0 0)}
 html:is([data-beat="pass1"],[data-beat="pass2"]) .cf-grid{visibility:visible;clip-path:inset(0 0 calc(100% - var(--line-y)) 0)}
 html[data-beat="pass2"] .cf-gold{visibility:visible;clip-path:inset(var(--line-y) 0 0 0)}
+/* The explore stop (?explore=1): the twelve hold as at the end of pass 2 until the 3D meadow takes over (ExploreStage fades them). */
+html[data-beat="explore"] .cf-gold{visibility:visible}
 html.world-on .cf{display:none}
 
 .world-line{position:fixed;top:0;left:0;width:100%;height:100%;z-index:var(--z-line);pointer-events:none;overflow:visible;transition:color .25s linear}

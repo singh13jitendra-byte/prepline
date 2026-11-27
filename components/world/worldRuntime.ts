@@ -301,7 +301,9 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     const split = s.line.daySide === "below";
     const dayTop = split ? s.dayTop : s.chapter === "night" ? BIG : -BIG;
     fu.uDayTop.value = dayTop;
-    const outdoors = i <= ORDER.daybreak ? scene.field : 0;
+    // The explore stop (flag): the 3D meadow takes the field's place (worldBus.explore.k, else 0).
+    const ex = worldBus.explore.k;
+    const outdoors = (i <= ORDER.daybreak ? scene.field : 0) * (1 - ex);
     fu.uField.value = outdoors;
     fu.uClip.value.set(scene.x0, scene.y0, scene.x1, scene.y1);
     fu.uPar.value.set(scene.px, scene.py);
@@ -431,7 +433,7 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
     /* draw only when it matters: fireflies blink, so outdoors at night is always live */
     const fieldOn = outdoors > 0 && dayTop > 0;
     if (fieldOn || focus.k > 0) live = true;
-    const key = `${drift.toFixed(1)}|${L.x.toFixed(1)}|${L.y.toFixed(1)}|${pos.toFixed(3)}|${dayTop.toFixed(1)}|${line.y.toFixed(1)}|${scene.x0.toFixed(1)}|${scene.y0.toFixed(1)}|${scene.px.toFixed(2)}|${ringKey.toFixed(1)}|${fieldOn ? 1 : 0}${seats ? 1 : 0}`;
+    const key = `${drift.toFixed(1)}|${L.x.toFixed(1)}|${L.y.toFixed(1)}|${pos.toFixed(3)}|${dayTop.toFixed(1)}|${line.y.toFixed(1)}|${scene.x0.toFixed(1)}|${scene.y0.toFixed(1)}|${scene.px.toFixed(2)}|${ringKey.toFixed(1)}|${fieldOn ? 1 : 0}${seats ? 1 : 0}|${ex.toFixed(3)}`;
     if (key !== lastKey) {
       lastKey = key;
       needs = true;

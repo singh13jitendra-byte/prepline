@@ -45,8 +45,8 @@
  * content that belongs to one mode.
  */
 
-import type { CSSProperties, ReactNode } from "react";
-import { actOf, panelIsCurrent, stageIsActive, type ActId, type BeatId } from "@/lib/story";
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { actOf, EXPLORE, panelIsCurrent, stageIsActive, type ActId, type BeatId } from "@/lib/story";
 
 type StageProps = {
   act: ActId;
@@ -60,13 +60,26 @@ type StageProps = {
 
 export function Stage({ act, labelledBy, className, stageClassName, children }: StageProps) {
   const a = actOf(act);
+  const ref = useRef<HTMLElement>(null);
+  // The explore stop (?explore=1) is known in the browser only, so the server's markup carries the
+  // lengths of the story without it. Put the live ones in place before StoryRoot measures the
+  // sections (a layout effect of a child runs before the parent's effects). No flag: nothing runs.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!EXPLORE || !el) return;
+    el.style.setProperty("--act-len", String(a.len));
+    el.style.setProperty("--act-overlap", String(a.overlap));
+  }, [a]);
   return (
     <section
+      ref={ref}
       id={a.domId}
       data-act={act}
       aria-labelledby={labelledBy}
       className={`story-act${className ? ` ${className}` : ""}`}
       style={{ "--act-len": a.len, "--act-overlap": a.overlap, "--act-pull": a.start === 0 ? 0 : 1 } as CSSProperties}
+      // With ?explore=1 the browser's lengths differ from the server's (see the effect above).
+      suppressHydrationWarning
     >
       <div
         className={`story-stage${stageClassName ? ` ${stageClassName}` : ""}`}
