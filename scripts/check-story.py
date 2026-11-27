@@ -410,12 +410,12 @@ def main():
     args = ap.parse_args()
     if args.shots:
         args.shots.mkdir(parents=True, exist_ok=True)
-    # The fireflies stop: with ?explore=1 in the URL there is one more beat, 2.7 viewports long.
+    # The fireflies stop: with ?explore=1 in the URL there is one more beat, 3 viewports long.
     # (scripts/check-explore.py checks the stop itself.) Without it nothing here changes.
     extra = 0.0
     if "explore=1" in args.url:
         BEATS.insert(BEATS.index("ranked"), "explore")
-        extra = 2.7
+        extra = 3.0
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(args=CHROMIUM_ARGS)

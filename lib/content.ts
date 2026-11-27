@@ -247,11 +247,13 @@ export const story = {
     hint: "Hover a firefly to read the role",
     /** Touch. */
     hintTouch: "Tap a firefly to read the role",
+    /** The 3D scene could not start: the list carries the stop. */
+    hintList: "Every role is in the list",
     /** At the bottom of the stage through the whole stop. */
     cue: "Scroll to see your twelve",
     /** Beat rail tick, between "Read" and "Rank". */
     rail: "Explore",
-    /** The Line leaves for the top edge during the stop: it has no note. */
+    /** The Line lifts away over the top edge for the stop: it has no note. */
     lineLabel: "",
   },
 

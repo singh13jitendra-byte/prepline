@@ -19,6 +19,9 @@
  * THE HAND-OFF (motion). Everything is scrubbed by `explore` beat progress and written by one
  * frame callback, only when a value changes:
  *
+ *   the lead-in   from the top of the beat to EXPLORE_IN nothing of the stage shows: the Line lifts
+ *                 away (LINE_TRACK.explore) while the scene, active since the beat began, brings
+ *                 its fireflies up over the painted meadow, unseen (about 1.3s).
  *   EXPLORE_IN    the dot field (worldBus.explore.k, read by the World's canvas) fades down as the
  *                 3D scene fades up, on opacity only; the painted meadow never changes. Over the
  *                 same stretch the counter and its slip go (the first part of it), then this
@@ -33,11 +36,20 @@
  * most four elements are written during a hand-off (the scene's opacity, the copy's clip, the
  * counter's opacity, the cue's rule) and one (the rule) during the hold. Nothing is written at rest.
  *
- * Scrolling is the page's own, always: nothing here listens to the wheel or to touch moves, and
- * nothing carries data-lenis-prevent.
+ * Scrolling is the page's own: nothing here listens to the wheel or to touch moves, and a wheel
+ * over the scene, the card, the cue or the list's button moves the page. The one scroller is the
+ * "All roles" drawer while a visitor has it open (48 rows; it keeps the list's data-lenis-prevent).
  *
  * `active` is true only while `explore` is the current beat. Leaving the beat, or scrolling into
  * either hand-off, lets go of the focused firefly and closes its card.
+ *
+ * Wiring (as app/lab/fireflies/Lab.tsx): the focused job is React state; its anchor goes straight
+ * to the card through `setAnchor`, so a firefly bobbing under the camera never renders React. The
+ * list picks through the scene (`focusJob`), and the card closes through it (`clearFocus`).
+ *
+ * If the scene cannot start (`onError`: no WebGL2, a failed load, a lost context) the stop is the
+ * plain beat: the dot field stays, the line and the list are there, and a picked role opens its
+ * card in the middle of the screen.
  *
  * Reduced motion (the story does not run): the stop is a still block between the figures and the
  * list. The scene gets `reducedMotion` (no camera moves) and is active while it is on screen.
@@ -45,30 +57,40 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, type Ref } from "react";
+import type { JobCardHandle, JobCardProps } from "@/components/fireflies/card/JobCard";
 import { FIREFLY_JOBS, type FireflyJob } from "@/components/fireflies/jobs";
-import type { FireflySceneHandle, FireflySceneProps } from "@/components/fireflies/scene/FireflyScene";
+import type { FireflyAnchor, FireflySceneHandle, FireflySceneProps } from "@/components/fireflies/scene/FireflyScene";
 import { worldBus } from "@/components/world/bus";
 import { storyCopy } from "@/lib/content";
 import { BEATS, EXPLORE_IN, EXPLORE_OUT, story, type BeatId, type StoryState } from "@/lib/story";
 
-/** The real scene has an extra, `matchPage()`: lay its wide shot over the page's painted meadow. */
-type SceneHandle = FireflySceneHandle & { matchPage?: () => boolean };
-
-// The handle travels as a prop: a ref does not reliably cross next/dynamic.
+// The handles travel as props: a ref does not reliably cross next/dynamic.
 const Scene = dynamic(
   async () => {
-    const { default: FireflyScene } = await import("@/components/fireflies/scene/FireflyScene");
+    // The scene frames a focused firefly clear of the card's bottom sheet: it is told where the card docks.
+    const [{ default: FireflyScene }, { JOBCARD_DOCK_QUERY }] = await Promise.all([import("@/components/fireflies/scene/FireflyScene"), import("@/components/fireflies/card/JobCard")]);
     return function Scene({ handle, ...props }: FireflySceneProps & { handle: Ref<FireflySceneHandle> }) {
-      return <FireflyScene ref={handle} {...props} />;
+      return <FireflyScene ref={handle} dockQuery={JOBCARD_DOCK_QUERY} {...props} />;
     };
   },
   { ssr: false },
 );
-const Card = dynamic(() => import("@/components/fireflies/card/JobCard").then((m) => m.JobCard), { ssr: false });
+const Card = dynamic(
+  async () => {
+    const { JobCard } = await import("@/components/fireflies/card/JobCard");
+    return function Card({ handle, ...props }: JobCardProps & { handle: Ref<JobCardHandle> }) {
+      return <JobCard ref={handle} {...props} />;
+    };
+  },
+  { ssr: false },
+);
 const List = dynamic(() => import("@/components/fireflies/card/JobsList").then((m) => m.JobsList), { ssr: false });
 
 /** Seconds the scene takes to come up when it becomes ready with the stop already on screen. */
 const READY_S = 0.5;
+/** The card stands clear of the nav (and, by the scene's advice, of the firefly's wings). */
+const CARD_INSET = { top: 88 };
+const CARD_ANCHOR_R = 34;
 
 const ORDER = Object.fromEntries(BEATS.map((b, i) => [b.id, i])) as Record<BeatId, number>;
 const lin = (a: number, b: number, x: number) => Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -79,6 +101,7 @@ const ss = (a: number, b: number, x: number) => {
 /** Inside each hand-off: the counter is gone (or back) by this point, and the stage's copy unrolls after it. */
 const [IN0, IN1] = EXPLORE_IN;
 const [OUT0, OUT1] = EXPLORE_OUT;
+const LET_GO = 0.025;
 const IN_MID = IN0 + (IN1 - IN0) * 0.42;
 const OUT_MID = OUT1 - (OUT1 - OUT0) * 0.42;
 
@@ -101,9 +124,11 @@ html:not(.motion) .slip-night.ex-line{top:clamp(20px,3vh,32px)}
 .slip-night.ex-line{position:absolute;left:calc(var(--ex-pad) - 20px);top:clamp(88px,12svh,116px);max-width:min(27rem,calc(100% - 2 * var(--ex-pad) + 40px))}
 .ex-line-t{margin:0;font-size:var(--fs-lead);line-height:1.3;font-weight:var(--weight-strong);text-wrap:balance}
 .ex-hint{margin:6px 0 0;font-size:var(--fs-small);line-height:var(--leading-small)}
-.ex:not([data-ready]) .ex-hint{visibility:hidden}
-.ex-hint-touch{display:none}
+.ex:not([data-ready],[data-failed]) .ex-hint{visibility:hidden}
+.ex-hint-touch,.ex-hint-list{display:none}
 @media (hover:none),(pointer:coarse){.ex-hint-fine{display:none}.ex-hint-touch{display:inline}}
+.ex[data-failed] :is(.ex-hint-fine,.ex-hint-touch){display:none}
+.ex[data-failed] .ex-hint-list{display:inline}
 
 /* the cue: where the scroll goes next, and a lamp rule that fills as it gets there */
 .slip-night.ex-cue{position:absolute;left:50%;bottom:var(--ex-cap);margin:0;padding:7px 12px 11px;display:flex;align-items:center;gap:8px;white-space:nowrap;transform:translate3d(-50%,0,0);font-size:var(--fs-small);line-height:var(--leading-small);font-weight:var(--weight-label)}
@@ -117,6 +142,17 @@ html:not(.motion) .slip-night.ex-line{top:clamp(20px,3vh,32px)}
 .ex[data-on] .ex-list,html:not(.motion) .ex-list{pointer-events:auto}
 .ex .ex-list{--ffl-inset:16px;--ffl-top:16px}
 
+/* Where the card docks as a sheet (JOBCARD_DOCK_QUERY) the list's button is placed from the top and
+   its drawer is a bottom sheet: the box goes edge to edge, and the button is kept where it is on
+   wide screens, bottom left, above the caption (a top in % is measured on the box). */
+@media (max-width:839px),(max-height:519px){
+  /* The scene frames the chosen firefly in the top third, above the sheet: the line steps aside for
+     it (rolled up by a clip, as it came), and is back when the sheet closes. */
+  .slip-night.ex-line{clip-path:inset(0 0 0 0 round var(--r-md));transition:clip-path var(--dur-2) var(--ease-out)}
+  .ex[data-focused] .slip-night.ex-line{clip-path:inset(0 100% 0 0 round var(--r-md))}
+  .ex-list-box{left:0;bottom:0}
+  .ex .ex-list{--ffl-inset:var(--ex-pad);--ffl-top:calc(100% - var(--ex-cap) - 74px)}
+}
 @media (max-width:767px){
   .ex{--ex-pad:20px}
   .slip-night.ex-line{left:calc(var(--ex-pad) - 14px);right:calc(var(--ex-pad) - 14px);top:84px;max-width:none}
@@ -124,48 +160,57 @@ html:not(.motion) .slip-night.ex-line{top:clamp(20px,3vh,32px)}
 }
 `;
 
-type Focus = { job: FireflyJob; anchor: { x: number; y: number } | null };
-
 export default function ExploreStage() {
   const copy = storyCopy.explore;
   // Decided once, at first paint, by the boot script: this component only ever renders in the browser.
   const [reduced] = useState(() => story.reduced());
   const root = useRef<HTMLDivElement>(null);
-  const scene = useRef<SceneHandle>(null);
+  const scene = useRef<FireflySceneHandle>(null);
+  const card = useRef<JobCardHandle>(null);
   /** Load the three parts (the scene's engine is the heavy one). */
   const [near, setNear] = useState(false);
   const [active, setActive] = useState(false);
   const [ready, setReady] = useState(false);
-  const [focus, setFocus] = useState<Focus | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [job, setJob] = useState<FireflyJob | null>(null);
+  /** From the firefly to the card: the scene reports the firefly's radius, the same in every close-up. */
+  const [gap, setGap] = useState(140);
   /** For the frame loop and the callbacks, which outlive a render. */
-  const live = useRef({ ready: false, active: false, focused: false });
-  live.current.focused = focus !== null;
+  const live = useRef({ ready: false, failed: false, active: false, focused: false });
+  live.current.focused = job !== null;
 
   const drop = useCallback(() => {
     scene.current?.clearFocus();
-    setFocus(null);
+    card.current?.setAnchor(null);
+    setJob(null);
   }, []);
 
   /* ── the scene and the list report; the card follows ── */
-  const onFocus = useCallback((job: FireflyJob | null, anchor: { x: number; y: number } | null) => {
-    if (!job || !live.current.active) return setFocus(null);
-    setFocus((prev) => {
-      const a = prev?.anchor;
-      // The same firefly, less than a pixel away: nothing to render.
-      if (prev && prev.job.id === job.id && a && anchor && Math.abs(a.x - anchor.x) < 1 && Math.abs(a.y - anchor.y) < 1) return prev;
-      return { job, anchor };
-    });
+  const onFocus = useCallback((next: FireflyJob | null, anchor: FireflyAnchor | null) => {
+    const on = next !== null && live.current.active;
+    // The anchor first, and not through React: the card must know where to open before it has a job.
+    card.current?.setAnchor(on ? anchor : null);
+    setJob(on ? next : null);
+    if (on && anchor?.r) setGap(Math.round(anchor.r * 0.75 + 16));
   }, []);
   const onReady = useCallback(() => {
     live.current.ready = true;
     setReady(true);
   }, []);
+  const onError = useCallback(() => {
+    // No scene: the dot field stays (the fade below never starts) and the list carries the stop.
+    live.current.ready = false;
+    live.current.failed = true;
+    setReady(false);
+    setFailed(true);
+  }, []);
   const onPick = useCallback((id: string) => {
-    const job = FIREFLY_JOBS.find((j) => j.id === id);
-    if (!job || !live.current.active) return;
-    // The card opens at once (in the middle, until the scene says where the firefly is).
-    setFocus((prev) => (prev?.job.id === id ? prev : { job, anchor: null }));
-    scene.current?.focusJob(id);
+    if (!live.current.active) return;
+    // The scene flies to the firefly and reports it; the card opens as the camera arrives.
+    if (live.current.ready) return scene.current?.focusJob(id);
+    // No scene (yet): the card opens in the middle of the screen.
+    card.current?.setAnchor(null);
+    setJob(FIREFLY_JOBS.find((j) => j.id === id) ?? null);
   }, []);
 
   /* ── motion: one frame callback does the whole hand-off ── */
@@ -195,8 +240,8 @@ export default function ExploreStage() {
 
       /* active: only while the beat is the current one */
       if (here !== live.current.active) {
-        // The real scene lays its wide shot over the painted meadow as it stands now.
-        scene.current?.matchPage?.();
+        // The scene lays its wide shot over the painted meadow as it stands now.
+        scene.current?.matchPage();
         live.current.active = here;
         setActive(here);
         if (!here && live.current.focused) drop();
@@ -206,7 +251,8 @@ export default function ExploreStage() {
       const sc = here ? Math.min(ss(IN0, IN1, bp), 1 - ss(OUT0, OUT1, bp)) : 0;
       const gone = here ? Math.min(ss(IN0, IN_MID, bp), 1 - ss(OUT_MID, OUT1, bp)) : 0;
       const wipe = here ? Math.min(lin(IN_MID, IN1, bp), 1 - lin(OUT0, OUT_MID, bp)) : 0;
-      if (live.current.ready && gate < 1) gate = Math.min(1, gate + dt / READY_S);
+      if (live.current.failed) gate = 0;
+      else if (live.current.ready && gate < 1) gate = Math.min(1, gate + dt / READY_S);
       const k = sc * gate * gate * (3 - 2 * gate);
 
       const on = sc > 0;
@@ -226,8 +272,10 @@ export default function ExploreStage() {
       const goldV = k > 0 ? (1 - k).toFixed(3) : "";
       if (gold && goldV !== last.gold) gold.style.opacity = last.gold = goldV;
 
-      /* the scene takes the pointer only when it is fully up; on the way out it lets go of its firefly */
-      const isLive = k >= 0.999;
+      /* the scene takes the pointer only when it is fully up. It lets go of its firefly a little
+         before a hand-off starts (LET_GO of beat progress), so the camera is already on its way
+         back to the wide shot, the painted meadow's framing, when the fade begins. */
+      const isLive = k >= 0.999 && bp > IN1 + LET_GO && bp < OUT0 - LET_GO;
       if (isLive !== last.live) {
         el.toggleAttribute("data-live", (last.live = isLive));
         if (!isLive && live.current.focused) drop();
@@ -255,7 +303,7 @@ export default function ExploreStage() {
       (entries) => {
         const on = entries[entries.length - 1].intersectionRatio >= 0.4;
         if (on === live.current.active) return;
-        scene.current?.matchPage?.();
+        scene.current?.matchPage();
         live.current.active = on;
         setActive(on);
         if (!on) drop();
@@ -267,10 +315,31 @@ export default function ExploreStage() {
   }, [reduced, drop]);
 
   return (
-    <div ref={root} className="ex" data-explore-stage="" role="group" aria-label={copy.label} data-ready={ready ? "" : undefined} data-active={active ? "" : undefined}>
+    <div
+      ref={root}
+      className="ex"
+      data-explore-stage=""
+      role="group"
+      aria-label={copy.label}
+      data-ready={ready ? "" : undefined}
+      data-failed={failed ? "" : undefined}
+      data-active={active ? "" : undefined}
+      data-focused={active && job ? "" : undefined}
+    >
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <div className="ex-scene">
-        {near ? <Scene handle={scene} active={active} jobs={FIREFLY_JOBS} onFocus={onFocus} onReady={onReady} reducedMotion={reduced} className="ex-ff" /> : null}
+        {near ? (
+          <Scene
+            handle={scene}
+            active={active}
+            jobs={FIREFLY_JOBS}
+            onFocus={onFocus}
+            onReady={onReady}
+            onError={onError}
+            reducedMotion={reduced}
+            className="ex-ff"
+          />
+        ) : null}
       </div>
       <div className="ex-ui">
         <div className="slip-night ex-line">
@@ -278,9 +347,10 @@ export default function ExploreStage() {
           <p className="ex-hint muted">
             <span className="ex-hint-fine">{copy.hint}</span>
             <span className="ex-hint-touch">{copy.hintTouch}</span>
+            <span className="ex-hint-list">{copy.hintList}</span>
           </p>
         </div>
-        <div className="ex-list-box">{near ? <List jobs={FIREFLY_JOBS} onPick={onPick} activeId={focus?.job.id ?? null} className="ex-list" /> : null}</div>
+        <div className="ex-list-box">{near ? <List jobs={FIREFLY_JOBS} onPick={onPick} activeId={job?.id ?? null} className="ex-list" /> : null}</div>
         <p className="slip-night ex-cue" data-size="s">
           <span>{copy.cue}</span>
           <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -291,7 +361,7 @@ export default function ExploreStage() {
           </span>
         </p>
       </div>
-      {near ? <Card job={active ? (focus?.job ?? null) : null} anchor={focus?.anchor ?? null} onClose={drop} /> : null}
+      {near ? <Card handle={card} job={active ? job : null} anchor={null} onClose={drop} gap={gap} anchorRadius={CARD_ANCHOR_R} inset={CARD_INSET} /> : null}
     </div>
   );
 }

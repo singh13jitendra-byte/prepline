@@ -666,7 +666,9 @@ const Body = memo(function Body({ job, hid, saved, pressed, nudge, onSave, onVie
         </div>
       </header>
 
-      <div className="pp-claims" data-lenis-prevent="">
+      {/* No data-lenis-prevent (the product's RoleDetail has it): in the story a wheel over the card
+          must move the page, never stop on the card. A finger still scrolls a long sheet. */}
+      <div className="pp-claims">
         <section className="pp-reasons" aria-labelledby={`${hid}-why`}>
           <div className="ffc-why ffc-s" style={step(4)}>
             <h3 id={`${hid}-why`} className="pp-h3">

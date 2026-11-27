@@ -7,6 +7,11 @@ Run against a production build:
     python3 scripts/check-explore.py http://localhost:3112
     python3 scripts/check-explore.py http://localhost:3112 --shots DIR      # also writes contact sheets and stills
     python3 scripts/check-explore.py http://localhost:3112 --only traps,frames
+    python3 scripts/check-explore.py http://localhost:3112 --only frames --scene-dpr 1 --shots DIR
+
+The 3D scene is slow under software GL (about 3 frames a second at full size), so by default it
+is asked to render at 0.3 of the screen's pixels (--scene-dpr, through its window.__ffDebug). That
+changes nothing this script asserts. Use --scene-dpr 1 for contact sheets to look at.
 
 What it asserts (section names are the --only keys)
   off      without the flag there is no stop: no stage, no rail tick, and the page is exactly
@@ -45,7 +50,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageStat
 from playwright.sync_api import sync_playwright
 
 CHROMIUM_ARGS = ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
-EXPLORE_VH = 270
+EXPLORE_VH = 300
 BASE = [
     "hero", "pass1", "pass2", "ranked", "reason", "daybreak",
     "saved", "applied", "interview", "hinge", "nightfall",
@@ -129,9 +134,13 @@ def with_flag(url, extra=""):
     return f"{url}{sep}explore=1{extra}"
 
 
+SCENE_DPR = 0.3
+
+
 def open_page(browser, url, **ctx):
     context = browser.new_context(**ctx)
     page = context.new_page()
+    page.add_init_script(f"window.__ffDebug = Object.assign(window.__ffDebug || {{}}, {{ dpr: {SCENE_DPR} }});")
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.on("console", lambda m: errors.append(m.text) if m.type == "error" and "Failed to load resource" not in m.text else None)
@@ -200,9 +209,28 @@ def sweep_beats(page):
     return run(ys), run(list(reversed(ys)))
 
 
+CARD_OPEN = """() => { const d = document.querySelector('[role=dialog]'); if (!d) return false;
+  const root = d.closest('.ffc'); if (root) return root.hasAttribute('data-open');
+  const c = getComputedStyle(d); return c.visibility === 'visible' && c.display !== 'none'; }"""
+# A firefly of the real scene that is on screen, clear of the stage's copy (window.__ff is its engine).
+FIREFLY = """(touch) => { const ff = window.__ff; const el = document.querySelector('[data-explore-stage] .ffs');
+  if (!ff || !ff.screenOf || !el) return null; const host = el.getBoundingClientRect(); let best = null;
+  const y0 = innerHeight * (touch ? 0.28 : 0.3), y1 = innerHeight * (touch ? 0.6 : 0.72);
+  for (let j = 0; j < 80; j++) { const p = ff.screenOf(j); if (!p) continue; const x = host.left + p.x, y = host.top + p.y;
+    if (x < innerWidth * 0.3 || x > innerWidth * 0.78 || y < y0 || y > y1) continue;
+    if (!best || p.depth < best.depth) best = { x, y, depth: p.depth, j }; }
+  return best; }"""
+
+
+# Is the stage's line rolled away (its clip closed from the right)? It is on phones while a sheet is open.
+LINE_ROLLED = """() => /inset\\(0(px)? 100%/.test(getComputedStyle(document.querySelector('.ex-line')).clipPath)"""
+
+
 def open_card(page, touch=False):
-    """Focus one firefly: through the stub's dots when they are there, else through the list."""
+    """Focus one firefly: a stub dot, a firefly of the real scene, or (failing both) a row of the list."""
     dot = page.query_selector("[data-explore-stage] [data-ff-stub] .ffs-dot[data-kept]")
+    real = not dot and page.evaluate("() => !!(window.__ff && window.__ff.screenOf)")
+    how = None
     if dot:
         b = dot.bounding_box()
         x, y = b["x"] + b["width"] / 2, b["y"] + b["height"] / 2
@@ -212,7 +240,19 @@ def open_card(page, touch=False):
             page.mouse.move(x - 60, y - 40)
             page.mouse.move(x, y, steps=4)
         how = "dot"
-    else:
+    elif real:
+        # They fly: follow one with the pointer (or tap where it is) until the scene has chosen it.
+        for n in range(60):
+            if page.evaluate(CARD_OPEN):
+                how = "firefly"
+                break
+            pt = page.evaluate(FIREFLY, touch)
+            if pt and touch and n % 12 == 0:
+                page.touchscreen.tap(pt["x"], pt["y"])
+            elif pt and not touch:
+                page.mouse.move(pt["x"], pt["y"])
+            page.wait_for_timeout(110)
+    if how is None:
         toggle = page.query_selector("[data-explore-stage] button[aria-expanded]")
         if not toggle:
             return None, "no way in"
@@ -224,10 +264,10 @@ def open_card(page, touch=False):
         (row.tap if touch else row.click)()
         how = "list"
     try:
-        page.wait_for_selector("[role=dialog]", state="visible", timeout=4000)
+        page.wait_for_function(CARD_OPEN, timeout=6000)
     except Exception:
         return None, how
-    page.wait_for_timeout(700)
+    page.wait_for_timeout(900)
     return page.evaluate("() => { const r = document.querySelector('[role=dialog]').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, vw: innerWidth, vh: innerHeight }; }"), how
 
 
@@ -313,13 +353,13 @@ def check_handoff(page):
     goto_beat(page, "pass2", 0.99, 300)
     ref = page.evaluate(STAGE)
     check(not ref["on"] and not ref["visible"] and not ref["active"] and ref["pass"] == 1, f"pass2@0.99: stage off, counter up ({ref})")
-    for at in (0.0, 0.03, 0.97, 0.999):
+    for at in (0.0, 0.08, 0.92, 0.999):
         goto_beat(page, "explore", at, 300)
         s = page.evaluate(STAGE)
         check(s["beat"] == "explore" and not s["on"] and not s["visible"] and s["pass"] == 1 and s["scene"] == 0, f"explore@{at}: the end state of pass2 holds (on={s['on']} pass={s['pass']} scene={s['scene']})")
         check(s["active"] and s["sceneActive"], f"explore@{at}: the scene is active for the whole beat")
         check(not s["live"], f"explore@{at}: the scene does not take the pointer yet")
-    for at in (0.12, 0.5, 0.88):
+    for at in (0.2, 0.5, 0.8):
         goto_beat(page, "explore", at, 300)
         s = page.evaluate(STAGE)
         check(s["on"] and s["visible"] and s["live"] and s["scene"] == 1 and s["ui"] == 1 and s["pass"] == 0, f"explore@{at}: the hold: scene up and live, copy up, counter gone ({s})")
@@ -404,8 +444,8 @@ def check_traps(page, shots):
     # Leaving the hold lets go of the card.
     goto_beat(page, "explore", 0.5, 400)
     card, how = open_card(page)
-    goto_beat(page, "explore", 0.93, 500)
-    shown = lambda: bool(page.query_selector("[role=dialog]")) and page.is_visible("[role=dialog]")
+    goto_beat(page, "explore", 0.87, 900)
+    shown = lambda: page.evaluate(CARD_OPEN)
     check(card is not None and not shown(), "traps: scrolling into the hand-off closes the card")
     goto_beat(page, "ranked", 0.5, 300)
     check(not shown(), "traps: no card outside the beat")
@@ -438,7 +478,7 @@ def check_list(page):
         row.focus()
         page.keyboard.press("Enter")
         try:
-            page.wait_for_selector("[role=dialog]", state="visible", timeout=4000)
+            page.wait_for_function(CARD_OPEN, timeout=6000)
             opened = True
         except Exception:
             opened = False
@@ -448,11 +488,11 @@ def check_list(page):
         check(cur == rid, f"list: the picked row is the current one ({cur} vs {rid})")
         page.keyboard.press("Escape")
         page.wait_for_timeout(700)
-        gone = not (page.query_selector("[role=dialog]") and page.is_visible("[role=dialog]"))
+        gone = not page.evaluate(CARD_OPEN)
         if not gone:  # the list may take the first Esc for itself
             page.keyboard.press("Escape")
             page.wait_for_timeout(700)
-            gone = not (page.query_selector("[role=dialog]") and page.is_visible("[role=dialog]"))
+            gone = not page.evaluate(CARD_OPEN)
         check(gone, "list: Esc closes the card")
     if toggle.get_attribute("aria-expanded") == "true":
         toggle.click()
@@ -467,7 +507,7 @@ def run_frames(page, name, mobile, shots):
     taken at a fractional scroll position (Lenis mid-glide) comes out a pixel off, which reads as a
     change of the whole frame. The real wheel, through Lenis, is what [traps] drives."""
     vh = page.evaluate("() => innerHeight")
-    legs = [("in", ("explore", -0.01), ("explore", 0.14)), ("out", ("explore", 0.86), ("ranked", 0.06))]
+    legs = [("in", ("explore", 0.0), ("explore", 0.2)), ("out", ("explore", 0.8), ("ranked", 0.06))]
     for leg, a, b in legs:
         y_a = goto_beat(page, *a, 200)["y"]
         y_b = goto_beat(page, *b, 200)["y"]
@@ -603,6 +643,9 @@ def check_phone(browser, url, shots):
     if card:
         check(abs(card["y"] + card["h"] - card["vh"]) <= 1.5 and card["w"] >= card["vw"] - 1 and card["x"] <= 0.5, f"phone: the card is a bottom sheet ({card})")
         check(card["h"] < card["vh"] * 0.8, f"phone: the sheet leaves the scene in view ({card['h']:.0f} of {card['vh']})")
+        # The chosen firefly is framed above the sheet, where the line was: the line has stepped aside.
+        rolled = page.evaluate(LINE_ROLLED)
+        check(rolled, "phone: with the sheet open the stage's line is out of the firefly's way")
         if shots:
             page.screenshot(path=str(shots / "still-390-sheet.png"))
         st = page.evaluate(STAGE)
@@ -614,6 +657,18 @@ def check_phone(browser, url, shots):
         if card:
             moved = drag(card["x"] + card["w"] / 2, card["y"] + card["h"] * 0.6, 150)
             check(moved > 120, f"phone: a drag that starts on the sheet scrolls the page too ({moved}px for a 150px drag)")
+    # Closing the sheet brings the line back.
+    if card:
+        goto_beat(page, "explore", 0.5, 400)
+        if not page.evaluate(CARD_OPEN):
+            open_card(page, touch=True)
+        close = page.query_selector("[role=dialog] .ffc-x")
+        if close:
+            close.tap()
+        else:
+            page.keyboard.press("Escape")
+        page.wait_for_timeout(900)
+        check(not page.evaluate(CARD_OPEN) and not page.evaluate(LINE_ROLLED), "phone: with the sheet closed the line is back")
     # The flight on phones: six rows and the "6 more" pill.
     goto_beat(page, "ranked", 0.9, 500)
     st = page.evaluate(STAGE)
@@ -652,7 +707,7 @@ def check_reduced(browser, url, shots):
     page.evaluate("() => window.scrollTo(0, 0)")
     page.wait_for_timeout(500)
     check(not page.evaluate("() => document.querySelector('[data-explore-stage]').hasAttribute('data-active')"), "reduced: and not active again once it has left")
-    check(not (page.query_selector("[role=dialog]") and page.is_visible("[role=dialog]")), "reduced: its card closes when the block leaves")
+    check(not page.evaluate(CARD_OPEN), "reduced: its card closes when the block leaves")
     check(not errors, f"reduced: no console errors: {errors[:3]}")
     ctx.close()
 
@@ -686,9 +741,9 @@ def check_cost(browser, url, page):
     base = measure(off, ("pass2", 0.7), ("pass2", 0.98))
     base2 = measure(off, ("ranked", 0.0), ("ranked", 0.3))
     ctx.close()
-    hin = measure(page, ("explore", 0.005), ("explore", 0.13))
+    hin = measure(page, ("explore", 0.005), ("explore", 0.19))
     hold = measure(page, ("explore", 0.3), ("explore", 0.6))
-    hout = measure(page, ("explore", 0.87), ("explore", 0.99))
+    hout = measure(page, ("explore", 0.81), ("explore", 0.99))
     still = measure(page, ("explore", 0.5), ("explore", 0.5))
     fmt = lambda m: f"max {m['max']}, mean {m['mean']:.1f} over {m['busy']} of {m['frames']} frames"
     note(f"flag off, pass2 0.70-0.98:   {fmt(base)}")
@@ -707,7 +762,10 @@ def main():
     ap.add_argument("url", nargs="?", default="http://localhost:3112")
     ap.add_argument("--shots", type=Path, default=None, help="directory for contact sheets and stills")
     ap.add_argument("--only", default="", help="comma-separated sections")
+    ap.add_argument("--scene-dpr", type=float, default=0.3, help="pixel ratio asked of the 3D scene (1 = as shipped)")
     args = ap.parse_args()
+    global SCENE_DPR
+    SCENE_DPR = args.scene_dpr
     url = args.url.rstrip("/")
     only = [s for s in args.only.split(",") if s]
     want = lambda name: not only or name in only
@@ -729,7 +787,7 @@ def main():
             if want("handoff"):
                 check_handoff(page)
                 if args.shots:
-                    for at in (0.0, 0.06, 0.085, 0.5, 0.92, 1.0):
+                    for at in (0.0, 0.05, 0.115, 0.145, 0.5, 0.87, 1.0):
                         goto_beat(page, "explore", at, 500)
                         page.screenshot(path=str(args.shots / f"still-1440-explore-{round(at * 1000):04d}.png"))
             if want("list"):

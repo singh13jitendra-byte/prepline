@@ -39,8 +39,12 @@ HOLD = (0.1, 0.9)
 held = 0
 
 with sync_playwright() as p:
-    b = p.chromium.launch()
+    # With the stop, the 3D meadow is on the page: software GL as in the other checks, and the scene
+    # asked for fewer pixels (its window.__ffDebug), or a screenshot can time out. No flag: as before.
+    b = p.chromium.launch(args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"]) if EXPLORE else p.chromium.launch()
     pg = b.new_page(viewport={"width": 1440, "height": 900})
+    if EXPLORE:
+        pg.add_init_script("window.__ffDebug = { dpr: 0.3 };")
     pg.goto(URL, wait_until="networkidle")
     pg.wait_for_timeout(2500)
     H = pg.evaluate("document.documentElement.scrollHeight - innerHeight")

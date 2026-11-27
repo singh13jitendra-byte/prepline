@@ -267,28 +267,33 @@ const BASE_BEATS: readonly Beat[] = [
 /**
  * The explore stop is switched on by `?explore=1`. It is read once, in the browser, when this
  * module loads; the server always renders the story without it (Stage.tsx puts the live section
- * lengths in place before anything measures). It needs WebGL: without it there is nothing to
- * explore, so the stop is left out and the story runs as it always has.
+ * lengths in place before anything measures). It needs WebGL2 (the 3D meadow does): without it
+ * there is nothing to explore, so the stop is left out and the story runs as it always has.
  */
 export const EXPLORE: boolean = (() => {
   if (typeof window === "undefined") return false;
   try {
     if (new URLSearchParams(window.location.search).get("explore") !== "1") return false;
     const c = document.createElement("canvas");
-    return Boolean(c.getContext("webgl2") ?? c.getContext("webgl"));
+    return Boolean(c.getContext("webgl2"));
   } catch {
     return false;
   }
 })();
-/** Scroll length of the explore stop, in story units: about 2.7 viewports of sticky pause. */
-export const EXPLORE_VH = 270;
+/** Scroll length of the explore stop, in story units: three viewports of sticky pause. */
+export const EXPLORE_VH = 300;
 /**
  * The hand-offs inside `explore`, as beat progress. Over IN the dot field gives way to the 3D
- * meadow (and the Line leaves for the top edge); over OUT it comes back, so `ranked` starts from
- * the end state of `pass2`. One pair of numbers, so the Line, the World and the stage agree.
+ * meadow; over OUT it comes back, so `ranked` starts from the end state of `pass2`. One pair of
+ * numbers, so the Line, the World and the stage agree.
+ *
+ * Before IN (and after OUT) is a lead of 30 units in which only the Line moves: it lifts away over
+ * the top edge and comes back. The scene is active from the top of the beat and needs about 1.3s
+ * to bring its fireflies up over the painted meadow; the lead gives it that before the fade shows
+ * it. Between IN and OUT is the hold, about two viewports, where the visitor explores.
  */
-export const EXPLORE_IN: readonly [number, number] = [0.04, 0.1];
-export const EXPLORE_OUT: readonly [number, number] = [0.9, 0.96];
+export const EXPLORE_IN: readonly [number, number] = [0.1, 0.16];
+export const EXPLORE_OUT: readonly [number, number] = [0.84, 0.9];
 
 const EXPLORE_BEAT: Beat = { id: "explore", act: "read", vh: EXPLORE_VH, kind: "beat" };
 export const BEATS: readonly Beat[] = EXPLORE ? BASE_BEATS.flatMap((b) => (b.id === "ranked" ? [EXPLORE_BEAT, b] : [b])) : BASE_BEATS;
@@ -530,8 +535,8 @@ export const LINE_TRACK: Record<BeatId, readonly LineMove[]> = {
   // meadow comes up (the whole stage is the scene's and its cards'), and is back at its reading
   // position before `ranked`, which starts from there. No label: nothing is being read.
   explore: [
-    { range: [EXPLORE_IN[0] - 0.02, EXPLORE_IN[1]], from: Y(0.14), to: Y(LINE_OFF), label: copy.explore.lineLabel },
-    { range: [EXPLORE_OUT[0], EXPLORE_OUT[1] + 0.02], from: Y(LINE_OFF), to: Y(0.14), label: copy.explore.lineLabel },
+    { range: [0, EXPLORE_IN[0] + 0.02], from: Y(0.14), to: Y(LINE_OFF), label: copy.explore.lineLabel },
+    { range: [EXPLORE_OUT[1] - 0.02, 1], from: Y(LINE_OFF), to: Y(0.14), label: copy.explore.lineLabel },
   ],
   // Docks from below. It first pulls in to a short stub at the right end of the list, clear of the
   // "12 fit your portfolio" header, drops just under the rule, then rises onto it while drawing leftward.
