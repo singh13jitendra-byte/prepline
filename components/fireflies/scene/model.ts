@@ -49,6 +49,8 @@ export type FireflyModel = {
   /** Radius of a sphere around the normalised model (for picking). */
   radius: number;
   triangles: number;
+  /** The normalising wrapper's scale and offset. */
+  norm: { k: number; offset: THREE.Vector3 };
 };
 
 /**
@@ -105,8 +107,12 @@ function centroid(mesh: THREE.Mesh, target: THREE.Vector3): number {
   return area;
 }
 
-/** Wrap, measure and describe an asset. */
-export function describe(asset: FireflyAsset): FireflyModel {
+/**
+ * Wrap, measure and describe an asset. `norm`: use another model's normalisation instead of this
+ * one's own bounds, so the two can stand in for each other at the same matrix (the far model is
+ * swapped for the hero model on a focused firefly).
+ */
+export function describe(asset: FireflyAsset, norm?: FireflyModel["norm"]): FireflyModel {
   const proto = new THREE.Group();
   proto.name = "firefly-norm";
   proto.add(asset.scene);
@@ -116,9 +122,10 @@ export function describe(asset: FireflyAsset): FireflyModel {
   const box = new THREE.Box3().setFromObject(asset.scene, true);
   const size = box.getSize(new THREE.Vector3());
   const centre = box.getCenter(new THREE.Vector3());
-  const k = 1 / Math.max(size.y, 1e-4);
+  const k = norm?.k ?? 1 / Math.max(size.y, 1e-4);
   proto.scale.setScalar(k);
-  proto.position.copy(centre).multiplyScalar(-k);
+  if (norm) proto.position.copy(norm.offset);
+  else proto.position.copy(centre).multiplyScalar(-k);
   proto.updateMatrixWorld(true);
 
   const meshes = meshesOf(proto);
@@ -174,7 +181,7 @@ export function describe(asset: FireflyAsset): FireflyModel {
   for (const name of CLIP_NAMES) {
     clips[name] = asset.animations.find((c) => c.name === name) ?? asset.animations.find((c) => c.name.toLowerCase().split(/[|._\s-]/).includes(name)) ?? null;
   }
-  return { source: asset.source, proto, clips, parts, blocks, joints, lamp, radius, triangles };
+  return { source: asset.source, proto, clips, parts, blocks, joints, lamp, radius, triangles, norm: { k, offset: proto.position.clone() } };
 }
 
 async function exists(url: string): Promise<boolean> {
@@ -207,7 +214,8 @@ export type FireflyModels = { hero: FireflyModel; lod: FireflyModel; missing: Cl
 export async function loadFireflies(colors: FfColors, opts: { standin?: boolean } = {}): Promise<FireflyModels> {
   const [heroGlb, lodGlb] = opts.standin ? [null, null] : await Promise.all([loadGlb(FIREFLY_FILES.hero), loadGlb(FIREFLY_FILES.lod)]);
   const hero = describe(heroGlb ?? buildStandin(colors, false));
-  const lod = describe(lodGlb ?? buildStandin(colors, true));
+  // Both from the same hand: the same origin and units, so the hero's normalisation fits the far model too.
+  const lod = describe(lodGlb ?? buildStandin(colors, true), !!heroGlb === !!lodGlb ? hero.norm : undefined);
   const missing = CLIP_NAMES.filter((n) => !hero.clips[n]);
   if (hero.source === "glb" && missing.length) console.warn(`[fireflies] firefly.glb has no clip named: ${missing.join(", ")}`);
   return { hero, lod, missing };

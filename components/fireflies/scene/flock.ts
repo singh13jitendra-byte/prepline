@@ -192,9 +192,11 @@ const FRAG_LIGHT = /* glsl */ `
   #endif
 }
 // Coming and going (and too close to the lens): a screen-door fade, so nothing needs sorting.
+// A negative fade is the other half of the same screen: the far body, drawn exactly where the
+// hero model that is taking its place (fade +x) is not, so the two never overlap or leave a hole.
 if (vFx.z < 0.995) {
   float ffNoise = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
-  if (vFx.z <= ffNoise) discard;
+  if (vFx.z < 0.0 ? ffNoise < -vFx.z : vFx.z <= ffNoise) discard;
 }
 `;
 
@@ -418,6 +420,34 @@ export class Flock {
     a.reset();
     a.setEffectiveWeight(0);
     a.play();
+  }
+
+  /**
+   * Take over from another flock's rig (the same character at another level of detail): the same
+   * point in each loop, the same wing-beat rate, and `notice` already under way if it is.
+   */
+  adopt(r: number, from: Rig, noticeAt: number) {
+    const rig = this.rigs[r];
+    rig.rate = from.rate;
+    rig.w.fly = from.w.fly;
+    rig.w.hover = from.w.hover;
+    rig.w.notice = from.w.notice;
+    for (const name of ["fly", "hover"] as const) {
+      const a = rig.actions[name];
+      const b = from.actions[name];
+      if (a && b) a.time = b.time % a.getClip().duration;
+    }
+    const n = rig.actions.notice;
+    if (n) {
+      n.stop();
+      if (noticeAt >= 0) {
+        n.reset();
+        n.setEffectiveWeight(0);
+        n.play();
+        n.time = Math.min(noticeAt * rig.rate, n.getClip().duration);
+      }
+    }
+    rig.actions.blink?.stop();
   }
 
   blink(r: number) {
