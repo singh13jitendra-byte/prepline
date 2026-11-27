@@ -1,0 +1,318 @@
+/*
+ * The lab page around the firefly scene. Tokens only (app/theme.css). Everything here is opaque
+ * paper or flat night: nothing is glass, nothing is blurred. The light is in the canvas.
+ */
+.ffl {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--ff-veil);
+  color: var(--c-on-night);
+}
+.ffl-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.ffl-loading {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--leading-small);
+  font-weight: var(--weight-label);
+  color: var(--c-on-night-2);
+  white-space: nowrap;
+}
+/* The hint: small type on a painting, so it carries its own ground (a night slip). */
+.ffl-hint {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(18px, 4vh, 40px);
+  z-index: 2;
+  margin: 0;
+  translate: -50% 8px;
+  font-size: var(--fs-small);
+  line-height: var(--leading-small);
+  font-weight: var(--weight-label);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--dur-3) var(--ease-out),
+    translate var(--dur-3) var(--ease-out),
+    visibility 0s linear var(--dur-3);
+}
+.ffl-hint[data-on] {
+  opacity: 1;
+  translate: -50% 0;
+  visibility: visible;
+  transition-delay: 1.6s, 1.6s, 1.6s;
+}
+
+/* ── the list (placeholder for JobsList): off stage until Tab reaches it ── */
+.ffl-list {
+  position: absolute;
+  z-index: 4;
+  top: 12px;
+  right: 12px;
+  width: min(320px, calc(100vw - 24px));
+  max-height: calc(100% - 24px);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-md);
+  background: var(--c-night);
+  box-shadow: inset 0 0 0 var(--hairline) var(--c-rule-night);
+  translate: calc(100% + 16px) 0;
+  transition: translate var(--dur-2) var(--ease-out);
+}
+.ffl-list:focus-within,
+.ffl[data-state="failed"] .ffl-list {
+  translate: 0 0;
+}
+.ffl-list-h {
+  flex: none;
+  margin: 0;
+  padding: 12px 14px 8px;
+  font-size: var(--fs-micro);
+  line-height: var(--leading-micro);
+  font-weight: var(--weight-label);
+  color: var(--c-on-night-2);
+}
+.ffl-list ol {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0 6px 8px;
+  list-style: none;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.ffl-list button {
+  appearance: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  text-align: left;
+  font: inherit;
+  font-size: var(--fs-small);
+  line-height: var(--leading-small);
+  color: var(--c-on-night);
+  background: none;
+  border: 0;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.ffl-list button b {
+  font-weight: var(--weight-label);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ffl-list button span {
+  grid-column: 1;
+  font-size: var(--fs-micro);
+  color: var(--c-on-night-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ffl-list button i {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-style: normal;
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--c-match);
+}
+.ffl-list button:focus-visible {
+  outline: 2px solid var(--c-focus);
+  outline-offset: -2px;
+  background: var(--c-night-2);
+}
+
+/* ── the card (placeholder for JobCard) ── */
+.ffc {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  width: min(384px, calc(100vw - 24px));
+  perspective: 1200px;
+  visibility: hidden;
+  pointer-events: none;
+  transition: visibility 0s linear 0.24s;
+}
+.ffc[data-open] {
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+/* Folded: edge-on to the eye, hinged on the firefly's side. Opaque all the way: paper, not glass. */
+.ffc-paper {
+  height: auto;
+  transform-origin: 0 50%;
+  transform: rotateY(-89deg);
+  transition: transform 0.22s var(--ease-in);
+  backface-visibility: hidden;
+}
+.ffc[data-side="left"] .ffc-paper {
+  transform-origin: 100% 50%;
+  transform: rotateY(89deg);
+}
+.ffc[data-side="below"] .ffc-paper {
+  transform-origin: 50% 0;
+  transform: rotateX(89deg);
+}
+.ffc[data-open] .ffc-paper {
+  transform: none;
+  transition: transform 0.56s var(--ease-spring-soft);
+}
+.ffc-paper:focus-visible {
+  outline: 2px solid var(--c-focus);
+  outline-offset: 3px;
+}
+/* One pass of lamp light across the paper as it opens, from the firefly's side. */
+.ffc-sweep {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 55%;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: multiply;
+  background: linear-gradient(100deg, transparent, color-mix(in oklab, var(--art-lamp) 55%, transparent) 50%, transparent);
+  transform: translate3d(-110%, 0, 0);
+}
+.ffc[data-open] .ffc-sweep {
+  animation: ffc-sweep 0.95s var(--ease-out) 0.12s 1 both;
+}
+.ffc[data-open][data-side="left"] .ffc-sweep {
+  animation-name: ffc-sweep-back;
+}
+@keyframes ffc-sweep {
+  0% {
+    opacity: 0;
+    transform: translate3d(-110%, 0, 0);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(200%, 0, 0);
+  }
+}
+@keyframes ffc-sweep-back {
+  0% {
+    opacity: 0;
+    transform: translate3d(200%, 0, 0);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-110%, 0, 0);
+  }
+}
+.ffc-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, auto));
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 10px 16px;
+  border-bottom: var(--hairline) solid var(--pp-rule);
+}
+.ffc-facts dt {
+  font-size: var(--pp-fs-micro);
+  line-height: 16px;
+  color: var(--pp-fg-2);
+}
+.ffc-facts dd {
+  margin: 0;
+  font-size: var(--pp-fs-body);
+  line-height: 20px;
+  font-weight: var(--weight-strong);
+  color: var(--pp-fg);
+  white-space: nowrap;
+}
+.ffc-why {
+  margin: 0;
+  padding: 6px 16px 8px;
+  list-style: none;
+}
+.ffc-why li {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  column-gap: 12px;
+  padding: 5px 0;
+  font-size: var(--pp-fs-meta);
+  line-height: 18px;
+  border-top: var(--hairline) solid var(--pp-rule);
+}
+.ffc-why li:first-child {
+  border-top: 0;
+}
+.ffc-why b {
+  font-weight: var(--weight-strong);
+  color: var(--pp-fg);
+}
+.ffc-why span {
+  color: var(--pp-fg);
+}
+.ffc-why li[data-gap] b {
+  color: var(--pp-warn);
+}
+.ffc .pp-role-f {
+  flex-wrap: wrap;
+}
+.ffc .pp-quiet {
+  flex: 1 1 100%;
+  margin: 2px 0 0;
+}
+/* Reduced motion: the card shows in place with a fade. No fold, no sweep. */
+html.reduced .ffc-paper,
+.ffl[data-reduced] .ffc-paper {
+  transform: none !important;
+  opacity: 0;
+  transition: opacity 0.2s linear;
+}
+html.reduced .ffc[data-open] .ffc-paper,
+.ffl[data-reduced] .ffc[data-open] .ffc-paper {
+  opacity: 1;
+}
+html.reduced .ffc-sweep,
+.ffl[data-reduced] .ffc-sweep {
+  display: none;
+}
+
+.ffl-hud {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 5;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--c-night);
+  color: var(--c-on-night-2);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-micro);
+  line-height: 1.5;
+  pointer-events: none;
+}
