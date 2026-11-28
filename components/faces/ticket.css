@@ -51,6 +51,27 @@
     justify-content: center;
   }
 }
+/* The Role's pressed flower, taped into the main part's top-right corner (clear of the header,
+   the brand line, the stamp below and the stub beside it). */
+.tkx .pp-ticket-main {
+  position: relative;
+}
+.pp-ticket-decor {
+  position: absolute;
+  top: 12px;
+  right: 22px;
+  pointer-events: none;
+}
+@media (max-width: 767px) {
+  .pp-ticket-decor {
+    top: 6px;
+    right: 8px;
+  }
+  .tkx-pressed {
+    width: 29px;
+    height: 40px;
+  }
+}
 /* In flight the print slips further off register. */
 .tkx[data-host="actor"] .pp-ticket {
   box-shadow: var(--shadow-2);

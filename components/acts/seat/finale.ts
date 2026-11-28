@@ -8,10 +8,10 @@
  *   380     impact: the head squashes, the ticket stage shakes 2-3px for 120ms, the ink is left
  *   640     the head lifts away
  *   960     the ticket tears along the perforation (tearAndFly): the stub hinges off its bottom
- *           corner, ragged edges on both pieces (`prepline:seat-flight` { seat, eta }), then flies
+ *           corner, ragged edges on both pieces (`prepline:seat-flight` { eta }), then flies
  *           a curved path (900ms) into the nav's "Save me a seat" and docks there
- *   2100    arrival: `prepline:seat-docked` { seat }. Nav ignites its CTA and shows the seat
- *           (Delight 9). Nav falls back to `prepline:seat-claimed` 2.4s after the claim, so the
+ *   2100    arrival: `prepline:seat-docked` { ring }. Nav ignites its CTA and it reads "Seat
+ *           saved" (Delight 9; no seat number is ever shown, `ring` is only a position). Nav falls back to `prepline:seat-claimed` 2.4s after the claim, so the
  *           whole sequence stays well inside that window.
  *
  * Motion is WAAPI on transform and opacity only, so nothing is restyled per frame: no inline style
@@ -20,7 +20,7 @@
  * Reduced motion never comes here: TicketFace draws the impression statically and only docks.
  */
 
-import { SEATS, SEAT_NO, seatState } from "./seatState";
+import { SEAT_NO, seatState } from "./seatState";
 
 /* ── timing (ms from the success) ── */
 export const T_HEAD = 120;
@@ -142,14 +142,14 @@ function buildStub(tkx: HTMLElement) {
   return { root, x0, w, H };
 }
 
-/** Arrival in the nav: Nav listens (Delight 9) and ignites its CTA with the seat. */
+/** Arrival in the nav: Nav listens (Delight 9) and ignites its CTA ("Seat saved", no number). */
 export function dock(opts: { reduced: boolean }) {
-  window.dispatchEvent(new CustomEvent("prepline:seat-docked", { detail: { ring: SEAT_NO, seat: SEAT_NO, of: SEATS, reduced: opts.reduced } }));
+  window.dispatchEvent(new CustomEvent("prepline:seat-docked", { detail: { ring: SEAT_NO, reduced: opts.reduced } }));
 }
 
 /** The visitor chose Edit it.: the ticket is whole again. Informational for listeners. */
 export function release() {
-  window.dispatchEvent(new CustomEvent("prepline:seat-released", { detail: { ring: SEAT_NO, seat: SEAT_NO } }));
+  window.dispatchEvent(new CustomEvent("prepline:seat-released", { detail: { ring: SEAT_NO } }));
 }
 
 /**
@@ -259,7 +259,7 @@ export function tearAndFly(tkx: HTMLElement): () => void {
   root.style.transform = String(frames[0].transform);
   document.body.appendChild(root);
   mark("torn");
-  window.dispatchEvent(new CustomEvent("prepline:seat-flight", { detail: { seat: SEAT_NO, eta: total } }));
+  window.dispatchEvent(new CustomEvent("prepline:seat-flight", { detail: { eta: total } }));
   const anim = root.animate(frames, { duration: total, easing: "linear", fill: "forwards" });
   let done = false;
   anim.onfinish = () => {

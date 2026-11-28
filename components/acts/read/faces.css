@@ -129,6 +129,13 @@
   font-weight: var(--weight-strong);
   font-variant-numeric: tabular-nums;
 }
+/* The Role's pressed flower: bottom-right margin, under the chip's row and left of the tick, clear
+   of the score and of the longest chip ("Fits your case studies"). */
+.pl-tile-pressed {
+  position: absolute;
+  right: 21px;
+  bottom: 1px;
+}
 .pl-tile-tick {
   position: absolute;
   right: 7px;

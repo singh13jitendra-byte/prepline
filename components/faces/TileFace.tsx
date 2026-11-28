@@ -11,6 +11,9 @@
  * 560 × 240 panel, and the tile is then laid out exactly like the sheet's cover
  * (this same component in a 214.7 × 92 box), so the cut to the sheet is invisible.
  *
+ * A pressed flower of the Role's type (PressedFlower) is taped into the bottom-right margin, left
+ * of the tick, clear of the title, the score and the chip. Static and decorative.
+ *
  * The chip flips with the story: saved → applied → interview (with a calendar
  * mark and a drawn tick). It reads `tileShow` every frame; the board
  * performances own those values. Server and reduced-motion markup show the end
@@ -28,8 +31,12 @@ import { registerFace, type FaceProps } from "@/components/story/faces";
 import { Tile, productData } from "@/components/product";
 import { storyCopy } from "@/lib/content";
 import { story } from "@/lib/story";
+import { PressedFlower } from "@/components/art/PressedFlower";
+import { flowerOf } from "@/components/world/fieldFlowers";
 
 const role = productData.roles[0];
+/** The Role's flower (its type, as in the meadow), pressed into the tile's bottom-right margin. */
+const FLOWER = flowerOf(role.title);
 const labels = [storyCopy.saved.chip, storyCopy.applied.chip, storyCopy.interview.chip] as const;
 const TICK = 14;
 /** The tile's layout size before it is scaled to the 154 × 92 face (the layout scale is 0.77). */
@@ -97,6 +104,7 @@ export function TileFace({ host }: FaceProps) {
           <Tile item={{ role, stage: "saved", date: labels[2] }} />
         </div>
       </div>
+      <PressedFlower type={FLOWER} size={33} tilt={-10} className="pl-tile-pressed" />
       <svg className="pl-tile-tick" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
         <path ref={tickRef} d="M3.5 8.4l3 3 6-6.6" strokeDasharray={TICK} style={{ strokeDashoffset: 0 }} />
       </svg>

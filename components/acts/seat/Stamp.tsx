@@ -4,7 +4,7 @@
  * THE STAMP (Delight 8) — the rubber stamp that seals a seat request on the ticket.
  *
  * - <StampImpression>: the ink left on the ticket. A rounded double border, "SEAT SAVED" in Young
- *   Serif capitals and "Nº 13 of 25" under it, in pine (a duplicate request: "ALREADY SAVED" in
+ *   Serif capitals and "Private beta" under it (no seat number), in pine (a duplicate request: "ALREADY SAVED" in
  *   moss, one line). The ink is a little uneven: an SVG filter knocks fine specks out of it and
  *   nudges its edges, the way a real stamp never inks perfectly. Drawn once; never animated
  *   except its first 90ms (TicketFace).
@@ -17,14 +17,12 @@
  */
 
 import { storyCopy } from "@/lib/content";
-import { SEATS, SEAT_NO } from "./seatState";
-
-const fill = (s: string) => s.replace("{n}", String(SEAT_NO)).replace("{total}", String(SEATS));
+/** What the stamp prints and the live region says. No seat number, ever. */
 export const stampCopy = {
   saved: storyCopy.seat.stampSaved,
-  seat: fill(storyCopy.seat.stampSeat),
+  seat: storyCopy.seat.stampSeat,
   already: storyCopy.seat.stampAlready,
-  live: fill(storyCopy.seat.stampLive),
+  live: storyCopy.seat.stampLive,
 };
 
 /** The impression's box (px). The head is this plus a 6px rim. */

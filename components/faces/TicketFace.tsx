@@ -10,8 +10,9 @@
  *   stub, where the eye already is. The request status is shared (seatState) so the seat act can
  *   redraw the Line and send `prepline:seat-claimed`.
  *   The stamp finale (Delight 8, components/acts/seat/finale.ts): a rubber stamp slams down and
- *   leaves "SEAT SAVED · Nº 13 of 25" in pine ink, the stub tears off along the perforation and
- *   flies into the nav's "Save me a seat", which then shows the seat (`prepline:seat-docked`).
+ *   leaves "SEAT SAVED / Private beta" in pine ink (no seat number, ever), the stub tears off along
+ *   the perforation and flies into the nav's "Save me a seat", which then reads "Seat saved"
+ *   (`prepline:seat-docked`).
  *   A duplicate gets a gentler "ALREADY SAVED" and keeps its stub; errors get no stamp.
  *   Reduced motion: the impression is simply there, nothing flies.
  * - host "actor": the flying copy seen while the sheet flips (inert, aria-hidden). A still print:
@@ -19,6 +20,10 @@
  *   anchors, so a flight carries a small tree and the hand-over is pixel-identical at rest.
  *   After a request it prints what the real ticket shows: the success line, the impression, and
  *   the torn edge once the stub has flown.
+ *
+ * - Both hosts: the Role's flower (the one the story followed, its type as in the meadow), pressed
+ *   and taped into the main part's top-right corner (PressedFlower), off the stub that tears away
+ *   and clear of the stamp. Static and decorative.
  *
  * Laid out at the face's natural size, 520 x 300. On phones the face is registered small
  * (TICKET_SMALL): a real narrow layout at about 1:1, the stub and its seats kept beside the form,
@@ -29,8 +34,10 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProp
 import { createPortal } from "react-dom";
 import { registerAnchor, type AnchorId } from "@/lib/anchors";
 import { WaitlistForm, WaitlistPrint, type WaitlistStatus } from "@/components/WaitlistForm";
-import { SeatTicket } from "@/components/product";
+import { SeatTicket, productData } from "@/components/product";
 import { ART, SEAT_RINGS } from "@/components/art";
+import { PressedFlower } from "@/components/art/PressedFlower";
+import { flowerOf } from "@/components/world/fieldFlowers";
 import { registerFace, type FaceProps } from "@/components/story/faces";
 import { story } from "@/lib/story";
 import { CLAIM_RING, SEATS, seatState, useSeatState } from "@/components/acts/seat/seatState";
@@ -38,6 +45,9 @@ import { StampHead, StampImpression, StampPrint, stampCopy } from "@/components/
 import { T_HEAD, T_IMPACT, T_LIFT, T_TEAR, TEAR_MAIN, dock, release, settleStub, tearAndFly } from "@/components/acts/seat/finale";
 import "@/components/acts/seat/stamp.css";
 import "./ticket.css";
+
+/** The Role the story followed (the Actor), and its flower: pressed into the ticket's top-right corner. */
+const FLOWER = flowerOf(productData.roles[0].title);
 
 /** The torn edge, declared on the ticket itself (its --pp-stub and keyline are defined there). */
 const TEAR_STYLE = { "--tkx-tear": TEAR_MAIN } as CSSProperties;
@@ -280,7 +290,7 @@ function TicketFace({ skin, host }: FaceProps) {
     >
       <div className="tkx-inner" data-skin="day">
         {/* The product's own "Seat requested" pill gives way to the stamp's impression (below). */}
-        <SeatTicket skin="day" stamped={false} style={TEAR_STYLE}>
+        <SeatTicket skin="day" stamped={false} style={TEAR_STYLE} decor={<PressedFlower type={FLOWER} size={58} tilt={8} className="tkx-pressed" />}>
           {live ? (
             <WaitlistForm tone="ticket" onStatusChange={onStatus} doneLive={stampCopy.live} />
           ) : (

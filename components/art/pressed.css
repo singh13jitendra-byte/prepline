@@ -1,0 +1,98 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   PRESSED FLOWER (components/art/PressedFlower.tsx). A dried flower, flat on the paper:
+   petals a step faded toward the paper and aged toward moss, hairline edges and veins in the
+   flower's own colour darkened toward moss (so the cream moonflower still reads on cream), a
+   touch translucent, and a strip of lamp washi tape (a flat fill: lamp is never a line on cream).
+   Tokens only.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.pfl {
+  --pfl: var(--art-flower-moon);
+  --pfl-edge: color-mix(in oklab, var(--pfl) 46%, var(--c-ink-2));
+  --pfl-fill: color-mix(in oklab, var(--pfl) 84%, var(--c-ink-2));
+  --pfl-stem-c: color-mix(in oklab, var(--art-flower-stem) 70%, var(--c-ink-2));
+  display: block;
+  flex: none;
+  overflow: visible;
+  pointer-events: none;
+}
+.pfl[data-flower="bell"] {
+  --pfl: var(--art-flower-bell);
+}
+.pfl[data-flower="poppy"] {
+  --pfl: var(--art-flower-poppy);
+}
+.pfl[data-flower="allium"] {
+  --pfl: var(--art-flower-allium);
+}
+.pfl[data-flower="lavender"] {
+  --pfl: var(--art-flower-lavender);
+}
+/* The cream moonflower would vanish on paper if faded: it is aged instead, a warm parchment
+   toward its own heart, with a firmer edge. */
+.pfl[data-flower="moon"] {
+  --pfl: color-mix(in oklab, var(--art-flower-moon) 66%, var(--art-flower-core));
+  --pfl-fill: color-mix(in oklab, var(--pfl) 93%, var(--c-ink-2));
+  --pfl-edge: color-mix(in oklab, var(--art-flower-core) 34%, var(--c-ink-2));
+}
+
+.pfl-dried {
+  opacity: 0.86;
+}
+.pfl-petal {
+  fill: var(--pfl-fill);
+  fill-opacity: 0.88;
+  stroke: var(--pfl-edge);
+  stroke-width: 0.75;
+  stroke-linejoin: round;
+}
+.pfl-floret {
+  stroke-width: 0.18;
+}
+.pfl-ball {
+  fill: color-mix(in oklab, var(--pfl) 34%, transparent);
+}
+.pfl-vein,
+.pfl-crease {
+  fill: none;
+  stroke: var(--pfl-edge);
+  stroke-width: 0.55;
+  stroke-linecap: round;
+  opacity: 0.7;
+}
+.pfl-crease {
+  opacity: 0.45;
+}
+.pfl-stem {
+  fill: none;
+  stroke: var(--pfl-stem-c);
+  stroke-width: 1.15;
+  stroke-linecap: round;
+}
+.pfl-thin {
+  stroke-width: 0.8;
+}
+.pfl-leaf {
+  fill: color-mix(in oklab, var(--art-flower-stem) 72%, var(--c-paper-2));
+  fill-opacity: 0.9;
+  stroke: var(--pfl-stem-c);
+  stroke-width: 0.45;
+  stroke-linejoin: round;
+}
+.pfl-core {
+  fill: color-mix(in oklab, var(--art-flower-core) 82%, var(--c-ink-2));
+}
+.pfl-heart {
+  fill: color-mix(in oklab, var(--art-flower-stem) 40%, var(--c-ink));
+}
+.pfl-stamen {
+  fill: none;
+  stroke: color-mix(in oklab, var(--art-flower-stem) 40%, var(--c-ink));
+  stroke-width: 0.4;
+  stroke-linecap: round;
+  opacity: 0.8;
+}
+/* Washi: translucent lamp, laid over the stem. */
+.pfl-tape {
+  fill: color-mix(in oklab, var(--art-lamp) 52%, transparent);
+}

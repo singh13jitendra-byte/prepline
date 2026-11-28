@@ -11,6 +11,8 @@ import { Chair } from "./Chair";
 import { LaptopClosed } from "./LaptopClosed";
 import { ScoreRing } from "./ScoreRing";
 import { SeatRingA, SeatRingB, SeatRingC } from "./SeatRing";
+import { PressedFlower } from "./PressedFlower";
+import { FLOWER_TYPES } from "@/components/world/fieldFlowers";
 import { Tick } from "./Tick";
 import { Calendar } from "./Calendar";
 import { Stamp } from "./Stamp";
@@ -156,6 +158,19 @@ export function Gallery() {
             })}
           </div>
         ))}
+      </section>
+
+      <section data-shot="pressed-flowers" style={{ marginTop: 44 }}>
+        <h2>pressed flowers, one per role type</h2>
+        <p className="meta">moonflower (Product), bellflower (UX), poppy (UI / Visual), allium (Design Systems), lavender (UX Research). At 120px and at the board tile&apos;s 40px.</p>
+        <div style={{ display: "flex", gap: 28, alignItems: "flex-end", flexWrap: "wrap", padding: 20, background: "var(--c-paper-2)" }}>
+          {FLOWER_TYPES.map((t) => (
+            <div key={t} style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+              <PressedFlower type={t} size={120} />
+              <PressedFlower type={t} size={40} tilt={-10} />
+            </div>
+          ))}
+        </div>
       </section>
     </main>
   );

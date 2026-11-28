@@ -9,8 +9,8 @@ export type SeatTicketProps = SurfaceProps & {
   seats?: number;
   /** After a successful request: press the stamp. */
   stamped?: boolean;
-  /** The seat number once one is assigned. Until then the stub shows an empty slot. */
-  seatNumber?: number;
+  /** Decoration in the main part's top-right corner (the seat act's pressed flower), never on the stub. */
+  decor?: ReactNode;
   header?: string;
   cohort?: string;
   foot?: string;
@@ -22,6 +22,9 @@ export type SeatTicketProps = SurfaceProps & {
  * form to its children. Set `stamped` after a successful request to press the
  * stamp and fill the visitor's ring.
  *
+ * No seat number, ever (CLAUDE.md: no seat numbers): the stub names the capacity ("of 25"), and a
+ * request is marked by a filled ring and a stamp, not a number.
+ *
  * The perforation notches are painted in `--pp-notch` (defaults to the page
  * paper). Set it to the stage background when the ticket sits on another colour.
  */
@@ -29,7 +32,7 @@ export function SeatTicket({
   children,
   seats = copy.seats,
   stamped = false,
-  seatNumber,
+  decor,
   header = copy.header,
   cohort = copy.cohort,
   foot = copy.foot,
@@ -49,6 +52,7 @@ export function SeatTicket({
       style={style}
     >
       <div className="pp-ticket-main">
+        {decor ? <span className="pp-ticket-decor">{decor}</span> : null}
         <div className="pp-ticket-top">
           <span className="pp-label">{header}</span>
         </div>
@@ -67,13 +71,11 @@ export function SeatTicket({
       <div className="pp-ticket-perf" aria-hidden="true" />
       <div className="pp-ticket-stub">
         <span className="pp-label">{copy.stubLabel}</span>
-        <span className="pp-ticket-seats pp-num" data-empty={seatNumber === undefined ? "" : undefined} aria-hidden="true">
-          {seatNumber !== undefined ? String(seatNumber).padStart(2, "0") : null}
-        </span>
+        <span className="pp-ticket-seats pp-num" data-empty="" aria-hidden="true" />
         <span className="pp-meta">of {seats}</span>
       </div>
       <span className="pp-sr">
-        {seatNumber !== undefined ? `Seat ${seatNumber} of ${seats}.` : `One of ${seats} beta seats.`}
+        {`One of ${seats} beta seats.`}
       </span>
       {stamped ? (
         <span className="pp-stamp" aria-hidden="true">

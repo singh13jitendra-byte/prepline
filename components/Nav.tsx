@@ -18,10 +18,10 @@
  *   beside it for the rest of the visit. (It replaced the orbiting lamp dot.)
  * - It leans up to 3.5px toward a nearby fine pointer (a CSS transition carries it; a write
  *   happens only on pointer moves near the nav, never per frame).
- * - Seat docked: on `prepline:seat-docked` { seat } (the ticket stub lands here) the CTA
- *   ignites, then its label crossfades to "Seat 13 saved" with a check. `prepline:seat-claimed`
- *   { ring } is the fallback if no stub arrives. Remembered for the session; still a link to
- *   #join. The two labels share one grid cell, so the pill never changes width.
+ * - Seat docked: on `prepline:seat-docked` (the ticket stub lands here) the CTA ignites, then its
+ *   label crossfades to "Seat saved" with a check. `prepline:seat-claimed` is the fallback if no
+ *   stub arrives. It never shows a seat number (CLAUDE.md: no seat numbers). Remembered for the
+ *   session; still a link to #join. The two labels share one grid cell, so the pill never changes width.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -35,8 +35,9 @@ import "./chrome.css";
 const HIDE_IN: readonly BeatId[] = ["hinge", "nightfall", "unfold", "q1", "q2", "q3", "votes"];
 const LINK_ACT: Record<string, ActId> = { "#board": "board", "#prep": "prep", "#join": "seat" };
 const idx = (b: BeatId) => BEATS.findIndex((x) => x.id === b);
-/** Session memory of a saved seat. */
+/** Session memory of a saved seat (any value means saved; Lumi reads the same key). */
 const SEAT_KEY = "prepline:seat";
+const SEAT_SAVED = "saved";
 /** How long a claimed seat waits for its stub to dock before the CTA changes anyway (ms). */
 const DOCK_WAIT = 3200;
 /** The ignite and the label crossfade, end to end (ms): `data-fresh` comes off after it. */
@@ -44,7 +45,6 @@ const FRESH_MS = 1300;
 /** The lean toward a nearby pointer: at most LEAN px, felt from REACH px outside the CTA. */
 const LEAN = 3.5;
 const REACH = 64;
-const seatOf = (n: unknown) => (typeof n === "number" && Number.isInteger(n) && n > 0 && n < 1000 ? n : null);
 
 function Arrow() {
   return (
@@ -82,11 +82,11 @@ function Check() {
   );
 }
 
-type Seat = { n: number | null; fresh: boolean };
+type Seat = { saved: boolean; fresh: boolean };
 
 function PillContent({ live, open, onMenu, seat }: { live: boolean; open?: boolean; onMenu?: () => void; seat: Seat }) {
   const t = live ? undefined : -1;
-  const saved = seat.n !== null;
+  const saved = seat.saved;
   const ctaAnchor = useAnchor("nav-cta");
   const cta = (
     <span className="nav-cta-wrap" data-cta-wrap="" ref={live ? ctaAnchor : undefined}>
@@ -98,7 +98,7 @@ function PillContent({ live, open, onMenu, seat }: { live: boolean; open?: boole
             <Arrow />
           </span>
           <span className="cta-label nav-cta-label" data-label="saved" aria-hidden={saved ? undefined : true}>
-            {storyCopy.nav.ctaSaved.replace("{seat}", String(seat.n ?? 13))}
+            {storyCopy.nav.ctaSaved}
             <Check />
           </span>
         </span>
@@ -151,37 +151,32 @@ function PillContent({ live, open, onMenu, seat }: { live: boolean; open?: boole
 export function Nav() {
   const ref = useRef<HTMLElement>(null);
   const [open, setOpen] = useState(false);
-  const [seat, setSeat] = useState<Seat>({ n: null, fresh: false });
+  const [seat, setSeat] = useState<Seat>({ saved: false, fresh: false });
 
   // A saved seat: restored from the session silently, or arriving live (docked, or claimed as fallback).
   useEffect(() => {
     try {
-      const n = seatOf(Number(window.sessionStorage.getItem(SEAT_KEY)));
-      if (n !== null) setSeat({ n, fresh: false });
+      if (window.sessionStorage.getItem(SEAT_KEY) !== null) setSeat({ saved: true, fresh: false });
     } catch {}
     let wait = 0;
     let freshTimer = 0;
     let have = false;
-    const save = (n: number) => {
+    const save = () => {
       window.clearTimeout(wait);
       if (have) return;
       have = true;
       try {
-        window.sessionStorage.setItem(SEAT_KEY, String(n));
+        window.sessionStorage.setItem(SEAT_KEY, SEAT_SAVED);
       } catch {}
-      setSeat({ n, fresh: !story.reduced() });
+      setSeat({ saved: true, fresh: !story.reduced() });
       freshTimer = window.setTimeout(() => setSeat((s) => (s.fresh ? { ...s, fresh: false } : s)), FRESH_MS);
     };
-    const onDocked = (e: Event) => {
-      const n = seatOf((e as CustomEvent<{ seat?: unknown }>).detail?.seat);
-      if (n !== null) save(n);
-    };
-    const onClaimed = (e: Event) => {
-      const n = seatOf((e as CustomEvent<{ ring?: unknown }>).detail?.ring);
-      if (n === null || have) return;
+    const onDocked = () => save();
+    const onClaimed = () => {
+      if (have) return;
       window.clearTimeout(wait);
-      if (story.reduced()) save(n);
-      else wait = window.setTimeout(() => save(n), DOCK_WAIT);
+      if (story.reduced()) save();
+      else wait = window.setTimeout(save, DOCK_WAIT);
     };
     window.addEventListener("prepline:seat-docked", onDocked);
     window.addEventListener("prepline:seat-claimed", onClaimed);
@@ -313,7 +308,7 @@ export function Nav() {
       </div>
       {open ? (
         <nav id="nav-menu" className="nav-menu" aria-label={storyCopy.nav.menu}>
-          {[...storyCopy.nav.links, { href: "#join", label: seat.n !== null ? storyCopy.nav.ctaSaved.replace("{seat}", String(seat.n)) : storyCopy.nav.cta }].map((l) => (
+          {[...storyCopy.nav.links, { href: "#join", label: seat.saved ? storyCopy.nav.ctaSaved : storyCopy.nav.cta }].map((l) => (
             <a key={l.label} href={l.href} onClick={() => setOpen(false)}>
               {l.label}
             </a>

@@ -15,7 +15,10 @@ import { useSyncExternalStore } from "react";
 /** The 25 seats printed on the ticket's stub, and the one a successful request fills (the centre, 0-based). */
 export const SEATS = 25;
 export const CLAIM_RING = 12;
-/** The seat number the stamp prints and the nav shows (the filled ring, 1-based). */
+/**
+ * The filled ring, 1-based: only a position (the World's firefly flies to anchor seat-ring-N).
+ * Never printed or shown: no seat numbers on the page.
+ */
 export const SEAT_NO = CLAIM_RING + 1;
 
 export type SeatStatus = "idle" | "sending" | "done" | "duplicate" | "error";

@@ -183,7 +183,7 @@ export const story = {
       { href: "#join", label: "Privacy" },
     ],
     cta: "Save me a seat",
-    /** The CTA once a seat is saved this session ({seat} is the seat number). */
+    /** The CTA once a seat is saved this session. No seat number (no seat numbers, ever). */
     ctaSaved: "Seat saved",
     menu: "Menu",
     railLabel: "Story",
@@ -244,9 +244,9 @@ export const story = {
     label: "The market the twelve came from",
     line: "Twelve fit. Here’s the market they came from.",
     /** Fine pointers. */
-    hint: "Hover a firefly to read the role",
-    /** Touch. */
-    hintTouch: "Tap a firefly to read the role",
+    hint: "Hover a flower to read the role",
+    /** Touch: the first tap marks a flower, the second opens its role. */
+    hintTouch: "Tap a flower twice to read the role",
     /** The 3D scene could not start: the list carries the stop. */
     hintList: "Every role is in the list",
     /** At the bottom of the stage through the whole stop. */
@@ -417,9 +417,8 @@ export const story = {
     stubOf: "One of 25",
     stamp: "Seat requested",
     /**
-     * NEW (delight 8). The rubber stamp's ink impression on the ticket after a request, and the
-     * seated nav. `{n}` is the seat filled on the stub (the centre ring), `{total}` the 25 seats.
-     * The number names the ring on this ticket, never a count of other sign-ups.
+     * NEW (delight 8). The rubber stamp's ink impression on the ticket after a request: two lines,
+     * no seat number (a number could read as a count of other sign-ups, so none is ever shown).
      */
     stampSaved: "Seat saved",
     stampSeat: "Private beta",
