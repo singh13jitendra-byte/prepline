@@ -67,15 +67,13 @@ export const LUMI_TRACK: Record<BeatId, LumiBeat> = {
     ],
     note: { id: "kept", from: 0.5, to: 0.98 },
   },
-  // Only with ?explore=1: Lumi steps back to a corner and lets the 3D meadow have the stage.
+  // Only with ?explore=1: the garden. These keys are only the spot it leaves from and comes back to
+  // (the end of pass2 = the start of ranked); between them Lumi.tsx follows worldBus.garden (GARDEN below).
   explore: {
     keys: [
-      { at: 0, spot: V(0.72, 0.6), mood: "hover" },
-      { at: 0.12, spot: V(0.9, 0.2, [0.84, 0.16]), mood: "curious" },
-      { at: 0.88, spot: V(0.9, 0.2, [0.84, 0.16]), mood: "curious" },
-      { at: 1, spot: V(0.72, 0.6), mood: "hover" },
+      { at: 0, spot: V(0.72, 0.6, [0.74, 0.84]), mood: "hover" },
+      { at: 1, spot: V(0.72, 0.6, [0.74, 0.84]), mood: "hover" },
     ],
-    note: { id: "explore", from: 0.12, to: 0.5 },
   },
   // The twelve fly into the list: Lumi leads them in and waits by the top row.
   ranked: {
@@ -180,3 +178,24 @@ export const LUMI_TRACK: Record<BeatId, LumiBeat> = {
 
 /** After the seat is claimed: just under the nav's CTA (the nav sits above Lumi), for the rest of the visit. */
 export const NAV_SEAT: Spot = A("nav-cta", [0.1, 1], [0, 62], [0, 48]);
+
+/**
+ * The garden (the `explore` beat, Lumi.tsx): over EXPLORE_IN it arcs from the explore keys above into the
+ * garden, over EXPLORE_OUT back out (both by scroll, so scrolling up reverses it); in the hold it follows
+ * worldBus.garden. Offsets are fractions of Lumi's box (LUMI_SIZE), so phones scale with it.
+ *   rest     no target: top right, clear of the line copy (top left) and the list button (bottom left);
+ *            on phones the line copy spans the top, so it rests at the right under it
+ *   beside   hovering beside a flower: up and to one side of its heart (mirrored when there is no room);
+ *            kept inside the lantern's reach (LENS_RADIUS) so the flower catches its light
+ *   perch    landed: the character's feet on the heart
+ *   noteAfter  seconds with no target in the hold before the "explore" note ("Go on, peek inside one.")
+ */
+export const GARDEN = {
+  rest: V(0.9, 0.2, [0.84, 0.36]),
+  /** Phones: never higher than this (px from the top), so it and its note stay under the line slip on short screens. */
+  restMinYSmall: 300,
+  beside: [0.44, -0.3] as const,
+  perch: [0, -0.26] as const,
+  noteAfter: 1.2,
+  glow: { beside: 1, perch: 1.15, rest: 1 },
+};

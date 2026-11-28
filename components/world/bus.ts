@@ -58,9 +58,16 @@ export const worldBus = {
    * The explore stop (components/acts/explore, behind ?explore=1): how far the 3D meadow has taken
    * over from the dot field, 0 (the dots, as at the end of pass 2) to 1 (the 3D scene alone).
    * ExploreStage is the only writer; without the flag it stays 0. The canvas fades the field by it
-   * (Lumi steps aside to a corner for the stop).
+   * (Lumi flies through the garden for the stop: see `garden` below).
    */
   explore: { k: 0 },
+  /**
+   * The garden (the explore stop's flowers, components/garden/scene): where Lumi should be. The garden
+   * scene (or the scroll tour driving it) is the only writer; Lumi (components/lumi) reads it during the
+   * `explore` beat. `x, y` is the target in viewport px (the flower's heart; -999 for none), `perch` is 1
+   * when Lumi should land on it and 0 to hover beside it, `seq` changes whenever the target flower does.
+   */
+  garden: { x: -999, y: -999, perch: 0, seq: 0 },
   /** Last measured numbers, for the debug console (window.__world). */
   stats: { calls: 0, dpr: 0, frameMs: 0, cpuMs: 0, gpuMs: -1, rendered: 0, skipped: 0, instances: 0 },
 };

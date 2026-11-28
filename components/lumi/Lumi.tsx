@@ -10,6 +10,10 @@
  *                      with a fine pointer it then flies to the cursor and follows it ("I'll come with you")
  *   from first scroll  it follows LUMI_TRACK (track.ts): through the window, over the meadow, onto the
  *                      Role as the Actor carries it, beside the prep sheet as a reading light, to the ticket
+ *   the garden         (`explore`, ?explore=1) it arcs in over EXPLORE_IN, then follows worldBus.garden: flies to the
+ *                      flower the garden names (an arc, timed), hovers beside it (curious) or lands on it (perch);
+ *                      with no flower it drifts back to the top-right corner and, after a moment, says
+ *                      "Go on, peek inside one."; over EXPLORE_OUT it arcs back out (both hand-offs by scroll)
  *   seat saved         on `prepline:seat-claimed` / `prepline:seat-docked` it says goodbye and settles by
  *                      the nav's CTA for the rest of the visit
  *
@@ -26,10 +30,10 @@ import { useEffect, useRef } from "react";
 import { anchorRect, watchAnchors, type AnchorId } from "@/lib/anchors";
 import { storyCopy } from "@/lib/content";
 import { webglAvailable } from "@/lib/gl";
-import { story, type BeatId, type StoryState } from "@/lib/story";
+import { EXPLORE_IN, EXPLORE_OUT, story, type BeatId, type StoryState } from "@/lib/story";
 import { worldBus } from "@/components/world/bus";
 import { mountLumi, type LumiRig, type RigMood } from "./rig";
-import { LUMI_SIZE, LUMI_TRACK, NAV_SEAT, type Mood, type NoteId, type Spot } from "./track";
+import { GARDEN, LUMI_SIZE, LUMI_TRACK, NAV_SEAT, type Mood, type NoteId, type Spot } from "./track";
 import "./lumi.css";
 
 /** Spring toward the target (1/s²) and its damping. Following the cursor is a little lazier. */
@@ -52,6 +56,7 @@ const SEAT_KEY = "prepline:seat";
 const LIGHTS_MEADOW: readonly BeatId[] = ["hero", "pass1", "pass2", "explore", "ranked"];
 
 const ease = (x: number) => x * x * (3 - 2 * x);
+const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const damp = (from: number, to: number, rate: number, dt: number) => to + (from - to) * Math.exp(-rate * dt);
 
@@ -119,6 +124,16 @@ export function Lumi() {
     let lastNoteT = "";
     let lastSide = "";
     let lastDay = "";
+    // the garden (explore beat): a travelling target `g` that arcs to where the garden wants Lumi
+    let gx = NaN;
+    let gy = NaN;
+    let gSeq = -1;
+    let gSet = false;
+    let gSide = 1;
+    let gPerch = 0;
+    let gNoneFor = 0;
+    let gHold = false;
+    const flight = { on: false, x0: 0, y0: 0, t: 0, T: 1 };
 
     const onClaim = () => {
       if (claimed) return;
@@ -178,6 +193,96 @@ export function Lumi() {
       const gb = b?.glow ?? ga;
       const on = tr?.note && p >= tr.note.from && p <= tr.note.to;
       return { pos, mood, glow: ga + (gb - ga) * f, note: on ? tr.note!.id : null, side: on ? tr.note!.side : undefined };
+    };
+
+    /**
+     * A point along a lifted arc from a to b (quadratic bezier, u 0..1): the control point is pushed off the
+     * straight line, upward (or, for a nearly vertical move, toward the middle of the screen), by a lift that
+     * grows with the distance. Depends only on its inputs, so a scroll-driven u runs it backward too.
+     */
+    const arc = (ax: number, ay: number, bx: number, by: number, u: number, vw: number): [number, number] => {
+      const dx = bx - ax;
+      const dy = by - ay;
+      const d = Math.hypot(dx, dy);
+      if (d < 1) return [bx, by];
+      let nx = -dy / d;
+      let ny = dx / d;
+      const flip = Math.abs(ny) < 0.25 ? Math.sign(nx) !== ((ax + bx) / 2 < vw / 2 ? 1 : -1) : ny > 0;
+      if (flip) {
+        nx = -nx;
+        ny = -ny;
+      }
+      const lift = clamp(d * 0.32, 24, 150);
+      const cx = (ax + bx) / 2 + nx * lift;
+      const cy = (ay + by) / 2 + ny * lift;
+      const v = 1 - u;
+      return [v * v * ax + 2 * v * u * cx + u * u * bx, v * v * ay + 2 * v * u * cy + u * u * by];
+    };
+
+    /**
+     * The garden's wish for this frame (worldBus.garden, written by the garden scene): where Lumi goes, the
+     * clip, its light and the note. A new flower (`seq`) or a target appearing / going starts a timed arc
+     * from wherever the travelling target is; the arc's end follows the live flower, so a swaying flower
+     * is tracked without restarting the flight.
+     */
+    const garden = (s: Readonly<StoryState>, vw: number, vh: number, dt: number, hold: boolean) => {
+      const G = worldBus.garden;
+      const set = G.x > -900 && G.y > -900;
+      const bx0 = GARDEN.beside[0] * S;
+      if (set && (G.seq !== gSeq || !gSet)) gSide = G.x + bx0 > vw - S * 0.42 ? -1 : 1;
+      else if (set && gSide > 0 && G.x + bx0 > vw - S * 0.42) gSide = -1;
+      else if (set && gSide < 0 && G.x - bx0 < S * 0.42) gSide = 1;
+      gPerch = damp(gPerch, set && G.perch > 0.5 ? 1 : 0, 7, dt);
+      let dx: number, dy: number;
+      if (set) {
+        const h = 1 - gPerch;
+        dx = G.x + gSide * bx0 * h + GARDEN.perch[0] * S * gPerch;
+        dy = G.y + (GARDEN.beside[1] * h + GARDEN.perch[1] * gPerch) * S;
+        dx = clamp(dx, S * 0.4, vw - S * 0.4);
+        dy = clamp(dy, S * 0.45, vh - S * 0.45);
+      } else {
+        [dx, dy] = resolve(GARDEN.rest, s) ?? [vw * 0.9, vh * 0.2];
+        if (small) dy = Math.max(dy, GARDEN.restMinYSmall);
+      }
+
+      if (Number.isNaN(gx)) {
+        gx = dx;
+        gy = dy;
+        flight.on = false;
+      } else if (G.seq !== gSeq || set !== gSet) {
+        const d = Math.hypot(dx - gx, dy - gy);
+        flight.on = d > 2;
+        flight.x0 = gx;
+        flight.y0 = gy;
+        flight.t = 0;
+        flight.T = clamp(0.5 + d / 1000, 0.6, 1.4);
+      }
+      gSeq = G.seq;
+      gSet = set;
+      if (flight.on) {
+        flight.t += dt;
+        const u = clamp(flight.t / flight.T, 0, 1);
+        [gx, gy] = arc(flight.x0, flight.y0, dx, dy, easeInOut(u), vw);
+        if (u >= 1) flight.on = false;
+      } else {
+        gx = dx;
+        gy = dy;
+      }
+
+      const near = !flight.on && Math.hypot(px - gx, py - gy) < 22 && Math.hypot(vx, vy) < 90;
+      let mood: Mood = "hover";
+      let glow = GARDEN.glow.rest;
+      if (set && G.perch > 0.5) {
+        mood = near && gPerch > 0.9 ? "perch" : "hover";
+        glow = GARDEN.glow.perch;
+      } else if (set) {
+        mood = flight.on ? "hover" : "curious";
+        glow = GARDEN.glow.beside;
+      } else mood = flight.on ? "hover" : "curious";
+
+      gNoneFor = hold && !set ? gNoneFor + dt : 0;
+      const note: NoteId | null = gNoneFor > GARDEN.noteAfter ? "explore" : null;
+      return { pos: [gx, gy] as const, mood, glow, note };
     };
 
     const frame = (t: number, dt0: number, s: Readonly<StoryState>) => {
@@ -240,6 +345,36 @@ export function Lumi() {
         wantNote = tr.note;
         noteSide = tr.side;
         following = false;
+        if (s.beat === "explore") {
+          // the garden: arc in over EXPLORE_IN, follow worldBus.garden in the hold, arc out over EXPLORE_OUT
+          const p = s.beatProgress;
+          const w =
+            p < EXPLORE_IN[0] ? 0
+            : p < EXPLORE_IN[1] ? ease((p - EXPLORE_IN[0]) / (EXPLORE_IN[1] - EXPLORE_IN[0]))
+            : p <= EXPLORE_OUT[0] ? 1
+            : p < EXPLORE_OUT[1] ? 1 - ease((p - EXPLORE_OUT[0]) / (EXPLORE_OUT[1] - EXPLORE_OUT[0]))
+            : 0;
+          gHold = w >= 1;
+          const g = garden(s, vw, vh, dt, gHold);
+          if (w >= 1) {
+            target = g.pos;
+            mood = g.mood;
+            wantGlow = g.glow;
+            wantNote = g.note;
+            noteSide = undefined;
+          } else if (w > 0 && target) {
+            target = arc(target[0], target[1], g.pos[0], g.pos[1], w, vw);
+            mood = "hover";
+            wantGlow = tr.glow + (g.glow - tr.glow) * w;
+          }
+        }
+      }
+      if (s.beat !== "explore" && !Number.isNaN(gx)) {
+        gx = gy = NaN;
+        gPerch = 0;
+        gNoneFor = 0;
+        gHold = false;
+        flight.on = false;
       }
 
       if (!target) target = [vw * 0.6, vh * 0.55];
@@ -354,7 +489,33 @@ export function Lumi() {
       offBeat = story.onBeatChange((b) => watch(b));
       offFrame = story.frame("world", frame);
       el.setAttribute("data-on", "");
-      (window as unknown as { __lumi?: unknown }).__lumi = { get: () => ({ x: px, y: py, mood: rigMood, note: noteId, glow, claimed }) };
+      (window as unknown as { __lumi?: unknown }).__lumi = {
+        get: () => ({
+          x: px,
+          y: py,
+          mood: rigMood,
+          note: noteId,
+          glow,
+          claimed,
+          lantern: worldBus.lantern.k,
+          garden: { ...worldBus.garden, hold: gHold, flying: flight.on, gx, gy },
+        }),
+        /**
+         * Debug / tests only: stand in for the garden scene. garden(x, y, perch) names a flower at (x, y) in
+         * viewport px (perch 1 = land on it, 0 = hover beside it); garden() clears it. A new x, y bumps `seq`
+         * (a new flower); the same x, y with another perch is the same flower.
+         */
+        garden: (x?: number, y?: number, perch = 0) => {
+          const G = worldBus.garden;
+          const nx = x ?? -999;
+          const ny = y ?? -999;
+          if (Math.abs(nx - G.x) > 1 || Math.abs(ny - G.y) > 1) G.seq++;
+          G.x = nx;
+          G.y = ny;
+          G.perch = x === undefined ? 0 : perch;
+          return { ...G };
+        },
+      };
     });
 
     return () => {
