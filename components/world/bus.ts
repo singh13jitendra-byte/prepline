@@ -1,6 +1,6 @@
 /**
- * Shared, non-React state of the world layers. Lantern.tsx is the only writer of the lantern
- * (where the warm pool is, how lit it is) and of its DOM; the canvas loop reads the lantern for
+ * Shared, non-React state of the world layers. Lumi (components/lumi/Lumi.tsx) is the only writer
+ * of the lantern (where its light is, how lit it is); the canvas loop reads the lantern for
  * its uniforms and answers with `pick` (the firefly to name). Line.tsx is the only writer of the
  * drawn line.
  */
@@ -9,7 +9,7 @@ export const LENS_RADIUS = 120;
 /** How near the resting pointer a firefly has to be to be named (CSS px). */
 export const PICK_RADIUS = 28;
 
-/** What a named firefly says. Built by the canvas loop, drawn by Lantern.tsx. */
+/** What a named firefly says. Built by the canvas loop; nothing draws it since the cursor lantern was retired (Lumi never names). */
 export type RoleTag = {
   /** "Product Designer · Pune" */
   role: string;
@@ -29,13 +29,13 @@ export const worldBus = {
   /** A real pointer has moved since load. */
   pointerMoved: false,
   /**
-   * The lantern (Lantern.tsx). `x, y` is the eased pool centre in viewport px, `k` how lit it is
-   * (0 out, 1 lit: day scenes, touch and reduced motion keep it at 0). `rest` is how long the
+   * The lantern: Lumi's light (Lumi.tsx). `x, y` is its centre in viewport px, `k` how lit it is
+   * (0 out, 1 lit: lit only in the meadow beats; reduced motion keeps it at 0). `rest` is how long the
    * pointer has been still, in seconds; `px, py` is the pointer itself.
    */
   lantern: { x: -999, y: -999, k: 0, rest: 0, px: -999, py: -999, names: false },
   /**
-   * The firefly being named (written by the canvas loop, read by Lantern.tsx). `id` is the
+   * The firefly being named (written by the canvas loop; only while `names`, which Lumi keeps false). `id` is the
    * firefly's instance, -1 for none; `x, y` is where it is held while it is read (it stops for
    * the reader, so the tag and its leader stay still). `seq` changes whenever the pick does.
    */
@@ -58,7 +58,7 @@ export const worldBus = {
    * The explore stop (components/acts/explore, behind ?explore=1): how far the 3D meadow has taken
    * over from the dot field, 0 (the dots, as at the end of pass 2) to 1 (the 3D scene alone).
    * ExploreStage is the only writer; without the flag it stays 0. The canvas fades the field by it
-   * (the lantern is out for the whole stop: Lantern.tsx).
+   * (Lumi steps aside to a corner for the stop).
    */
   explore: { k: 0 },
   /** Last measured numbers, for the debug console (window.__world). */

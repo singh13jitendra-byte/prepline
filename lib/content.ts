@@ -574,7 +574,7 @@ export const story = {
   },
 
   /**
-   * The lantern cursor (components/world/Lantern.tsx; decorative, aria-hidden). A resting pointer
+   * Retired with the lantern cursor (Lumi replaced it); kept because worldRuntime still builds tags. A resting pointer
    * names the nearest firefly: `${role} · ${score}` over one of these notes. The reasons a role
    * was set aside come from `lens.droppedPass1` / `lens.droppedPass2`.
    */
@@ -584,6 +584,28 @@ export const story = {
     aside: "set aside",
     /** Once per session, after a still moment in the meadow. */
     hint: "hover a firefly",
+  },
+  /**
+   * Lumi, the companion firefly (components/lumi). One handwritten note per scene, six to eight
+   * words, no numbers. Decorative (aria-hidden): every note restates what the copy beside it says.
+   */
+  lumi: {
+    notes: {
+      wake: "Oh, hi. I’m Lumi. Can’t sleep either?",
+      join: "I’ll come with you.",
+      window: "Let’s see what’s out there.",
+      meadow: "So many roles tonight. I’ll read every one.",
+      kept: "These are worth your time.",
+      explore: "Go on, peek inside one.",
+      fits: "This one really fits you.",
+      keep: "Let’s keep this one safe.",
+      interview: "You got the interview! Let’s prep.",
+      prep: "They’ll likely ask this. Here’s what to ask back.",
+      votes: "Tell me what they asked?",
+      morning: "Morning already.",
+      seat: "Want me on your desk tonight?",
+      bye: "See you tonight.",
+    },
   },
 } as const;
 

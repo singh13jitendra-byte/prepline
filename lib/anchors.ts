@@ -107,6 +107,8 @@ export const ANCHOR_IDS = [
   "desk-lamp",
   // After the stage: the founder note ("Why I'm building this").
   "founder-note",
+  // The nav's CTA: Lumi perches beside it once a seat is saved (components/lumi).
+  "nav-cta",
 ] as const;
 
 export type AnchorId = (typeof ANCHOR_IDS)[number];

@@ -6,7 +6,7 @@ An original firefly for the explore beat: round peach head with a brown cap, big
 
 | File | Size | Triangles | Draw calls | Nodes | Use |
 |---|---|---|---|---|---|
-| `firefly.glb` | 270,408 B (264 KB) | 9,844 | 35 | 74 | The focused firefly and any that are close to the camera |
+| `firefly.glb` | 376,100 B (367 KB, with Lumi's four clips) | 9,844 | 35 | 74 | The focused firefly and any that are close to the camera |
 | `firefly-lod.glb` | 103,136 B (101 KB) | 1,310 | 10 | 23 | The flock |
 | `halo.png` | 3,632 B | n/a | n/a | n/a | Optional soft halo sprite for the lantern (white with alpha, 128 px) |
 
@@ -39,6 +39,12 @@ Each file carries its own four clips; use the `animations` array of the file you
 | `hover` | 2.0 s | Seamless | 12 beats a second, upright, gentle bob, head and lantern drift, antennae sway |
 | `notice` | 1.2 s | One-shot | Quick duck and squint, then a bounce up with wide eyes, raised brows, open smile and lifted arms; settles by 1.1 s |
 | `blink` | 0.26 s | One-shot | Lids close and open |
+| `sleepy` | 4.0 s | Seamless | Lumi: hover at half speed, upper lids half closed, head drooping in a slow nod |
+| `wake` | 1.5 s | One-shot | Lumi: from `sleepy`, a stretch (arms up, body long), eyes pop open with a smile, settles on `hover`'s first wing beat |
+| `curious` | 2.0 s | Seamless | Lumi: hover with the head tilted about 20°, one brow up, that eye a little wider |
+| `perch` | 3.0 s | Seamless | Lumi: landed. Wings folded back along the body and still, legs down, a slow breath |
+
+The last four are in `firefly.glb` only (the hero file). They were added for Lumi, the companion firefly on the landing page (`components/lumi`), by `scripts/firefly-add-lumi-clips.mjs`, which reads the artist's own clips and writes new ones beside them: the original four are unchanged, apart from a lossless resample of redundant keys.
 
 - `notice` ends on exactly the first frame of `hover` (measured difference 0), so `notice` → `hover` needs no blend. Set `clampWhenFinished = true` and `LoopOnce`, then start `hover` at time 0 on the `finished` event.
 - Going into `notice` from `fly` or `hover`, cross-fade over about 0.1 s.

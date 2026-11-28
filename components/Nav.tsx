@@ -14,9 +14,8 @@
  * - Under 768px: logo, CTA and a menu button.
  *
  * Delight 9, small touches on the CTA:
- * - A firefly orbits it: one lamp dot on a slow loop that hugs the pill, pausing once a lap to
- *   blink. Pure CSS animation (transform and opacity), aria-hidden, gone under reduced motion.
- *   During a wipe the overlay copy's firefly is put on the base one's clock, once per wipe.
+ * - The base CTA is the `nav-cta` anchor: once a seat is saved, Lumi (components/lumi) perches
+ *   beside it for the rest of the visit. (It replaced the orbiting lamp dot.)
  * - It leans up to 3.5px toward a nearby fine pointer (a CSS transition carries it; a write
  *   happens only on pointer moves near the nav, never per frame).
  * - Seat docked: on `prepline:seat-docked` { seat } (the ticket stub lands here) the CTA
@@ -26,6 +25,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useAnchor } from "@/lib/anchors";
 import { storyCopy } from "@/lib/content";
 import { landmarks } from "@/components/acts/after/copy";
 import { BEATS, story, type ActId, type BeatId } from "@/lib/story";
@@ -87,8 +87,9 @@ type Seat = { n: number | null; fresh: boolean };
 function PillContent({ live, open, onMenu, seat }: { live: boolean; open?: boolean; onMenu?: () => void; seat: Seat }) {
   const t = live ? undefined : -1;
   const saved = seat.n !== null;
+  const ctaAnchor = useAnchor("nav-cta");
   const cta = (
-    <span className="nav-cta-wrap" data-cta-wrap="">
+    <span className="nav-cta-wrap" data-cta-wrap="" ref={live ? ctaAnchor : undefined}>
       <span className="nav-cta-ignite" aria-hidden="true" />
       <a href="#join" className="cta nav-cta" tabIndex={t} data-saved={saved ? "" : undefined} data-fresh={seat.fresh ? "" : undefined}>
         <span className="nav-cta-labels">
@@ -102,9 +103,6 @@ function PillContent({ live, open, onMenu, seat }: { live: boolean; open?: boole
           </span>
         </span>
       </a>
-      <span className="nav-fly" aria-hidden="true">
-        <i />
-      </span>
     </span>
   );
   return (
@@ -267,23 +265,9 @@ export function Nav() {
     let lastPos = 0;
     let wiping = false;
     const links = () => el.querySelectorAll<HTMLElement>(".nav-link[data-act]");
-    // The overlay copy only exists on screen during a wipe, and its CSS animations start when it
-    // appears: put its firefly on the base firefly's clock, so the two halves show one firefly.
-    const syncFly = () => {
-      const from = el.querySelectorAll<HTMLElement>(".nav-base .nav-fly, .nav-base .nav-fly i");
-      const to = el.querySelectorAll<HTMLElement>(".nav-overlay .nav-fly, .nav-overlay .nav-fly i");
-      to.forEach((node, i) => {
-        const a = from[i]?.getAnimations()[0];
-        const b = node.getAnimations()[0];
-        if (a && b && a.startTime !== null) b.startTime = a.startTime;
-      });
-    };
     return story.subscribe((s) => {
       const wipe = document.documentElement.hasAttribute("data-wipe");
-      if (wipe !== wiping) {
-        wiping = wipe;
-        if (wipe) syncFly();
-      }
+      if (wipe !== wiping) wiping = wipe;
       // Hide on a real downward scroll inside the quiet beats; return on any upward scroll.
       const dPos = s.pos - lastPos;
       lastPos = s.pos;

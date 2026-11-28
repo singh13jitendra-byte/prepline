@@ -1,0 +1,101 @@
+/* Lumi (Lumi.tsx). Fixed, moved by transform only, never in the way: no pointer events. */
+
+/* The character's canvas: over the acts and the Actor, under the nav. */
+.lumi {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-line);
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.6s var(--ease-out, ease-out);
+  will-change: transform;
+  contain: strict;
+}
+.lumi[data-on] {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Its light on the painting: lamp light, screen-blended, under the copy (the old lantern's pool). */
+.lumi-pool {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 400px;
+  height: 400px;
+  z-index: var(--z-world);
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0;
+  border-radius: var(--r-round);
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--art-lamp-deep) 34%, transparent) 0%,
+    color-mix(in oklab, var(--art-lamp-deep) 16%, transparent) 32%,
+    color-mix(in oklab, var(--art-lamp-deep) 5%, transparent) 62%,
+    transparent 100%
+  );
+  will-change: transform, opacity;
+  contain: strict;
+}
+
+/* The note: one handwritten line beside Lumi, written on left to right (right to left on the left side). */
+.lumi-note {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-line);
+  margin: 0;
+  max-width: 260px;
+  pointer-events: none;
+  font-family: var(--font-accent);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: normal;
+  color: var(--art-lamp);
+  text-shadow: 0 1px 10px color-mix(in oklab, var(--c-night) 92%, transparent), 0 0 2px color-mix(in oklab, var(--c-night) 80%, transparent);
+  rotate: -2deg;
+  translate: 0 -100%;
+  clip-path: inset(-8px 100% -8px -8px);
+  opacity: 0;
+  transition:
+    clip-path 0.2s var(--ease-out, ease-out),
+    opacity 0.2s linear;
+  will-change: transform;
+}
+.lumi-note[data-side="l"] {
+  translate: -100% -100%;
+  text-align: right;
+  rotate: 2deg;
+  clip-path: inset(-8px -8px -8px 100%);
+}
+.lumi-note[data-on] {
+  opacity: 1;
+  clip-path: inset(-8px -8px -8px -8px);
+  transition:
+    clip-path 0.9s var(--ease-out, ease-out),
+    opacity 0.15s linear;
+}
+/* By day the lamp is never text on cream (theme rule 1): pine ink, no glow. */
+.lumi-note[data-day="1"] {
+  color: var(--c-ink);
+  text-shadow: none;
+}
+/* Phones: little free space, so the note sits on a slip of its own ground and stays legible over copy. */
+@media (max-width: 767px) {
+  .lumi-note {
+    font-size: 15px;
+    max-width: 190px;
+    padding: 4px 9px 5px;
+    border-radius: var(--r-xs, 6px);
+    background: color-mix(in oklab, var(--c-night) 94%, transparent);
+    text-shadow: none;
+  }
+  .lumi-note[data-day="1"] {
+    background: color-mix(in oklab, var(--c-paper) 96%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--c-ink) 14%, transparent);
+  }
+}
