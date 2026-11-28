@@ -3,7 +3,7 @@ import { GardenLab } from "./GardenLab";
 
 /**
  * Dev-only bench for the garden's 3D flowers (components/garden). Not linked from the site and not
- * indexed. Step 1: the moonflower, bud to full bloom.
+ * indexed. Step 2: the five Tripo flower pairs (components/garden/tripoFlower.ts), bud to full bloom.
  */
 export const metadata: Metadata = {
   title: "Garden flowers (lab)",
