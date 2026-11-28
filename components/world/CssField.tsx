@@ -66,13 +66,34 @@ const DENSE_B = denseTile(367, 118, 29);
 const GRID_TILE = gridTile(7);
 /** The still dot texture (a mask) of the night panels on the static (reduced-motion) page. */
 export const STATIC_DOTS = `${denseTile(293, 44, 11, 0.4)}, ${denseTile(367, 64, 29, 0.4)}`;
-const dense = { maskImage: `${DENSE_A}, ${DENSE_B}`, WebkitMaskImage: `${DENSE_A}, ${DENSE_B}` };
-const grid = { maskImage: GRID_TILE, WebkitMaskImage: GRID_TILE, maskPosition: "50% 50%", WebkitMaskPosition: "50% 50%" };
+/**
+ * Round 6: the jobs are flowers, so the stand-in grows in the grass, never in the sky. The ground is
+ * a gradient mask layered over the dot tiles and intersected with them (on top, so its composite
+ * op is the first in each list).
+ */
+const GROUND = "linear-gradient(to bottom, transparent 44%, black 54%)";
+const ground = (tiles: string, n: number, position = "0 0") => ({
+  maskImage: `${GROUND}, ${tiles}`,
+  WebkitMaskImage: `${GROUND}, ${tiles}`,
+  maskComposite: ["intersect", ...Array(n - 1).fill("add")].join(", "),
+  WebkitMaskComposite: ["source-in", ...Array(n - 1).fill("source-over")].join(", "),
+  maskRepeat: ["no-repeat", ...Array(n).fill("repeat")].join(", "),
+  WebkitMaskRepeat: ["no-repeat", ...Array(n).fill("repeat")].join(", "),
+  maskSize: ["100% 100%", ...Array(n).fill("auto")].join(", "),
+  WebkitMaskSize: ["100% 100%", ...Array(n).fill("auto")].join(", "),
+  maskPosition: ["0 0", ...Array(n).fill(position)].join(", "),
+  WebkitMaskPosition: ["0 0", ...Array(n).fill(position)].join(", "),
+});
+const dense = ground(`${DENSE_A}, ${DENSE_B}`, 2);
+const grid = ground(GRID_TILE, 1, "50% 50%");
 
-const GOLD: [number, number][] = [
-  [13, 27], [31, 21], [52, 30], [71, 24], [88, 33], [22, 46],
-  [44, 52], [63, 44], [82, 55], [17, 70], [38, 76], [58, 68],
-];
+/** The twelve, in the grass (x %, y %): the round-5 places, folded down onto the ground. */
+const GOLD: [number, number][] = (
+  [
+    [13, 27], [31, 21], [52, 30], [71, 24], [88, 33], [22, 46],
+    [44, 52], [63, 44], [82, 55], [17, 70], [38, 76], [58, 68],
+  ] as [number, number][]
+).map(([x, y]) => [x, Math.round(52 + y * 0.5)]);
 
 export function CssField() {
   return (

@@ -3,8 +3,8 @@
  *
  *   ChapterBackdrop   pine night and cream day (the day clipped at the Line), and the grain
  *   Scenes            the paintings: the room, the meadow through its window, the dawn
- *   CssField          no-WebGL stand-in for the fireflies, in the meadow beats only
- *   WorldCanvas       the fireflies (WebGL, one draw call, lazy)
+ *   CssField          no-WebGL stand-in for the flowers (dots in the grass), in the meadow beats only
+ *   WorldCanvas       the jobs as flowers in the meadow (WebGL, one draw call, lazy; fieldScene.ts)
  *   Line              the hand-drawn Line and its margin note
  *   PaperFold         daybreak: the night peels up along the rising Line like a sheet of paper (delight 5)
  *   Lumi              the companion firefly (components/lumi): it walks the story, and its light is the

@@ -18,6 +18,7 @@ import { onThemeChange, readWorld } from "@/lib/theme";
 import { PICK_RADIUS, worldBus, type RoleTag } from "./bus";
 import { BIG, FIELD_COLORS, PASS_DOLLY, SEATS, buildField, createField, pickSpeck, type FieldData, type FieldUniforms, type Verdict } from "./fieldScene";
 import { FLY_START, LAST_ABSORBED, TRAIL_RATE, listDrift } from "./flight";
+import { flowerOf } from "./fieldFlowers";
 
 const ORDER = Object.fromEntries(BEATS.map((b, i) => [b.id, i])) as Record<BeatId, number>;
 const ROW_IDS = Array.from({ length: 12 }, (_, i) => `row-${i + 1}` as AnchorId);
@@ -83,9 +84,20 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
   let needs = true;
 
   /* ── theme: every colour the shader draws is a uniform read from the live theme ── */
+  let paintFlowers: ((c: Parameters<ReturnType<typeof createField>["paint"]>[0]) => void) | null = null;
   const applyColors = () => {
     const { colors } = readWorld();
     for (const [u, role] of Object.entries(FIELD_COLORS)) fu[u as keyof typeof FIELD_COLORS].value.fromArray(colors[role]);
+    // The jobs are flowers: their atlas is painted in the theme's flower colours.
+    paintFlowers?.({
+      moon: colors.flowerMoon,
+      bell: colors.flowerBell,
+      poppy: colors.flowerPoppy,
+      allium: colors.flowerAllium,
+      lavender: colors.flowerLavender,
+      stem: colors.flowerStem,
+      core: colors.flowerCore,
+    });
     needs = true;
   };
 
@@ -95,6 +107,9 @@ export async function startWorld(host: HTMLElement, small: boolean): Promise<() 
       data = buildField(small);
       const field = createField(THREE, data, width, height);
       fu = field.uniforms;
+      paintFlowers = field.paint;
+      // The twelve bloom as their own rows' roles (the list the Actor reads from).
+      fu.uRankType.value = Array.from({ length: 12 }, (_, i) => flowerOf(rankedRoles[i]?.title ?? ""));
       applyColors();
       info = renderer.info;
       glc = renderer.getContext() as WebGL2RenderingContext;

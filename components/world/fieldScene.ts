@@ -3,14 +3,25 @@ import type { Three } from "@/lib/gl";
 import type { WorldColorRole } from "@/lib/theme";
 import { LENS_RADIUS } from "./bus";
 import { FLY_DUR, FLY_STAGGER, FLY_START, LAND_T, PATH_T, TRAIL, TRAIL_SMALL } from "./flight";
+import { ATLAS_COLS, ATLAS_ROWS, paintFlowerAtlas, type FlowerColors } from "./fieldFlowers";
 
-/** The moth: how far a firefly drifts toward the lantern (a share of its distance, capped in px). */
-const MOTH_PULL = 0.3;
+/** The moth: how far a firefly drifted toward the lantern. Flowers are rooted: 0 (Lumi's light opens them instead). */
+const MOTH_PULL = 0;
 const MOTH_MAX = 14;
 /** How bright an ember the lantern finds in the grass is. */
 const EMBER_A = 0.34;
 
 /**
+ * THE FLOWERS — the World's one draw call. Round 6, with Lumi: every job is a flower rooted in the
+ * meadow (fieldFlowers.ts: flower type = role type), so the one firefly on the page is Lumi. The
+ * reading story below is unchanged from the fireflies it replaced; only the look changed:
+ *   unread   a closed bud, quiet, swaying            read and set aside   it stays a bud, dims, sinks a little
+ *   kept     it opens (half) as the Line reads it    the twelve           full bloom, warmer, as their rows' roles
+ *   ranked   each of the twelve's blossoms lifts off its stem and flies into its row
+ *   Lumi     near its light flowers open a little and catch the lamp (uLens; no moth pull)
+ * Seats at dawn and the twelve's glow trails are still drawn as the soft discs described below.
+ * The notes that follow are the round-4 design, kept for the maths.
+ *
  * THE FIREFLIES — the World's one draw call (round 4: the painted world).
  *
  * One instanced quad per role, and every role is a firefly over the painted meadow: small,
@@ -44,6 +55,26 @@ const EMBER_A = 0.34;
 
 /** Homes are spread a little past the viewport so drift and dolly never show an edge. */
 const SPREAD = 1.1;
+/**
+ * The flowers grow in the meadow, not in the sky: a home's y (0 top .. 1 bottom of the lattice) is
+ * mapped onto the ground, from the horizon (HORIZON of the canvas height) to just past the bottom.
+ * Depth follows it (nearer = lower = bigger), with a little of the home's own random depth kept.
+ */
+const HORIZON = 0.47;
+const GROUND = 1.02;
+const DEPTH_FROM_Y = 0.72;
+/** Flower height in px, far to near (an unread bud). */
+const FLOWER_H = [16, 46] as const;
+
+/** Screen position of a home at rest (no sway), for the CPU mirrors of the shader. */
+export function homeOf(ax: number, ay: number, z: number, w: number, h: number, dolly: number) {
+  const yy = ay + 0.5;
+  const zz = z + (yy - z) * DEPTH_FROM_Y;
+  const persp = 0.5 + zz;
+  const gx = w / 2 + ax * w * SPREAD;
+  const gy = h * (HORIZON + (GROUND - HORIZON) * Math.pow(Math.min(1, Math.max(0, yy)), 0.8));
+  return { x: w / 2 + (gx - w / 2) * (1 + dolly * persp), y: h / 2 + (gy - h / 2) * (1 + dolly * persp), zz, persp };
+}
 /** The dolly the settle points are fitted for (the field's push-in during the passes). */
 export const PASS_DOLLY = 0.13;
 /** The breeze through the window (delight 4): how far out a firefly is blown, per px from the window's middle, far (z 0) + near (z 1). */
@@ -165,15 +196,14 @@ export function buildField(small: boolean): FieldData {
 export function fitSettle(data: FieldData, w: number, canvasH: number, stageH = canvasH) {
   const { count, a, b } = data;
   // The canvas is as tall as the largest viewport; the story happens in the stage (100svh).
-  const y0 = stageH * 0.17;
-  const y1 = stageH * 0.87;
+  // Flowers: the kept stay on the ground, inside the part of it the Line reads.
+  const y0 = stageH * 0.5;
+  const y1 = stageH * 0.9;
   for (let i = 0; i < count; i++) {
     if (b[i * 4 + 2] < 1) continue;
-    const persp = 0.5 + a[i * 4 + 2];
-    const px = w / 2 + a[i * 4] * w * SPREAD * (1 + PASS_DOLLY * persp);
-    const py = canvasH / 2 + a[i * 4 + 1] * canvasH * SPREAD * (1 + PASS_DOLLY * persp);
-    b[i * 4] = Math.min(w - 24, Math.max(24, px));
-    b[i * 4 + 1] = Math.min(y1, Math.max(y0, py));
+    const hm = homeOf(a[i * 4], a[i * 4 + 1], a[i * 4 + 2], w, canvasH, PASS_DOLLY);
+    b[i * 4] = Math.min(w - 24, Math.max(24, hm.x));
+    b[i * 4 + 1] = Math.min(y1, Math.max(y0, hm.y));
   }
   // The trails settle where their firefly does.
   for (let i = count; i < data.total; i++) {
@@ -210,6 +240,7 @@ const vert = /* glsl */ `
   uniform float uBeadY;
   uniform vec2 uClaim; // seat number (0 none), fill 0..1
   uniform vec4 uBreeze; // the window's middle x, y (CSS px), strength 0..1, reach (CSS px): delight 4
+  uniform float uRankType[12]; // the twelve's flower (fieldFlowers.ts flowerOf, from each row's title)
 
   // Colours come from the theme (lib/theme.ts readWorld, set in worldRuntime.ts): no literals here.
   uniform vec3 ucWarm;  // --art-speck-warm: an unlit, unread firefly leans this way
@@ -226,6 +257,10 @@ const vert = /* glsl */ `
   varying vec4 vDay;
   varying vec2 vFx;   // border, flat fill (0 = soft firefly, 1 = flat shape)
   varying vec3 vEdge;
+  varying vec2 vUV;      // flower sprite: 0..1 inside its cell
+  varying vec4 vSprite;  // flower: type row, stage column a, stage column b, blend
+  varying float vMode;   // 1 = a flower from the atlas, 0 = the soft disc (seats, glow trails)
+  varying float vGlow;   // flower: how much lamp light it holds (a flare, the twelve, Lumi near)
 
   const float PI = 3.14159265;
 
@@ -259,18 +294,20 @@ const vert = /* glsl */ `
     float h3 = fract(sd * 263.1);
     float h4 = fract(sd * 571.3);
 
+    // A flower is rooted in the meadow: home on the ground, nearer (bigger) toward the bottom.
+    float yy = clamp(aA.y + 0.5, 0.0, 1.0);
+    z = mix(z, yy, ${DEPTH_FROM_Y.toFixed(2)});
     float persp = 0.5 + z;
     vec2 c = uRes * 0.5;
-    vec2 drift = vec2(
-      sin(uTime * (0.10 + 0.16 * h1) + h2 * 6.283) + 0.5 * sin(uTime * (0.23 + 0.10 * h3) + h4 * 6.283),
-      cos(uTime * (0.09 + 0.15 * h3) + h1 * 6.283) + 0.5 * cos(uTime * (0.19 + 0.12 * h2) + h4 * 6.283)
-    ) * (6.0 + 18.0 * z);
-    vec2 P0 = c + aA.xy * uRes * ${SPREAD.toFixed(2)} * (1.0 + uDolly * persp) + drift + uPar * persp;
+    vec2 G0 = vec2(c.x + aA.x * uRes.x * ${SPREAD.toFixed(2)}, uRes.y * (${HORIZON.toFixed(3)} + ${(GROUND - HORIZON).toFixed(3)} * pow(yy, 0.8)));
+    // It sways in the night air; it does not wander.
+    vec2 drift = vec2(sin(uTime * (0.35 + 0.30 * h1) + h2 * 6.283) + 0.4 * sin(uTime * (0.9 + 0.4 * h3) + h4 * 6.283), 0.0) * (0.8 + 2.2 * z);
+    vec2 P0 = c + (G0 - c) * (1.0 + uDolly * persp) + drift + uPar * persp;
     // The breeze through the window (hero push): the ones near it are blown gently out toward the
     // viewer, the near ones (z) more: a parallax burst that dies away. Mirrored by pickSpeck.
     vec2 bd = P0 - uBreeze.xy;
     float bw = uBreeze.z * exp(-dot(bd, bd) / (uBreeze.w * uBreeze.w));
-    P0 += bd * bw * (${BREEZE_NEAR.toFixed(2)} + ${BREEZE_Z.toFixed(2)} * z);
+    P0 += bd * bw * (${BREEZE_NEAR.toFixed(2)} + ${BREEZE_Z.toFixed(2)} * z) * 0.2; // a rooted flower only bends
 
     // Each firefly blinks on its own slow clock: lit for about a third of it, dark for the rest.
     float phase = fract(uTime * (0.055 + 0.07 * h1) + h2);
@@ -296,6 +333,15 @@ const vert = /* glsl */ `
     float field = uField;
     vec2 box = vec2(0.0);
     float rad = 0.0;
+    // The flower: how open (0 bud, 0.5 half, 1 full bloom), the lamp light it holds, how far it has
+    // gone back into the grass (set aside), whether it is a head in flight (ranked).
+    float open = 0.0;
+    float fGlow = 0.0;
+    float fDim = 0.0;
+    float headK = 0.0;
+    float fH = mix(${FLOWER_H[0].toFixed(1)}, ${FLOWER_H[1].toFixed(1)}, z) * (0.85 + 0.3 * h4);
+    float fA = mix(0.4, 0.78, z);
+    float fTint = mix(0.52, 0.74, z);
 
     // Pass 1: read the moment the Line's y passes the firefly's own y.
     float r1 = clamp((uT1 - P0.y) / uBand, 0.0, 1.0);
@@ -310,8 +356,9 @@ const vert = /* glsl */ `
       aside = smoothstep(0.5, 0.9, e1);
       float ember = smoothstep(0.1, 0.34, e1) * (1.0 - smoothstep(0.5, 1.0, e1)) * (1.0 - glow * 0.5);
       float cool = smoothstep(0.16, 0.62, e1);
-      P.y += e1 * (34.0 + 80.0 * h3);
-      P.x += sin(e1 * 3.0 + h1 * 6.283) * 5.0 * e1;
+      P.y += e1 * (2.0 + 5.0 * z);
+      fGlow = max(flare * 0.9, glow * 0.5) * (1.0 - e1 * 0.6);
+      fDim = dim;
       alpha = mix(alpha, 0.0, dim) + (flare * 0.9 + glow * 0.4) * (1.0 - e1) + ember * (0.34 + 0.24 * z);
       radius = mix(radius, mix(r0 * 0.55, max(r0 * 0.85, 1.5), ember), dim) + flare * 1.1;
       col = mix(col, ucGold, max(glow, flare) * 0.85);
@@ -323,22 +370,27 @@ const vert = /* glsl */ `
       float flare2 = sin(PI * clamp(r2 * 2.2, 0.0, 1.0));
       // Kept: it stops blinking, brightens to lamp yellow and settles near its home, where it
       // keeps a slow drift and bob (smaller and slower than the unread's) and holds its glow.
-      vec2 settle = vec2(
-        sin(uTime * (0.07 + 0.05 * h2) + h1 * 6.283) * (3.0 + 3.0 * z),
-        sin(uTime * (0.21 + 0.09 * h4) + h3 * 6.283) * (2.5 + 2.0 * h1)
-      );
+      vec2 settle = vec2(sin(uTime * (0.3 + 0.2 * h2) + h1 * 6.283) * (0.8 + 1.6 * z), 0.0);
       float breathe = 1.0 + 0.06 * sin(uTime * (0.35 + 0.2 * h3) + h2 * 6.283);
       P = mix(P0, G + settle, e1);
       // Kept: one bloom as the Line reads it, then a steady lamp.
       radius = mix(radius, 4.4 * breathe, e1) + flare * 1.8;
       alpha = max(mix(alpha, 0.98, e1), flare);
       col = mix(col, min(ucGold * 1.12, vec3(1.0)), e1);
+      open = 0.6 * e1 + 0.25 * flare;
+      fGlow = flare * 0.9 + 0.08 * e1;
+      fA = mix(fA, 1.0, e1);
+      fTint = mix(fTint, 1.0, e1);
+      fH *= 1.0 + 0.15 * e1;
       if (kind < 1.5) {
         float dim2 = e2 * (1.0 - glow2 * 0.85);
         aside = smoothstep(0.5, 0.9, e2);
         float ember2 = smoothstep(0.1, 0.34, e2) * (1.0 - smoothstep(0.5, 1.0, e2)) * (1.0 - glow2 * 0.5);
         float cool2 = smoothstep(0.16, 0.62, e2);
-        P.y += e2 * (34.0 + 80.0 * h3);
+        P.y += e2 * (2.0 + 5.0 * z);
+        open = mix(open, 0.06, e2) + 0.2 * flare2;
+        fGlow = max(fGlow * (1.0 - e2), max(flare2 * 0.8, glow2 * 0.4));
+        fDim = dim2;
         alpha = mix(alpha, 0.0, dim2) + (flare2 * 0.8 + glow2 * 0.35) * (1.0 - e2) + ember2 * 0.5;
         radius = mix(radius, mix(1.4, 2.4, ember2), dim2) + flare2 * 1.0;
         col = mix(col, ucGold, flare2 * 0.8);
@@ -366,6 +418,10 @@ const vert = /* glsl */ `
         // The twelve: lamp, a little larger, steady. No halo. kind 2 is the firefly; 3.. its trail.
         float trail = kind - 2.0;
         radius *= mix(1.0, 2.3, e2) * (1.0 + 0.3 * sin(PI * clamp(glow2 * 1.2, 0.0, 1.0)));
+        // Full bloom for the twelve, a hair less open the lower its rank (the fit), and warm.
+        open = mix(open, 1.0 - 0.03 * slot, e2) + 0.15 * flare2;
+        fGlow = max(fGlow, flare2 * 0.8) + 0.22 * e2;
+        fH *= mix(1.0, 1.45, e2);
 
         // Ranked (delight 3): it flies to its row in rank order, scrubbed by the wheel, and is
         // absorbed into the tip of the row's score rule: the dots become the product.
@@ -398,6 +454,11 @@ const vert = /* glsl */ `
         float pop = sin(PI * clamp((t - ${(LAND_T - 0.06).toFixed(2)}) / 0.12, 0.0, 1.0));
         radius = mix(radius, radius * 0.6, smoothstep(0.0, 0.2, t) * has);
         radius = mix(radius, 1.0, absorb * has) + pop * 1.4 * has;
+        // The blossom lifts off its stem and flies; it shrinks into the row's dot as it lands.
+        headK = smoothstep(0.0, 0.12, tH) * has;
+        fH = mix(fH, 17.0, smoothstep(0.0, 0.2, t) * has) * (1.0 - 0.82 * absorb * has) + pop * 4.0 * has;
+        fGlow = mix(fGlow, 0.5, max(air, pop) * has);
+        fA = mix(fA, 1.0, max(air, pop) * has);
         alpha = mix(alpha, 1.0, max(air, pop) * has);
         col = mix(col, min(ucGold * 1.15, vec3(1.0)), max(air, pop) * has);
         // Absorbed: drawn no more. With no row to go to (not laid out) it simply goes out.
@@ -423,12 +484,23 @@ const vert = /* glsl */ `
     alpha = max(alpha, ${EMBER_A.toFixed(2)} * lk * aside);
     col = mix(col, ucWarm * 0.72, lk * aside);
     radius = mix(radius, max(radius, 1.8), lk * aside);
+    // Lumi's light: the flowers it passes open a little and catch the lamp (it reads them).
+    open += 0.32 * lk * (1.0 - aside);
+    fGlow += 0.35 * lk;
+    fDim *= 1.0 - 0.6 * lk;
 
     // Named: it stops for the reader and holds still beside its tag, lit (an ember stays an ember).
     float fk = step(abs(float(gl_InstanceID) - uFocus.x), 0.5) * uFocus.w * (1.0 - inFlight) * (1.0 - seatK);
     P = mix(P, uFocus.yz, fk);
     alpha = mix(alpha, mix(1.0, 0.62, aside), fk);
     radius = mix(radius, max(radius, mix(3.6, 2.4, aside)), fk);
+
+    // A flower unless it is a seat being carried to its ring or a glow trail: those stay soft discs.
+    float mode = (seatK > 0.5 || kind > 2.5) ? 0.0 : 1.0;
+    if (mode > 0.5) {
+      alpha = fA * mix(1.0, 0.32, fDim);
+      if (inFlight > 0.5) alpha = max(alpha, 0.98);
+    }
 
     // Load: they come out a few at a time.
     alpha *= smoothstep(h3 * 0.7, h3 * 0.7 + 0.3, uIntro);
@@ -453,8 +525,23 @@ const vert = /* glsl */ `
     vDay = vec4(dayCol, dayA);
     vFx = vec2(border * (1.0 - gone), flat_);
     vEdge = edgeCol;
-
+    vMode = mode;
+    vGlow = clamp(fGlow, 0.0, 1.0);
+    vUV = position.xy * 0.5 + 0.5;
     vec2 px = P + vP;
+    if (mode > 0.5) {
+      // Which flower: the twelve are their rows' roles; every other job is weighted like the market.
+      float hT = fract(sd * 37.77);
+      float ftype = kind > 1.5 ? uRankType[int(slot + 0.5)] : (hT < 0.36 ? 0.0 : hT < 0.6 ? 1.0 : hT < 0.75 ? 2.0 : hT < 0.88 ? 3.0 : 4.0);
+      float st = mix(clamp(open, 0.0, 1.0) * 2.0, 3.0, headK);
+      float sa = min(floor(st), 2.0 + step(2.999, st));
+      vSprite = vec4(ftype, sa, min(sa + 1.0, 3.0), st - sa);
+      vCol = vec4(vec3(fTint * mix(1.0, 0.55, fDim)), alpha);
+      // The stem's base is on the ground at P; a flying head is centred on P.
+      vec2 hs = vec2(fH * 0.5);
+      vP = position.xy * hs;
+      px = P - vec2(0.0, fH * 0.5 * (1.0 - headK)) + vP;
+    }
     gl_Position = vec4(px.x / uRes.x * 2.0 - 1.0, 1.0 - px.y / uRes.y * 2.0, 0.0, 1.0);
     if (alpha < 0.004 && dayA < 0.004) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
   }
@@ -466,6 +553,8 @@ const frag = /* glsl */ `
   uniform float uDpr;
   uniform float uDayTop;
   uniform vec4 uClip; // x0, y0, x1, y1: the window's glass, in CSS px
+  uniform sampler2D uAtlas; // the flowers (fieldFlowers.ts): ${ATLAS_ROWS} types x ${ATLAS_COLS} stages, premultiplied
+  uniform vec3 ucGold;
 
   varying vec2 vP;
   varying vec2 vBox;
@@ -475,12 +564,31 @@ const frag = /* glsl */ `
   varying vec4 vDay;
   varying vec2 vFx;
   varying vec3 vEdge;
+  varying vec2 vUV;
+  varying vec4 vSprite;
+  varying float vMode;
+  varying float vGlow;
 
   void main() {
     vec2 p = vec2(gl_FragCoord.x / uDpr, uRes.y - gl_FragCoord.y / uDpr);
     // Inside the glass only, with a few px of give so nothing is cut hard at the frame.
     vec2 inside = smoothstep(uClip.xy - 2.0, uClip.xy + 6.0, p) * (1.0 - smoothstep(uClip.zw - 6.0, uClip.zw + 2.0, p));
     float clip = inside.x * inside.y;
+
+    if (vMode > 0.5) {
+      // A flower: two neighbouring stages of its type, blended by how open it is. Night only.
+      vec2 uv = clamp(vUV, 0.004, 0.996);
+      vec2 grid = vec2(${ATLAS_COLS.toFixed(1)}, ${ATLAS_ROWS.toFixed(1)});
+      vec4 ta = texture2D(uAtlas, (vec2(vSprite.y, vSprite.x) + uv) / grid);
+      vec4 tb = texture2D(uAtlas, (vec2(vSprite.z, vSprite.x) + uv) / grid);
+      vec4 t = mix(ta, tb, vSprite.w);
+      float fa = t.a * vCol.a * clip * (1.0 - step(uDayTop, p.y));
+      if (fa < 0.003) discard;
+      vec3 straight = t.rgb / max(t.a, 0.001);
+      vec3 fc = straight * vCol.rgb + ucGold * vGlow * 0.55;
+      gl_FragColor = vec4(min(fc, vec3(1.0)) * fa, fa);
+      return;
+    }
 
     vec2 q = abs(vP) - (vBox - vRad);
     float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - vRad;
@@ -527,6 +635,8 @@ export type FieldUniforms = {
   uBeadY: { value: number };
   uClaim: { value: THREE_NS.Vector2 };
   uBreeze: { value: THREE_NS.Vector4 };
+  uRankType: { value: number[] };
+  uAtlas: { value: THREE_NS.Texture | null };
   ucWarm: { value: THREE_NS.Vector3 };
   ucGold: { value: THREE_NS.Vector3 };
   ucSeat: { value: THREE_NS.Vector3 };
@@ -582,6 +692,8 @@ export function createField(THREE: Three, data: FieldData, width: number, height
     uBeadY: { value: BIG },
     uClaim: { value: new THREE.Vector2(0, 0) },
     uBreeze: { value: new THREE.Vector4(0, 0, 0, 1) },
+    uRankType: { value: Array.from({ length: 12 }, () => 0) },
+    uAtlas: { value: null },
     ucWarm: { value: v3() },
     ucGold: { value: v3() },
     ucSeat: { value: v3() },
@@ -607,6 +719,22 @@ export function createField(THREE: Three, data: FieldData, width: number, height
   const mesh = new THREE.Mesh(geo, material);
   mesh.frustumCulled = false;
 
+  // The flowers' atlas, repainted whenever the theme changes (worldRuntime calls paint()).
+  let atlas: THREE_NS.CanvasTexture | null = null;
+  const paint = (colors: FlowerColors) => {
+    const tex = new THREE.CanvasTexture(paintFlowerAtlas(colors));
+    tex.flipY = false;
+    tex.premultiplyAlpha = true;
+    tex.colorSpace = THREE.NoColorSpace;
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.anisotropy = 2;
+    atlas?.dispose();
+    atlas = tex;
+    uniforms.uAtlas.value = tex;
+  };
+
   const resize = (w: number, h: number) => {
     uniforms.uRes.value.set(w, h);
     const stage = document.querySelector<HTMLElement>(".story-stage");
@@ -615,7 +743,16 @@ export function createField(THREE: Three, data: FieldData, width: number, height
   };
   resize(width, height);
 
-  return { mesh, uniforms, resize, dispose: () => base.dispose() };
+  return {
+    mesh,
+    uniforms,
+    resize,
+    paint,
+    dispose: () => {
+      base.dispose();
+      atlas?.dispose();
+    },
+  };
 }
 
 /* ───────────────────────────── CPU mirror, for the lantern's tag only ── */
@@ -658,15 +795,15 @@ export function pickSpeck(data: FieldData, u: FieldUniforms, x: number, y: numbe
   for (let i = 0; i < count; i++) {
     const o = i * 4;
     const z = a[o + 2];
-    const persp = 0.5 + z;
     const kind = b[o + 2];
     // One of the twelve on its way to its row (or absorbed in it) is never named (delight 3).
     if (kind > 1.5 && u.uFly.value > FLY_START + b[o + 3] * FLY_STAGGER) continue;
-    const hx = w / 2 + a[o] * w * SPREAD * (1 + dolly * persp) + par.x * persp;
+    const hm = homeOf(a[o], a[o + 1], z, w, h, dolly);
+    const hx = hm.x + par.x * hm.persp;
     // Cheap reject before the trigonometry (drift is under 40px, the pull under 15); the kept
     // settle elsewhere, so they are always tested.
     if (kind < 1 && Math.abs(hx - x) > radius + 60) continue;
-    const hy = h / 2 + a[o + 1] * h * SPREAD * (1 + dolly * persp) + par.y * persp;
+    const hy = hm.y + par.y * hm.persp;
     const sd = a[o + 3];
     const h1 = (sd * 17.13) % 1;
     const h2 = (sd * 91.7) % 1;

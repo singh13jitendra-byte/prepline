@@ -152,6 +152,15 @@
   --art-speck-cool: #a9bdb3; /* a few sage ones among them */
   --art-ember: #f6c945; /* a firefly just read */
   --art-ember-cool: #d9622b; /* a firefly set aside, cooling as it sinks: red-amber, night only (delight 3) */
+  /* The jobs are flowers (round 6, with Lumi): flower type = role type. Muted, so the meadow stays
+     inside the painting; shape, not colour, tells the roles apart. Night only (the field). */
+  --art-flower-moon: #ede6d6; /* Product Designer: moonflower, a wide disc */
+  --art-flower-bell: #8fabcf; /* UX Designer: bellflower, hanging bells */
+  --art-flower-poppy: #e58a6e; /* UI / Visual Designer: poppy, an open cup */
+  --art-flower-allium: #b29ad3; /* Design Systems: allium, florets in a ball */
+  --art-flower-lavender: #b3aed0; /* UX Research: lavender, a spike */
+  --art-flower-stem: #5e7d63; /* stems and leaves */
+  --art-flower-core: #dccb7a; /* a flower's heart */
   --art-seat: #12312c; /* a claimed seat, by day: pine */
   --art-dust-day: var(--c-ink); /* specks by day */
   --art-lamp-dust: #fbe49a; /* dust the lamp catches */
