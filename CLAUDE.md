@@ -77,14 +77,13 @@ between `pass2` and `ranked`) into **the garden**: ~15 real 3D job flowers in fr
   button in an accessible list; reduced motion = list + cards, no flight or bloom.
 - **Step 1 done**: `components/garden/moonflower.ts`, a coded 3D moonflower driven by one `open` value
   (twisted bud → trumpet → star disc), glassy veined petals, lit heart, pollen; lab at `/lab/garden`.
-- **Step 2 (now)**: generate the five flowers with **Tripo Studio MCP** (connected in Claude Code on this Mac).
-  The prompt is in `docs/garden-tripo-prompt.md`: a bud and a full bloom per type, moonflower first for
-  approval, GLBs to `~/prepline-garden/`. Tripo models are static, so the bloom is a shader transition
-  (bud folds away, bloom grows open from its heart); "half open" is a point in that transition.
-- Then: optimise the GLBs for the web (meshopt + 1K textures, see `scripts/firefly-add-lumi-clips.mjs` for
-  the glTF-Transform setup), put them in `public/garden/`, the bloom transition, Lumi's light on the petals,
-  swap the explore stop's fireflies for flowers, the scroll tour, hover/tap, phones/a11y, then turn the stop
-  on by default.
+- **Step 2 done**: the ten Tripo flowers (a bud and a full bloom per type) are in `public/garden/`, optimised
+  (meshopt + quantised + 1K WebP, 1.38 MB for all ten); originals in `~/prepline-garden/`. Read
+  `public/garden/README.md` first: the models face +X, are 1 unit tall centred on the origin, and need
+  `DoubleSide`. Tripo models are static, so the bloom is a shader transition between the two meshes (bud folds
+  away, bloom grows open from its heart); "half open" is a point in that transition.
+- Next: the bloom transition, Lumi's light on the petals, swap the explore stop's fireflies for flowers, the
+  scroll tour, hover/tap, phones/a11y, then turn the stop on by default.
 
 ## Open items
 
