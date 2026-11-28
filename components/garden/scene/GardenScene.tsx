@@ -44,7 +44,19 @@ import "@/components/fireflies/scene/scene.css";
 
 export type { FireflyAnchor, FireflyFraming, FireflyJob, FireflySceneHandle, FireflySceneProps } from "@/components/fireflies/scene/types";
 export type GardenSceneProps = FireflySceneProps;
-export type GardenSceneHandle = FireflySceneHandle;
+/**
+ * The firefly scene's handle (components/fireflies/scene/types.ts) plus the scroll tour's extras
+ * (components/garden/tour), optional as the contract's extras are (GardenScene always has them). All three
+ * are scrubbed: immediate, no easing, and none fires onFocus.
+ */
+export type GardenSceneHandle = FireflySceneHandle & {
+  /** Where a job's flower's heart is right now, in viewport px, with the anchor radius `r` (as onFocus gives it). Null: no flower on stage, or not ready. */
+  anchorOf?: (id: string) => FireflyAnchor | null;
+  /** Hold a job's flower at `open` (0..1) at once; null puts it back at its stage. A focused flower is left alone. */
+  setOpen?: (id: string, open: number | null) => void;
+  /** Light a job's flower (heart glow, the pool on the grass) and stand it up a little by `k` (0..1); null lets go. */
+  setChosen?: (id: string | null, k: number) => void;
+};
 
 /** Where components/fireflies/card docks as a bottom sheet (its JOBCARD_DOCK_QUERY; kept in step by hand). */
 const DOCK_QUERY = "(max-width: 839px), (max-height: 519px)";
@@ -64,7 +76,7 @@ type DebugHook = {
   step: (dt: number, n?: number) => void;
 };
 
-const GardenScene = forwardRef<FireflySceneHandle, FireflySceneProps>(function GardenScene(props, ref) {
+const GardenScene = forwardRef<GardenSceneHandle, FireflySceneProps>(function GardenScene(props, ref) {
   const { active, jobs, reducedMotion, className, intro = "match", framing } = props;
   const host = useRef<HTMLDivElement>(null);
   const garden = useRef<Garden | null>(null);
@@ -272,6 +284,19 @@ const GardenScene = forwardRef<FireflySceneHandle, FireflySceneProps>(function G
     g.redraw();
   }, [meadowScale, grassLow]);
 
+  /** Job id → index into `jobs` (the tour asks by id every frame). */
+  const ids = useRef<{ key: string; map: Map<string, number> }>({ key: "", map: new Map() });
+  const indexOf = (id: string) => {
+    const c = ids.current;
+    const list = live.current.jobs;
+    const key = list.length + ":" + (list[0]?.id ?? "") + ":" + (list[list.length - 1]?.id ?? "");
+    if (c.key !== key) {
+      c.key = key;
+      c.map = new Map(list.map((j, i) => [j.id, i]));
+    }
+    return c.map.get(id) ?? -1;
+  };
+
   useImperativeHandle(
     ref,
     () => ({
@@ -281,6 +306,17 @@ const GardenScene = forwardRef<FireflySceneHandle, FireflySceneProps>(function G
         g.focusJob(live.current.jobs.findIndex((j) => j.id === id));
       },
       clearFocus: () => garden.current?.clearFocus(),
+      anchorOf: (id: string) => {
+        const g = garden.current;
+        const el = host.current;
+        if (!g || !el) return null;
+        const a = g.anchorOf(indexOf(id));
+        if (!a) return null;
+        const r = el.getBoundingClientRect();
+        return { x: r.left + a.x, y: r.top + a.y, r: a.r };
+      },
+      setOpen: (id: string, open: number | null) => garden.current?.setOpen(indexOf(id), open),
+      setChosen: (id: string | null, k: number) => garden.current?.setChosen(id === null ? null : indexOf(id), k),
       matchPage: () => {
         const el = host.current;
         const g = garden.current;

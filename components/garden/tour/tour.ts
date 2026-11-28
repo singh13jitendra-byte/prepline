@@ -89,11 +89,11 @@ export type TourState = {
   /**
    * Where Lumi should be: beside a flower's heart (`id`), or perched (`perch` 1). Perch is 1 only while the
    * card is at least half grown, so "perched" means on the card (GardenSlip `slipPerch`); see the report on
-   * worldBus.garden. In free explore it is the last stop, a resting default that a focused flower overrides.
-   * Null: the tour does not direct Lumi (rest).
+   * worldBus.garden. Null: the garden names no flower (rest, the hint, free explore until a flower is
+   * focused): Lumi rests, and in the hold it says its "explore" note, the hint.
    */
   lumi: { id: string; perch: 0 | 1 } | null;
-  /** Lumi's hint, 0..1 (storyCopy.lumi.notes.explore). Up through the hint step and free explore. */
+  /** Lumi's hint, 0..1 (storyCopy.lumi.notes.explore). Up through the hint step and free explore. Lumi says it itself whenever `lumi` is null in the hold. */
   hint: number;
   /** Free explore is live: the scene may take the pointer and focus flowers. */
   free: boolean;
@@ -247,11 +247,9 @@ export function tourAt(plan: TourPlan, bp: number): TourState {
   if (!(bp >= t0) || bp >= t2) return { ...REST, tour: bp >= t2 ? 1 : 0 };
   if (bp >= t1 || !steps.length) {
     if (!steps.length) return { ...REST, step: "free", tour: 1, free: true };
-    // Lumi rests where the tour left it (the last stop), with its hint, until the visitor focuses a flower.
-    const last = steps[steps.length - 1].stop;
-    const at = last === 2 ? plan.bud : last === 1 ? plan.bell : plan.top;
+    // The garden names no flower until the visitor focuses one: Lumi rests and says its hint.
     const hint = 1 - ss(t2 - HINT_OUT, t2, bp);
-    return { ...REST, step: "free", tour: 1, hint, free: true, lumi: at ? { id: at.id, perch: 0 } : null };
+    return { ...REST, step: "free", tour: 1, hint, free: true };
   }
 
   const tour = (bp - t0) / (t1 - t0);
@@ -298,7 +296,10 @@ export function tourAt(plan: TourPlan, bp: number): TourState {
       s.slip = p < NEXT_OUT ? ss(NEXT_TRAVEL, NEXT_IN, p) : 1 - ss(NEXT_OUT, NEXT_GONE, p);
       break;
     case "hint":
+      // Lumi is let go (no flower named): Lumi.tsx then rests and says its note, "Go on, peek inside one."
+      // (GARDEN.noteAfter), which is the hint. `hint` is for anything else that wants to show it.
       s.hint = ss(0, HINT_IN, p);
+      s.lumi = null;
       break;
   }
   s.lit = Math.max(s.slip, s.card);

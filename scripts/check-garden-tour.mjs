@@ -120,9 +120,8 @@ function sweep(name, flowers, { expectStops } = {}) {
   ok(fwd.every((s) => s.open === null || (s.open >= s.stage - 1e-9 && s.open <= 1)), "open override between the stage and full bloom");
   ok(fwd.every((s) => s.free === (s.step === "free")), "free exactly in the free step");
   ok(fwd.every((s, i) => !s.free || (bpAt(i) >= (plan.steps.length ? plan.t1 : plan.t0) && bpAt(i) < plan.t2)), "free only in [t1, t2) (from t0 with no tour)");
-  ok(fwd.every((s) => s.step !== "rest" || s.lumi === null), "the tour leaves Lumi alone at rest");
-  ok(fwd.every((s) => s.step === "rest" || s.step === "free" || s.lumi?.id === s.target?.id), "during the tour Lumi's flower is the target");
-  ok(fwd.every((s) => s.step !== "free" || !plan.steps.length || s.lumi?.id === stops[plan.steps.at(-1).stop]?.id), "in free explore Lumi rests at the last stop");
+  ok(fwd.every((s) => !["rest", "hint", "free"].includes(s.step) || s.lumi === null), "no flower is named for Lumi at rest, in the hint and in free explore (Lumi says its hint)");
+  ok(fwd.every((s) => ["rest", "hint", "free"].includes(s.step) || s.lumi?.id === s.target?.id), "during the tour Lumi's flower is the target");
   ok(fwd.every((s) => !s.lumi?.perch || s.card >= 0.5), "Lumi perches only while the card is at least half grown (on the card)");
   ok(fwd.every((s) => s.card === 0 || s.stop === 0), "only the top match grows into the card");
   ok(fwd.every((s) => s.card === 0 || s.slip === 1 || s.step === "fold"), "the card grows out of a slip that is fully up");

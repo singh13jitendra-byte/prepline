@@ -43,7 +43,7 @@ import { fireflyCardCopy, jobFits, levelLine, type FireflyJob } from "@/componen
 export type SlipAnchor = { x: number; y: number; r?: number };
 export type SlipRect = { x: number; y: number; w: number; h: number };
 export type SlipInset = { top: number; right: number; bottom: number; left: number };
-export type SlipSide = "right" | "left" | "above";
+export type SlipSide = "right" | "left" | "above" | "below";
 export type SlipLayout = { side: SlipSide; docked: boolean; gap: number; slip: SlipRect; card: SlipRect };
 
 /** JobCard's width as a floating card (card.css --ffc-w). */
@@ -79,28 +79,36 @@ export function slipLayout(a: {
   docked: boolean;
   inset: SlipInset;
   gap?: number;
+  /** Docked only: the most of the sheet that shows (its head), so the flower stays visible above it. */
+  sheetMax?: number;
+  /** Which side of the flower the slip takes when both fit (default right, as JobCard). */
+  prefer?: "right" | "left";
 }): SlipLayout {
   const { anchor, vw, vh, slip, card, docked, inset: o } = a;
   const gap = a.gap ?? gapFor(anchor.r);
   const { x: ax, y: ay } = anchor;
   const sy = clamp(ay - slip.h / 2, o.top, vh - o.bottom - slip.h);
   if (docked) {
-    const h = Math.min(card.h, DOCK_MAX(vh));
+    const h = Math.min(card.h, DOCK_MAX(vh), a.sheetMax ?? Infinity);
     const sheet = { x: 0, y: vh - h, w: vw, h };
     const fitsR = ax + gap + slip.w <= vw - o.right;
     const fitsL = ax - gap - slip.w >= o.left;
     if (fitsR || fitsL) {
-      const x = fitsR ? ax + gap : ax - gap - slip.w;
-      return { side: fitsR ? "right" : "left", docked, gap, card: sheet, slip: { x, y: sy, w: slip.w, h: slip.h } };
+      const right = fitsR && !(a.prefer === "left" && fitsL);
+      const x = right ? ax + gap : ax - gap - slip.w;
+      return { side: right ? "right" : "left", docked, gap, card: sheet, slip: { x, y: sy, w: slip.w, h: slip.h } };
     }
+    // Above the flower, or below it when the room above (under the stage's line slip, `inset.top`) is short.
     const lift = (anchor.r ?? 30) * 0.9 + 12;
     const x = clamp(ax - slip.w / 2, o.left, vw - o.right - slip.w);
-    const y = clamp(ay - lift - slip.h, o.top, vh - o.bottom - slip.h);
-    return { side: "above", docked, gap, card: sheet, slip: { x, y, w: slip.w, h: slip.h } };
+    const up = ay - lift - slip.h;
+    if (up >= o.top) return { side: "above", docked, gap, card: sheet, slip: { x, y: up, w: slip.w, h: slip.h } };
+    const y = clamp(ay + lift, o.top, vh - o.bottom - slip.h);
+    return { side: "below", docked, gap, card: sheet, slip: { x, y, w: slip.w, h: slip.h } };
   }
   const fitsR = ax + gap + card.w <= vw - o.right;
   const fitsL = ax - gap - card.w >= o.left;
-  const side: SlipSide = fitsR ? "right" : fitsL ? "left" : vw - ax >= ax ? "right" : "left";
+  const side: SlipSide = a.prefer === "left" && fitsL ? "left" : fitsR ? "right" : fitsL ? "left" : vw - ax >= ax ? "right" : "left";
   const cx = clamp(side === "right" ? ax + gap : ax - gap - card.w, o.left, vw - o.right - card.w);
   const cy = clamp(ay - card.h * 0.42, o.top, vh - o.bottom - card.h);
   const sx = clamp(side === "right" ? ax + gap : ax - gap - slip.w, o.left, vw - o.right - slip.w);
@@ -114,6 +122,7 @@ export function slipPaper(l: SlipLayout, show: number, grow: number): SlipRect {
   const u = ss(0.25, 1, show);
   if (u >= 1) return r;
   if (l.side === "above") return { x: r.x, y: r.y + r.h * (1 - u), w: r.w, h: r.h * u };
+  if (l.side === "below") return { x: r.x, y: r.y, w: r.w, h: r.h * u };
   if (l.side === "left") return { x: r.x + r.w * (1 - u), y: r.y, w: r.w * u, h: r.h };
   return { x: r.x, y: r.y, w: r.w * u, h: r.h };
 }
@@ -125,7 +134,7 @@ export function slipLeader(l: SlipLayout, anchor: SlipAnchor, paper: SlipRect, s
   const r0 = (anchor.r ?? 24) * 0.45;
   const mid = (lo: number, len: number, v: number) => (len > 2 * EDGE ? clamp(v, lo + EDGE, lo + len - EDGE) : lo + len / 2);
   const ex = l.side === "right" ? paper.x : l.side === "left" ? paper.x + paper.w : mid(paper.x, paper.w, anchor.x);
-  const ey = l.side === "above" ? paper.y + paper.h : mid(paper.y, paper.h, anchor.y);
+  const ey = l.side === "above" ? paper.y + paper.h : l.side === "below" ? paper.y : mid(paper.y, paper.h, anchor.y);
   const dx = ex - anchor.x;
   const dy = ey - anchor.y;
   const d = Math.hypot(dx, dy);
@@ -158,28 +167,37 @@ export type GardenSlipProps = {
   inset?: Partial<SlipInset>;
   /** From the flower to the card. Default `gapFor(anchor.r)`, the gap ExploreStage gives JobCard. */
   gap?: number;
+  /**
+   * Where the card docks as a bottom sheet: grow only into its head (title, meta, facts and score), so the
+   * flower, framed in the wide shot behind it, stays in view above the sheet. The tour sets it.
+   */
+  dockHead?: boolean;
+  /** Which side of the flower the slip takes when both fit (default right, as JobCard; Lumi hovers right of a flower). */
+  prefer?: "right" | "left";
   className?: string;
 };
 
 export type GardenSlipHandle = {
   /** The same as the props, without a React render (any field left out keeps its value). */
-  set: (p: { anchor?: SlipAnchor | null; show?: number; grow?: number }) => void;
-  /** Where the slip and the card stand right now (null with no job or anchor). For Lumi's perch on the card. */
+  set: (p: { anchor?: SlipAnchor | null; show?: number; grow?: number; prefer?: "right" | "left" }) => void;
+  /** Where the slip and the card stand right now (null with no job or anchor). */
   layout: () => SlipLayout | null;
+  /** Where Lumi perches on the grown card (`slipPerch`), or null. */
+  perch: () => { x: number; y: number } | null;
 };
 
-type Live = { anchor: SlipAnchor | null; show: number; grow: number; inset: SlipInset; gap?: number };
-type Cache = { vw: number; vh: number; docked: boolean; slipH: number; slipW: number; cardW: number; cardH: number; ok: boolean };
+type Live = { anchor: SlipAnchor | null; show: number; grow: number; inset: SlipInset; gap?: number; dockHead: boolean; prefer?: "right" | "left" };
+type Cache = { vw: number; vh: number; docked: boolean; slipH: number; slipW: number; cardW: number; cardH: number; headH: number; ok: boolean };
 
 const px = (v: number) => String(Math.round(v * 10) / 10);
 const step = (i: number) => ({ "--i": i }) as CSSProperties;
 
-export const GardenSlip = forwardRef<GardenSlipHandle, GardenSlipProps>(function GardenSlip({ job, anchor, show, grow, inset, gap, className }, ref) {
+export const GardenSlip = forwardRef<GardenSlipHandle, GardenSlipProps>(function GardenSlip({ job, anchor, show, grow, inset, gap, dockHead = false, className }, ref) {
   const [mounted, setMounted] = useState(false);
   const els = useRef<{ root: HTMLDivElement | null; paper: HTMLDivElement | null; card: HTMLDivElement | null; slip: HTMLDivElement | null; lead: HTMLSpanElement | null }>({ root: null, paper: null, card: null, slip: null, lead: null });
   const insetV: SlipInset = { top: inset?.top ?? 16, right: inset?.right ?? 16, bottom: inset?.bottom ?? 16, left: inset?.left ?? 16 };
-  const live = useRef<Live>({ anchor, show, grow, inset: insetV, gap });
-  const cache = useRef<Cache>({ vw: 0, vh: 0, docked: false, slipH: 0, slipW: SLIP_W, cardW: CARD_W, cardH: 0, ok: false });
+  const live = useRef<Live>({ anchor, show, grow, inset: insetV, gap, dockHead });
+  const cache = useRef<Cache>({ vw: 0, vh: 0, docked: false, slipH: 0, slipW: SLIP_W, cardW: CARD_W, cardH: 0, headH: 0, ok: false });
   const last = useRef<Record<string, string>>({});
   const dock = useRef<MediaQueryList | null>(null);
 
@@ -195,7 +213,7 @@ export const GardenSlip = forwardRef<GardenSlipHandle, GardenSlipProps>(function
     const c = cache.current;
     const L = live.current;
     if (!c.ok || !L.anchor) return null;
-    return slipLayout({ anchor: L.anchor, vw: c.vw, vh: c.vh, slip: { w: c.slipW, h: c.slipH }, card: { w: c.cardW, h: c.cardH }, docked: c.docked, inset: L.inset, gap: L.gap });
+    return slipLayout({ anchor: L.anchor, vw: c.vw, vh: c.vh, slip: { w: c.slipW, h: c.slipH }, card: { w: c.cardW, h: c.cardH }, docked: c.docked, inset: L.inset, gap: L.gap, sheetMax: L.dockHead && c.headH ? c.headH : undefined, prefer: L.prefer });
   }, []);
 
   /** Sizes: the viewport, the dock, the slip's height at its width, the card twin's height at its width. Reads layout. */
@@ -214,6 +232,8 @@ export const GardenSlip = forwardRef<GardenSlipHandle, GardenSlipProps>(function
     if (card) {
       put("cardW", card, "width", `${px(c.cardW)}px`);
       c.cardH = card.offsetHeight;
+      const head = card.querySelector<HTMLElement>(".pp-role-h");
+      c.headH = head ? card.clientTop + head.offsetTop + head.offsetHeight : 0;
     }
     c.ok = Boolean(card && slip && c.slipH && c.cardH);
   }, []);
@@ -259,7 +279,7 @@ export const GardenSlip = forwardRef<GardenSlipHandle, GardenSlipProps>(function
     put("lT", lead, "transform", ld ? `translate3d(${px(ld.x)}px,${px(ld.y)}px,0) rotate(${ld.angle.toFixed(4)}rad) scaleX(${px(ld.length)})` : "scaleX(0)");
   }, [layoutNow]);
 
-  live.current = { ...live.current, inset: insetV, gap };
+  live.current = { ...live.current, inset: insetV, gap, dockHead };
 
   useImperativeHandle(
     ref,
@@ -269,9 +289,14 @@ export const GardenSlip = forwardRef<GardenSlipHandle, GardenSlipProps>(function
         if (p.anchor !== undefined) L.anchor = p.anchor;
         if (p.show !== undefined) L.show = p.show;
         if (p.grow !== undefined) L.grow = p.grow;
+        if (p.prefer !== undefined) L.prefer = p.prefer;
         write();
       },
       layout: layoutNow,
+      perch: () => {
+        const l = layoutNow();
+        return l ? slipPerch(l) : null;
+      },
     }),
     [write, layoutNow],
   );
@@ -302,7 +327,7 @@ export const GardenSlip = forwardRef<GardenSlipHandle, GardenSlipProps>(function
     L.show = show;
     L.grow = grow;
     write();
-  }, [ax, ay, ar, show, grow, write, insetV.top, insetV.right, insetV.bottom, insetV.left, gap]);
+  }, [ax, ay, ar, show, grow, write, insetV.top, insetV.right, insetV.bottom, insetV.left, gap, dockHead]);
 
   /* new content: measure, then place */
   const jobId = job?.id;

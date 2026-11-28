@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-The explore stop (fireflies): the beat between `pass2` and `ranked`, behind `?explore=1`.
+The explore stop (the garden): the beat between `pass2` and `ranked`, behind `?explore=1`.
+
+The hold opens with the scroll tour (components/garden/tour: about the first 58%, to explore beat
+progress FREE = 0.554), during which the scene does not take the pointer; free explore is the rest.
+Pointer and tap checks run in free explore; the tour has its own section.
 
 Run against a production build:
 
@@ -10,7 +14,7 @@ Run against a production build:
     python3 scripts/check-explore.py http://localhost:3112 --only frames --scene-dpr 1 --shots DIR
 
 The 3D scene is slow under software GL (about 3 frames a second at full size), so by default it
-is asked to render at 0.3 of the screen's pixels (--scene-dpr, through its window.__ffDebug). That
+is asked to render at 0.3 of the screen's pixels (--scene-dpr, through window.__gardenDebug). That
 changes nothing this script asserts. Use --scene-dpr 1 for contact sheets to look at.
 
 What it asserts (section names are the --only keys)
@@ -21,8 +25,14 @@ What it asserts (section names are the --only keys)
   parity   outside `explore` the story is the story without the flag: at the same beat and progress
            the Line, the painted scene, the day line and the Actor are identical (re-timing check)
   handoff  at both ends of `explore` the page is in the end state of `pass2` (counter up, stage off,
-           dot field whole); in the hold the scene is fully up, live and `active`, and the counter is
-           gone; `active` is false outside the beat; the lantern is out for the whole beat
+           dot field whole); in the hold the scene is fully up and `active` and the counter is gone;
+           it is live (takes the pointer) in free explore only, not during the tour; `active` is
+           false outside the beat; Lumi's lantern (worldBus.lantern, the cursor lantern is retired)
+           is lit in the meadow and stays lit through the garden
+  tour     the scroll tour: the slip comes up at the top match, grows into its card with Lumi
+           perched on it (worldBus.garden perch 1), folds; Lumi names the bellflower and the bud;
+           no flower named in the hint (Lumi's note); scrubbing back gives the same states; nothing
+           of the tour is left in free explore or outside the beat
   traps    wheeling with the pointer at 25/50/70/85% of the width goes through the stop, down and
            up, by exactly the wheeled distance; the same over an open card; nothing on screen
            carries data-lenis-prevent; a touch drag over the scene scrolls the page (390)
@@ -37,8 +47,9 @@ What it asserts (section names are the --only keys)
   cost     elements restyled per frame through the hand-off and in the hold (MutationObserver),
            printed against the flag-off story at the same place
 
-It works with the stub scene, card and list and with the real ones: a firefly is reached through
-the stub's dots when they are there, else through the "All roles" list.
+It works with the stub scene, card and list and with the real ones: a flower is reached through
+the stub's dots when they are there, through the garden's flowers (window.__garden_scene), else
+through the "All roles" list.
 Exit code 0 = all passed.
 """
 import argparse
@@ -78,7 +89,6 @@ STAGE = """() => {
   const clip = ui ? getComputedStyle(ui).clipPath : null;
   const m = clip && clip.match(/inset\\(0(?:px|%)? ([\\d.]+)%/);
   const fill = ex && ex.querySelector('.ex-meter > i');
-  const lantern = document.querySelector('.lantern');
   const s = window.__story.get();
   return {
     beat: s.beat, p: +s.beatProgress.toFixed(4), y: Math.round(window.scrollY),
@@ -89,10 +99,11 @@ STAGE = """() => {
     ui: clip === null ? null : clip === 'none' ? 1 : m ? 1 - parseFloat(m[1]) / 100 : 0,
     fill: fill ? new DOMMatrixReadOnly(getComputedStyle(fill).transform).a : null,
     sceneActive: !!ex && !!ex.querySelector('.ex-ff[data-active]'),
-    lantern: !!lantern && lantern.hasAttribute('data-on'),
+    lantern: !!window.__lumi && window.__lumi.get().lantern > 0.05,
     lit: document.querySelectorAll('li.rd-row[data-lit]').length,
     more: !!document.querySelector('li.rd-more[data-lit]'),
     lift: !!document.querySelector('[data-world-canvas][data-lift]'),
+    tour: !!ex && ex.hasAttribute('data-tour'),
     // Lenis leaves the wheel alone over these: one that can be hit on screen is a scroll trap.
     prevent: [...document.querySelectorAll('[data-lenis-prevent]')].filter((el) => {
       const r = el.getBoundingClientRect();
@@ -140,7 +151,7 @@ SCENE_DPR = 0.3
 def open_page(browser, url, **ctx):
     context = browser.new_context(**ctx)
     page = context.new_page()
-    page.add_init_script(f"window.__ffDebug = Object.assign(window.__ffDebug || {{}}, {{ dpr: {SCENE_DPR} }});")
+    page.add_init_script(f"window.__ffDebug = Object.assign(window.__ffDebug || {{}}, {{ dpr: {SCENE_DPR} }}); window.__gardenDebug = Object.assign(window.__gardenDebug || {{}}, {{ dpr: {SCENE_DPR} }});")
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.on("console", lambda m: errors.append(m.text) if m.type == "error" and "Failed to load resource" not in m.text else None)
@@ -212,14 +223,15 @@ def sweep_beats(page):
 CARD_OPEN = """() => { const d = document.querySelector('[role=dialog]'); if (!d) return false;
   const root = d.closest('.ffc'); if (root) return root.hasAttribute('data-open');
   const c = getComputedStyle(d); return c.visibility === 'visible' && c.display !== 'none'; }"""
-# A firefly of the real scene that is on screen, clear of the stage's copy (window.__ff is its engine).
-FIREFLY = """(touch) => { const ff = window.__ff; const el = document.querySelector('[data-explore-stage] .ffs');
-  if (!ff || !ff.screenOf || !el) return null; const host = el.getBoundingClientRect(); let best = null;
-  const y0 = innerHeight * (touch ? 0.28 : 0.3), y1 = innerHeight * (touch ? 0.6 : 0.72);
-  for (let j = 0; j < 80; j++) { const p = ff.screenOf(j); if (!p) continue; const x = host.left + p.x, y = host.top + p.y;
-    if (x < innerWidth * 0.3 || x > innerWidth * 0.78 || y < y0 || y > y1) continue;
-    if (!best || p.depth < best.depth) best = { x, y, depth: p.depth, j }; }
+# A flower of the real garden that is on screen, clear of the stage's copy (window.__garden_scene is its
+# debug hook: flowers() gives each heart in viewport px). The nearest one in the middle of the screen.
+FIREFLY = """(touch) => { const g = window.__garden_scene; if (!g || !g.flowers) return null; let best = null;
+  const y0 = innerHeight * (touch ? 0.28 : 0.3), y1 = innerHeight * (touch ? 0.72 : 0.75);
+  for (const p of g.flowers()) { if (p.x < innerWidth * 0.2 || p.x > innerWidth * 0.8 || p.y < y0 || p.y > y1) continue;
+    if (!best || p.depth < best.depth) best = { x: p.x, y: p.y, depth: p.depth, j: p.index }; }
   return best; }"""
+# Free explore (the tour is over): pointer and tap checks run here.
+FREE = 0.7
 
 
 # Is the stage's line rolled away (its clip closed from the right)? It is on phones while a sheet is open.
@@ -227,9 +239,9 @@ LINE_ROLLED = """() => /inset\\(0(px)? 100%/.test(getComputedStyle(document.quer
 
 
 def open_card(page, touch=False):
-    """Focus one firefly: a stub dot, a firefly of the real scene, or (failing both) a row of the list."""
+    """Focus one flower: a stub dot, a flower of the real garden, or (failing both) a row of the list."""
     dot = page.query_selector("[data-explore-stage] [data-ff-stub] .ffs-dot[data-kept]")
-    real = not dot and page.evaluate("() => !!(window.__ff && window.__ff.screenOf)")
+    real = not dot and page.evaluate("() => !!(window.__garden_scene && window.__garden_scene.flowers)")
     how = None
     if dot:
         b = dot.bounding_box()
@@ -241,10 +253,10 @@ def open_card(page, touch=False):
             page.mouse.move(x, y, steps=4)
         how = "dot"
     elif real:
-        # They fly: follow one with the pointer (or tap where it is) until the scene has chosen it.
+        # Rest the pointer on one (or tap it twice: the first tap marks it) until the scene has chosen it.
         for n in range(60):
             if page.evaluate(CARD_OPEN):
-                how = "firefly"
+                how = "flower"
                 break
             pt = page.evaluate(FIREFLY, touch)
             if pt and touch and n % 12 == 0:
@@ -322,7 +334,7 @@ def check_beats(page, shared):
     page.wait_for_function("() => window.__story.get().beat === 'explore'", timeout=8000)
     page.wait_for_timeout(1600)
     s = page.evaluate(STAGE)
-    check(s["beat"] == "explore" and s["live"], f"beats: the rail tick lands in the hold ({s['beat']} {s['p']})")
+    check(s["beat"] == "explore" and s["on"] and (s["live"] or s["tour"]), f"beats: the rail tick lands in the hold, in the tour or free explore ({s['beat']} {s['p']})")
 
 
 def check_parity(page, shared):
@@ -359,27 +371,26 @@ def check_handoff(page):
         check(s["beat"] == "explore" and not s["on"] and not s["visible"] and s["pass"] == 1 and s["scene"] == 0, f"explore@{at}: the end state of pass2 holds (on={s['on']} pass={s['pass']} scene={s['scene']})")
         check(s["active"] and s["sceneActive"], f"explore@{at}: the scene is active for the whole beat")
         check(not s["live"], f"explore@{at}: the scene does not take the pointer yet")
-    for at in (0.2, 0.5, 0.8):
+    for at in (0.2, 0.5, 0.7, 0.8):
         goto_beat(page, "explore", at, 300)
         s = page.evaluate(STAGE)
-        check(s["on"] and s["visible"] and s["live"] and s["scene"] == 1 and s["ui"] == 1 and s["pass"] == 0, f"explore@{at}: the hold: scene up and live, copy up, counter gone ({s})")
+        check(s["on"] and s["visible"] and s["scene"] == 1 and s["ui"] == 1 and s["pass"] == 0, f"explore@{at}: the hold: scene up, copy up, counter gone ({s})")
+        free = at >= 0.56
+        check(s["live"] == free and s["tour"] == (not free), f"explore@{at}: {'free explore: the scene takes the pointer' if free else 'the tour: the scene does not take the pointer yet'} (live={s['live']} tour={s['tour']})")
         check(abs(s["fill"] - at) < 0.01, f"explore@{at}: the cue's rule follows the wheel ({s['fill']:.3f})")
     for beat, at in (("pass2", 0.9), ("ranked", 0.1), ("reason", 0.5), ("hero", 0.5)):
         goto_beat(page, beat, at, 300)
         s = page.evaluate(STAGE)
         check(not s["active"] and not s["sceneActive"] and not s["on"] and not s["live"], f"{beat}@{at}: the stage is off and the scene is not active outside the beat ({s['active']}, {s['sceneActive']}, {s['on']})")
-    # The lantern: on in the meadow before, out for the whole stop.
+    # The lantern is Lumi's light now (the cursor lantern is retired): lit in the meadow, and Lumi carries it
+    # through the garden (its light on the petals), so it stays lit for the whole stop.
     goto_beat(page, "pass2", 0.5, 200)
-    page.mouse.move(520, 420)
-    page.mouse.move(560, 450, steps=6)
-    page.wait_for_timeout(500)
-    check(page.evaluate(STAGE)["lantern"], "pass2: the lantern is on under the pointer (control)")
+    page.wait_for_timeout(1200)
+    check(page.evaluate(STAGE)["lantern"], "pass2: Lumi's lantern is lit in the meadow (control)")
     for n, at in enumerate((0.01, 0.5, 0.99)):
         goto_beat(page, "explore", at, 100)
-        page.mouse.move(600, 430 + at * 10, steps=4)
-        # Coming from the meadow it eases out (about a second), like everywhere it goes out.
-        page.wait_for_timeout(1600 if n == 0 else 500)
-        check(not page.evaluate(STAGE)["lantern"], f"explore@{at}: the lantern is out")
+        page.wait_for_timeout(1200 if n == 0 else 500)
+        check(page.evaluate(STAGE)["lantern"], f"explore@{at}: Lumi's lantern stays lit in the garden")
     page.mouse.move(8, 8)
 
 
@@ -415,9 +426,9 @@ def check_traps(page, shots):
             else:
                 check(WITH.index(s["beat"]) < WITH.index("explore"), f"traps x={frac:.0%}: up and out above the stop ({s['beat']})")
     # Over an open card, over the cue and over the list's button.
-    goto_beat(page, "explore", 0.3, 500)
+    goto_beat(page, "explore", FREE, 500)
     card, how = open_card(page)
-    check(card is not None, f"traps: a firefly opens its card (through the {how})")
+    check(card is not None, f"traps: a flower opens its card (through the {how})")
     if card:
         if shots:
             page.screenshot(path=str(shots / "still-1440-card.png"))
@@ -442,7 +453,7 @@ def check_traps(page, shots):
         y1 = page.evaluate("() => window.scrollY")
         check(abs(y1 - y0 - 6 * notch) <= 3, f"traps: the wheel over the {name} moves the page ({y1 - y0}px of {6 * notch})")
     # Leaving the hold lets go of the card.
-    goto_beat(page, "explore", 0.5, 400)
+    goto_beat(page, "explore", FREE, 400)
     card, how = open_card(page)
     goto_beat(page, "explore", 0.87, 900)
     shown = lambda: page.evaluate(CARD_OPEN)
@@ -450,6 +461,43 @@ def check_traps(page, shots):
     goto_beat(page, "ranked", 0.5, 300)
     check(not shown(), "traps: no card outside the beat")
     page.mouse.move(8, 8)
+
+
+# The tour's slip and Lumi's wish, read from the DOM and Lumi's debug hook.
+TOUR = """() => { const r = document.querySelector('.gts.ex-slip'); const p = r && r.querySelector('.gts-paper');
+  const vis = !!r && getComputedStyle(r).visibility === 'visible'; const b = p ? p.getBoundingClientRect() : null;
+  const l = window.__lumi && window.__lumi.get(); const g = l ? l.garden : null;
+  return { slip: vis, paper: vis && b ? [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)] : null,
+    gx: g ? Math.round(g.x) : null, gy: g ? Math.round(g.y) : null, perch: g ? g.perch : null }; }"""
+
+
+def check_tour(page, shots):
+    print("[tour] the scroll tour: slip, card, Lumi's flowers, the hint; scrubbed both ways")
+    page.mouse.move(8, 8)
+    at = {}
+    for name, bp in (("approach", 0.19), ("slip", 0.234), ("card", 0.31), ("bell", 0.41), ("bud", 0.475), ("hint", 0.535), ("free", FREE)):
+        goto_beat(page, "explore", bp, 400)
+        at[name] = {**page.evaluate(TOUR), **{k: v for k, v in page.evaluate(STAGE).items() if k in ("tour", "live")}}
+        if shots:
+            page.screenshot(path=str(shots / f"still-1440-tour-{name}.png"))
+    a, sl, c, be, bu, hi, fr = (at[k] for k in ("approach", "slip", "card", "bell", "bud", "hint", "free"))
+    near = lambda p, q: abs(p["gx"] - q["gx"]) <= 3 and abs(p["gy"] - q["gy"]) <= 3
+    check(a["tour"] and not a["live"] and not a["slip"] and a["gx"] > -900 and a["perch"] == 0, f"tour approach: Lumi is sent to the top match, no slip yet ({a})")
+    check(sl["slip"] and sl["paper"] and sl["paper"][3] < 200 and near(sl, a), f"tour slip: the top match's slip is up, Lumi beside the same flower ({sl})")
+    check(c["slip"] and c["paper"] and c["paper"][3] > 300 and c["paper"][2] >= 399, f"tour card: the slip has grown into the card ({c['paper']})")
+    check(c["perch"] == 1 and c["paper"] and abs(c["gy"] - c["paper"][1]) <= 2 and c["paper"][0] <= c["gx"] <= c["paper"][0] + c["paper"][2], f"tour card: Lumi perches on the card's top edge ({c['gx']},{c['gy']} on {c['paper']})")
+    check(be["slip"] and be["perch"] == 0 and not near(be, a), f"tour bellflower: another flower, its slip up, Lumi beside it ({be})")
+    check(bu["slip"] and bu["perch"] == 0 and not near(bu, a) and not near(bu, be), f"tour bud: a third flower, its slip up ({bu})")
+    check(hi["tour"] and not hi["slip"] and hi["gx"] == -999, f"tour hint: no slip and no flower named, so Lumi says its note ({hi})")
+    check(fr["live"] and not fr["tour"] and not fr["slip"] and fr["gx"] == -999, f"tour free explore: the scene is live, nothing of the tour is left ({fr})")
+    # Scrubbed: going back gives the same frame, and a jump straight in gives it too.
+    goto_beat(page, "explore", 0.31, 400)
+    back = page.evaluate(TOUR)
+    check(back["paper"] == c["paper"] and near(back, c) and back["perch"] == c["perch"], f"tour: scrolling back to the card gives the same card and perch ({back})")
+    for beat, bp in (("pass2", 0.9), ("ranked", 0.1)):
+        goto_beat(page, beat, bp, 400)
+        t = page.evaluate(TOUR)
+        check(not t["slip"] and t["gx"] == -999, f"tour: nothing of it outside the beat ({beat}@{bp}: {t})")
 
 
 def check_list(page):
@@ -596,7 +644,7 @@ def check_flight(page, shared, shots):
         check(d <= max(0.6, 3 * floor), f"flight: mid-flight the frame matches the flag-off frame (diff {d:.3f}, two flag-off frames differ by {floor:.3f})")
         note(f"mid-flight frame vs flag-off: {d:.3f} (noise floor {floor:.3f})")
     # And back up: the rows go dark again and the stop returns.
-    goto_beat(page, "explore", 0.5, 400)
+    goto_beat(page, "explore", FREE, 400)
     st = page.evaluate(STAGE)
     check(st["lit"] == 0 and st["live"] and not st["lift"], f"flight: back in the stop no row is lit and the canvas is down ({st['lit']}, lift {st['lift']})")
 
@@ -608,9 +656,9 @@ def check_phone(browser, url, shots):
     down, up = sweep_beats(page)
     check(down == WITH and up == list(reversed(WITH)), f"phone: beats in order both ways: {down}")
     check(page.evaluate("() => document.documentElement.scrollWidth <= innerWidth"), "phone: nothing scrolls sideways")
-    goto_beat(page, "explore", 0.5, 600)
+    goto_beat(page, "explore", FREE, 600)
     s = page.evaluate(STAGE)
-    check(s["live"] and s["scene"] == 1 and s["ui"] == 1, f"phone: the hold is up ({s})")
+    check(s["live"] and s["scene"] == 1 and s["ui"] == 1, f"phone: the hold is up, in free explore ({s})")
     boxes = page.evaluate("""() => { const r = (q) => { const el = document.querySelector(q); if (!el) return null; const b = el.getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom]; };
         return { line: r('.ex-line'), cue: r('.ex-cue'), cap: r('[data-stage=read] .story-caption'), list: r('[data-explore-stage] button[aria-expanded]'), nav: r('.nav-pill'), vw: innerWidth, vh: innerHeight }; }""")
     hit = lambda a, b: a and b and a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
@@ -637,29 +685,29 @@ def check_phone(browser, url, shots):
     moved = drag(195, 520, 300)
     check(moved > 240, f"phone: a touch drag over the scene scrolls the page ({moved}px for a 300px drag)")
     # A tap opens the card as a bottom sheet.
-    goto_beat(page, "explore", 0.45, 600)
+    goto_beat(page, "explore", FREE, 600)
     card, how = open_card(page, touch=True)
     check(card is not None, f"phone: a tap opens the card (through the {how})")
     if card:
         check(abs(card["y"] + card["h"] - card["vh"]) <= 1.5 and card["w"] >= card["vw"] - 1 and card["x"] <= 0.5, f"phone: the card is a bottom sheet ({card})")
         check(card["h"] < card["vh"] * 0.8, f"phone: the sheet leaves the scene in view ({card['h']:.0f} of {card['vh']})")
-        # The chosen firefly is framed above the sheet, where the line was: the line has stepped aside.
+        # The chosen flower is framed above the sheet, where the line was: the line has stepped aside.
         rolled = page.evaluate(LINE_ROLLED)
-        check(rolled, "phone: with the sheet open the stage's line is out of the firefly's way")
+        check(rolled, "phone: with the sheet open the stage's line is out of the flower's way")
         if shots:
             page.screenshot(path=str(shots / "still-390-sheet.png"))
         st = page.evaluate(STAGE)
         check(not st["prevent"], f"phone: nothing on screen carries data-lenis-prevent with the sheet open: {st['prevent']}")
         moved = drag(195, 300, 200)
         check(moved > 160, f"phone: with the sheet open a drag over the scene still scrolls the page ({moved}px for a 200px drag)")
-        goto_beat(page, "explore", 0.45, 600)
+        goto_beat(page, "explore", FREE, 600)
         card, how = open_card(page, touch=True)
         if card:
             moved = drag(card["x"] + card["w"] / 2, card["y"] + card["h"] * 0.6, 150)
             check(moved > 120, f"phone: a drag that starts on the sheet scrolls the page too ({moved}px for a 150px drag)")
     # Closing the sheet brings the line back.
     if card:
-        goto_beat(page, "explore", 0.5, 400)
+        goto_beat(page, "explore", FREE, 400)
         if not page.evaluate(CARD_OPEN):
             open_card(page, touch=True)
         close = page.query_selector("[role=dialog] .ffc-x")
@@ -712,8 +760,8 @@ def check_reduced(browser, url, shots):
     ctx.close()
 
 
-MUT = """() => { const frames = []; let cur = new Set();
-  const mo = new MutationObserver((list) => { for (const m of list) if (m.type === 'attributes') cur.add(m.target); });
+MUT = """(ignore) => { const frames = []; let cur = new Set();
+  const mo = new MutationObserver((list) => { for (const m of list) if (m.type === 'attributes' && !(ignore && m.target.closest && m.target.closest(ignore))) cur.add(m.target); });
   mo.observe(document.documentElement, { attributes: true, subtree: true });
   let on = true; const tick = () => { frames.push(cur.size); cur = new Set(); if (on) requestAnimationFrame(tick); };
   requestAnimationFrame(tick);
@@ -721,12 +769,12 @@ MUT = """() => { const frames = []; let cur = new Set();
     return { frames: f.length, max: Math.max(0, ...f), mean: busy.length ? busy.reduce((a, b) => a + b, 0) / busy.length : 0, busy: busy.length }; }; }"""
 
 
-def measure(page, a, b, notches=14):
+def measure(page, a, b, notches=14, ignore=None):
     y_a = goto_beat(page, *a, 600)["y"]
     y_b = goto_beat(page, *b, 100)["y"]
     goto_beat(page, *a, 900)
     page.mouse.move(60, 500)
-    page.evaluate(MUT)
+    page.evaluate(MUT, ignore)
     step = (y_b - y_a) / notches
     for _ in range(notches):
         page.mouse.wheel(0, step)
@@ -744,17 +792,21 @@ def check_cost(browser, url, page):
     hin = measure(page, ("explore", 0.005), ("explore", 0.19))
     hold = measure(page, ("explore", 0.3), ("explore", 0.6))
     hout = measure(page, ("explore", 0.81), ("explore", 0.99))
-    still = measure(page, ("explore", 0.5), ("explore", 0.5))
+    # Lumi lives in the garden now (hovering, bobbing, its note): its own elements move at rest by design
+    # (components/lumi). Nothing of the stop's own is written at rest: in the tour (0.5) and in free explore.
+    lumi = ".lumi, .lumi-pool, .lumi-note"
+    still = measure(page, ("explore", 0.5), ("explore", 0.5), ignore=lumi)
+    still_free = measure(page, ("explore", FREE), ("explore", FREE), ignore=lumi)
     fmt = lambda m: f"max {m['max']}, mean {m['mean']:.1f} over {m['busy']} of {m['frames']} frames"
     note(f"flag off, pass2 0.70-0.98:   {fmt(base)}")
     note(f"flag off, ranked 0.00-0.30:  {fmt(base2)}")
     note(f"explore hand-off in:         {fmt(hin)}")
     note(f"explore hold 0.30-0.60:      {fmt(hold)}")
     note(f"explore hand-off out:        {fmt(hout)}")
-    note(f"explore hold, wheel still:   {fmt(still)}")
+    note(f"explore hold, wheel still:   {fmt(still)} (tour), {fmt(still_free)} (free), Lumi's own elements not counted")
     check(hold["max"] <= max(base["max"], 6), f"cost: the hold restyles no more per frame than a pass does ({hold['max']} vs {base['max']})")
     check(hin["max"] <= base["max"] + 8 and hout["max"] <= base["max"] + 8, f"cost: the hand-offs stay near a pass's count ({hin['max']}, {hout['max']} vs {base['max']})")
-    check(still["max"] <= 1, f"cost: nothing is written at rest in the hold ({still['max']} per frame at most)")
+    check(still["max"] <= 1 and still_free["max"] <= 1, f"cost: nothing of the stop is written at rest in the hold, tour or free explore ({still['max']}, {still_free['max']} per frame at most)")
 
 
 def main():
@@ -776,7 +828,7 @@ def main():
         browser = p.chromium.launch(args=CHROMIUM_ARGS)
         if want("off") or want("parity") or want("flight") or want("beats"):
             check_off(browser, url, shared)
-        desktop = [n for n in ("beats", "parity", "handoff", "list", "traps", "frames", "flight", "cost") if want(n)]
+        desktop = [n for n in ("beats", "parity", "handoff", "tour", "list", "traps", "frames", "flight", "cost") if want(n)]
         if desktop:
             ctx, page, errors = open_page(browser, with_flag(url), **DESKTOP)
             wait_ready(page)
@@ -790,6 +842,8 @@ def main():
                     for at in (0.0, 0.05, 0.115, 0.145, 0.5, 0.87, 1.0):
                         goto_beat(page, "explore", at, 500)
                         page.screenshot(path=str(args.shots / f"still-1440-explore-{round(at * 1000):04d}.png"))
+            if want("tour"):
+                check_tour(page, args.shots)
             if want("list"):
                 check_list(page)
             if want("traps"):

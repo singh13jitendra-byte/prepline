@@ -198,6 +198,9 @@ export class Garden {
   /** 0..1: how much the flowers in a close-up's way have stepped aside. */
   private clearAmt = 0;
   private adapt = { n: 0, sum: 0, cool: 0 };
+  /** The scroll tour's chosen flower (index, or -1) and how chosen it is, 0..1 (setChosen). Scrubbed: no easing. */
+  private chosen = -1;
+  private chosenK = 0;
 
   private constructor(
     private opts: GardenOptions,
@@ -436,6 +439,46 @@ export class Garden {
     // Its own flower, lent out to the list and chosen right now: it takes its own job back (the card switches).
     if (i === this.sel) this.blooms[i].job = job;
     else this.focus(i, "api");
+  }
+
+  /* ─────────────────────────────── the scroll tour (scrubbed, no easing, no onFocus) ── */
+
+  /**
+   * Where a job's own flower's heart is right now, in host px, with the anchor radius `r` (as onFocus
+   * reports it). Null for a job with no flower on stage. Moves nothing.
+   */
+  anchorOf(job: number): { x: number; y: number; r: number } | null {
+    const i = job >= 0 && job < this.carrier.length ? this.carrier[job] : -1;
+    if (i < 0) return null;
+    const b = this.blooms[i];
+    const cam = this.rig.camera;
+    const perPx = (2 * Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2)) / this.h;
+    V.copy(b.heart).project(cam);
+    const dist = b.heart.distanceTo(cam.position);
+    return { x: (V.x * 0.5 + 0.5) * this.w, y: (1 - (V.y * 0.5 + 0.5)) * this.h, r: (ANCHOR_R * b.radius) / (perPx * Math.max(dist, 0.1)) };
+  }
+
+  /**
+   * Set a job's own flower to `open` (0..1) at once, no easing; null puts it back at its stage, at once.
+   * The scroll tour calls it every frame it changes. A flower that is chosen (focused) is left alone.
+   */
+  setOpen(job: number, open: number | null) {
+    const i = job >= 0 && job < this.carrier.length ? this.carrier[job] : -1;
+    if (i < 0 || i === this.sel) return;
+    const b = this.blooms[i];
+    const to = open === null ? openForFit(this.opts.jobs[b.own].fit) : clamp(open, 0, 1);
+    b.open = b.openFrom = b.openTo = to;
+    b.openAt = this.time;
+  }
+
+  /**
+   * The scroll tour's light: a job's own flower lit (its heart's glow, the pool on the grass) and standing
+   * up a little, as a touch mark does, by `k` (0..1), with no easing. Null (or k 0) lets it go.
+   */
+  setChosen(job: number | null, k: number) {
+    const i = job !== null && job >= 0 && job < this.carrier.length ? this.carrier[job] : -1;
+    this.chosen = i;
+    this.chosenK = i >= 0 ? clamp(k, 0, 1) : 0;
   }
 
   setDocked(on: boolean) {
@@ -750,7 +793,8 @@ export class Garden {
       b.lean += (leanT * this.clearAmt - b.lean) * (1 - Math.exp(-dt * 4));
       const g = b.flower.group;
       // A marked or hovered flower stands up a touch (a tap's first answer, before the second opens it).
-      g.scale.setScalar(b.height * Math.max(born, 1e-4) * (1 + 0.05 * b.hot));
+      const tour = i === this.chosen ? this.chosenK : 0;
+      g.scale.setScalar(b.height * Math.max(born, 1e-4) * (1 + 0.05 * Math.max(b.hot, tour)));
       g.visible = born > 0.001;
       if (Math.abs(b.lean) > 1e-4 || g.rotation.z !== 0) {
         // Away from the line: a flower right of it leans further right (its top toward +x).
@@ -773,8 +817,10 @@ export class Garden {
       }
       const litWant = i === sel || i === this.marked ? 1 : 0.55 * b.hot;
       b.lit += (litWant - b.lit) * (1 - Math.exp(-dt * 5));
-      if (Math.abs(b.lit - b.sentLit) > 0.004 || (litWant === 0 && b.lit < 0.004 && b.sentLit !== 0)) {
-        const v = b.lit < 0.004 ? 0 : b.lit;
+      // The tour's light is scrubbed: it is never eased, it only lifts the eased value.
+      const litNow = Math.max(b.lit, tour);
+      if (Math.abs(litNow - b.sentLit) > 0.004 || (litWant === 0 && tour === 0 && b.lit < 0.004 && b.sentLit !== 0)) {
+        const v = litNow < 0.004 ? 0 : litNow;
         b.flower.setLit(v);
         b.sentLit = v;
       }
@@ -798,7 +844,11 @@ export class Garden {
     const keyWant = sel >= 0 ? (this.opts.reduced ? 0.4 : 1.3) : keyAt >= 0 ? 0.9 : 0;
     this.keyLevel += (keyWant - this.keyLevel) * (1 - Math.exp(-dt * (keyAt >= 0 ? 4 : 2.2)));
     if (keyAt >= 0) this.key.copy(this.blooms[keyAt].heart);
-    this.shared.uKey.value.set(this.key.x, this.key.y, this.key.z, this.keyLevel < 0.004 ? 0 : this.keyLevel);
+    // The tour's chosen flower throws the marked flower's pool, scrubbed, when nothing else holds the light.
+    const tourKey = keyAt < 0 && this.chosen >= 0 ? 0.9 * this.chosenK : 0;
+    if (tourKey > 0) this.key.copy(this.blooms[this.chosen].heart);
+    const keyNow = Math.max(this.keyLevel, tourKey);
+    this.shared.uKey.value.set(this.key.x, this.key.y, this.key.z, keyNow < 0.004 ? 0 : keyNow);
 
     /* ── the painting behind the lens ── */
     const focus = rig.focusAmount;

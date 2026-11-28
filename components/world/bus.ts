@@ -62,10 +62,12 @@ export const worldBus = {
    */
   explore: { k: 0 },
   /**
-   * The garden (the explore stop's flowers, components/garden/scene): where Lumi should be. The garden
-   * scene (or the scroll tour driving it) is the only writer; Lumi (components/lumi) reads it during the
-   * `explore` beat. `x, y` is the target in viewport px (the flower's heart; -999 for none), `perch` is 1
-   * when Lumi should land on it and 0 to hover beside it, `seq` changes whenever the target flower does.
+   * The garden (the explore stop's flowers, components/garden/scene): where Lumi should be. ExploreStage
+   * (the scroll tour, components/garden/tour, and the focused flower in free explore) is the only writer;
+   * Lumi (components/lumi) reads it during the `explore` beat. `x, y` is the target in viewport px (-999 for
+   * none: Lumi rests and says its hint): with `perch` 0 a flower's heart, which Lumi hovers beside; with
+   * `perch` 1 the top edge of the role card the tour's slip has grown into, which Lumi lands on. `seq`
+   * changes whenever the target (the flower, or flower to card) does.
    */
   garden: { x: -999, y: -999, perch: 0, seq: 0 },
   /** Last measured numbers, for the debug console (window.__world). */

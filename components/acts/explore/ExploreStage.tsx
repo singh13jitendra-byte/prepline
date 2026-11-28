@@ -1,13 +1,15 @@
 "use client";
 
 /**
- * THE EXPLORE STOP (fireflies, research/fireflies-contract.md) — behind `?explore=1`, between
- * `pass2` and `ranked`. The twelve are held and the market they came from comes up as fireflies
- * you can read: hover (or tap) one and its role opens beside it. Then scroll on to the list.
+ * THE EXPLORE STOP: THE GARDEN (CLAUDE.md, "The garden") — behind `?explore=1`, between `pass2`
+ * and `ranked`. The twelve are held and the market they came from comes up as job flowers in the
+ * meadow (flower type = role type, stage = fit): hover (or tap) one and its role opens beside it.
+ * Then scroll on to the list. The scene keeps the firefly scene's contract
+ * (components/fireflies/scene/types.ts), so the card and the list are the firefly stop's own.
  *
  * This file is the stage: it lazy-loads the three parts and connects them.
  *
- *   FireflyScene   components/fireflies/scene/FireflyScene.tsx   (default export)
+ *   GardenScene    components/garden/scene/GardenScene.tsx       (default export)
  *   JobCard        components/fireflies/card/JobCard.tsx         (named export)
  *   JobsList       components/fireflies/card/JobsList.tsx        (named export)
  *
@@ -27,14 +29,32 @@
  *                 same stretch the counter and its slip go (the first part of it), then this
  *                 stage's line, hint and cue are unrolled by a clip from the left (the rest): the
  *                 two sets of copy are never on screen together, and a slip is never see-through.
- *   the hold      the scene is live: it takes the pointer, and the lamp rule in the cue fills with
- *                 the scroll, so the wheel always shows how far the list is.
+ *   the hold      first the scroll tour (below), then free explore: the scene is live, it takes the
+ *                 pointer, and the lamp rule in the cue fills with the scroll, so the wheel always
+ *                 shows how far the list is.
  *   EXPLORE_OUT   the reverse, so `ranked` starts from the exact end state of `pass2`.
  *
  * The scene's half of the fade waits for `onReady`: until then the dots are held, and once it
  * arrives the fade plays over READY_S (a still wheel is not left looking at a cut). Per frame, at
  * most four elements are written during a hand-off (the scene's opacity, the copy's clip, the
  * counter's opacity, the cue's rule) and one (the rule) during the hold. Nothing is written at rest.
+ *
+ * THE SCROLL TOUR (components/garden/tour): the first ~58% of the hold, everyone sees it. tour.ts is a
+ * pure schedule of beat progress; this file applies it every frame, only when a value changes:
+ *   the scene     setOpen(target, open) (null: back to its stage) and setChosen(target, lit): the
+ *                 target flower's heart lights and it stands up a little (the top match already rests
+ *                 fully open, so its "bloom" is this light). Both scrubbed, neither fires onFocus.
+ *   the slip      GardenSlip at anchorOf(target): show / grow from the tour, through its handle. The
+ *                 job goes through React; until it has rendered the slip is held at 0, so a jump between
+ *                 stops never paints the old role at the new flower. Docked (phones) it grows only into
+ *                 the sheet's head, so the flower stays in view above it.
+ *   Lumi          worldBus.garden: beside the target's heart, or perched on the grown card's top edge
+ *                 (the slip's perch()); `seq` bumps whenever the flower or the perch changes. No flower
+ *                 in the hint and free explore: Lumi rests and says its note, the hint. In free explore
+ *                 the focused flower is named (beside its heart). Cleared outside the beat and on unmount.
+ *   the pointer   the scene is live (data-live) only in free explore; the hint line waits for it too.
+ * A pick from the list during the tour opens that role as ever, and the tour steps aside while it is
+ * open. No tour under reduced motion or when the scene is not up (not ready, failed): the stop is as before.
  *
  * Scrolling is the page's own: nothing here listens to the wheel or to touch moves, and a wheel
  * over the scene, the card, the cue or the list's button moves the page. The one scroller is the
@@ -59,7 +79,10 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, type Ref } from "react";
 import type { JobCardHandle, JobCardProps } from "@/components/fireflies/card/JobCard";
 import { FIREFLY_JOBS, type FireflyJob } from "@/components/fireflies/jobs";
-import type { FireflyAnchor, FireflySceneHandle, FireflySceneProps } from "@/components/fireflies/scene/FireflyScene";
+import type { FireflyAnchor, FireflySceneProps, GardenSceneHandle } from "@/components/garden/scene/GardenScene";
+import { pickGardenJobs } from "@/components/garden/scene/stage";
+import type { GardenSlipHandle, GardenSlipProps } from "@/components/garden/tour/GardenSlip";
+import { planTour, tourAt, type TourState } from "@/components/garden/tour/tour";
 import { worldBus } from "@/components/world/bus";
 import { storyCopy } from "@/lib/content";
 import { BEATS, EXPLORE_IN, EXPLORE_OUT, story, type BeatId, type StoryState } from "@/lib/story";
@@ -68,9 +91,9 @@ import { BEATS, EXPLORE_IN, EXPLORE_OUT, story, type BeatId, type StoryState } f
 const Scene = dynamic(
   async () => {
     // The scene frames a focused firefly clear of the card's bottom sheet: it is told where the card docks.
-    const [{ default: FireflyScene }, { JOBCARD_DOCK_QUERY }] = await Promise.all([import("@/components/fireflies/scene/FireflyScene"), import("@/components/fireflies/card/JobCard")]);
-    return function Scene({ handle, ...props }: FireflySceneProps & { handle: Ref<FireflySceneHandle> }) {
-      return <FireflyScene ref={handle} dockQuery={JOBCARD_DOCK_QUERY} {...props} />;
+    const [{ default: GardenScene }, { JOBCARD_DOCK_QUERY }] = await Promise.all([import("@/components/garden/scene/GardenScene"), import("@/components/fireflies/card/JobCard")]);
+    return function Scene({ handle, ...props }: FireflySceneProps & { handle: Ref<GardenSceneHandle> }) {
+      return <GardenScene ref={handle} dockQuery={JOBCARD_DOCK_QUERY} {...props} />;
     };
   },
   { ssr: false },
@@ -85,6 +108,15 @@ const Card = dynamic(
   { ssr: false },
 );
 const List = dynamic(() => import("@/components/fireflies/card/JobsList").then((m) => m.JobsList), { ssr: false });
+const Slip = dynamic(
+  async () => {
+    const { GardenSlip } = await import("@/components/garden/tour/GardenSlip");
+    return function Slip({ handle, ...props }: GardenSlipProps & { handle: Ref<GardenSlipHandle> }) {
+      return <GardenSlip ref={handle} {...props} />;
+    };
+  },
+  { ssr: false },
+);
 
 /** Seconds the scene takes to come up when it becomes ready with the stop already on screen. */
 const READY_S = 0.5;
@@ -104,6 +136,12 @@ const [OUT0, OUT1] = EXPLORE_OUT;
 const LET_GO = 0.025;
 const IN_MID = IN0 + (IN1 - IN0) * 0.42;
 const OUT_MID = OUT1 - (OUT1 - OUT0) * 0.42;
+
+/** The scroll tour: the flowers the scene puts on stage (its own pick), planned once over the hold. */
+const TOUR = planTour(
+  pickGardenJobs(FIREFLY_JOBS).map((i) => ({ job: FIREFLY_JOBS[i] })),
+  { hold: [IN1, OUT0], tail: LET_GO },
+);
 
 const CSS = `
 .ex{--ex-pad:clamp(24px,3.4vw,48px);--ex-cap:clamp(16px,2.6vh,28px);font-family:var(--font-text);color:var(--c-on-night)}
@@ -129,6 +167,10 @@ html:not(.motion) .slip-night.ex-line{top:clamp(20px,3vh,32px)}
 @media (hover:none),(pointer:coarse){.ex-hint-fine{display:none}.ex-hint-touch{display:inline}}
 .ex[data-failed] :is(.ex-hint-fine,.ex-hint-touch){display:none}
 .ex[data-failed] .ex-hint-list{display:inline}
+/* the tour: the pointer is not the scene's yet, so the hint waits for free explore */
+.ex[data-tour] .ex-hint{visibility:hidden}
+/* the tour's slip sits under Lumi (the line layer), so Lumi can perch on the card */
+.gts.ex-slip{--gts-z:var(--z-actor)}
 
 /* the cue: where the scroll goes next, and a lamp rule that fills as it gets there */
 .slip-night.ex-cue{position:absolute;left:50%;bottom:var(--ex-cap);margin:0;padding:7px 12px 11px;display:flex;align-items:center;gap:8px;white-space:nowrap;transform:translate3d(-50%,0,0);font-size:var(--fs-small);line-height:var(--leading-small);font-weight:var(--weight-label)}
@@ -165,8 +207,13 @@ export default function ExploreStage() {
   // Decided once, at first paint, by the boot script: this component only ever renders in the browser.
   const [reduced] = useState(() => story.reduced());
   const root = useRef<HTMLDivElement>(null);
-  const scene = useRef<FireflySceneHandle>(null);
+  const scene = useRef<GardenSceneHandle>(null);
   const card = useRef<JobCardHandle>(null);
+  const slip = useRef<GardenSlipHandle>(null);
+  /** The tour's role on the slip (React state: it changes three times through the tour). */
+  const [tourJob, setTourJob] = useState<FireflyJob | null>(null);
+  /** The slip keeps clear of the nav, and of the stage's line slip where that spans the top (phones). */
+  const [slipInset, setSlipInset] = useState(CARD_INSET);
   /** Load the three parts (the scene's engine is the heavy one). */
   const [near, setNear] = useState(false);
   const [active, setActive] = useState(false);
@@ -176,8 +223,13 @@ export default function ExploreStage() {
   /** From the firefly to the card: the scene reports the firefly's radius, the same in every close-up. */
   const [gap, setGap] = useState(140);
   /** For the frame loop and the callbacks, which outlive a render. */
-  const live = useRef({ ready: false, failed: false, active: false, focused: false });
+  const live = useRef({ ready: false, failed: false, active: false, focused: false, anchor: null as FireflyAnchor | null, focusId: "", slipJob: "" });
   live.current.focused = job !== null;
+  live.current.focusId = job?.id ?? "";
+  /* the slip's job has rendered: from now on the tour may show it */
+  useEffect(() => {
+    live.current.slipJob = tourJob?.id ?? "";
+  }, [tourJob]);
 
   const drop = useCallback(() => {
     scene.current?.clearFocus();
@@ -190,6 +242,7 @@ export default function ExploreStage() {
     const on = next !== null && live.current.active;
     // The anchor first, and not through React: the card must know where to open before it has a job.
     card.current?.setAnchor(on ? anchor : null);
+    live.current.anchor = on ? anchor : null;
     setJob(on ? next : null);
     if (on && anchor?.r) setGap(Math.round(anchor.r * 0.75 + 16));
   }, []);
@@ -228,6 +281,16 @@ export default function ExploreStage() {
     last.ui = "inset(0 100% 0 0)";
     let gate = 0;
     let loaded = false;
+    /** The tour's last writes: its flower, its open and light, Lumi's flower and perch. */
+    const T = { id: null as string | null, open: "", lit: "", lumi: "", tour: false };
+    const garden = worldBus.garden;
+    const clearGarden = () => {
+      if (garden.x === -999 && garden.y === -999 && T.lumi === "") return;
+      garden.x = garden.y = -999;
+      garden.perch = 0;
+      garden.seq++;
+      T.lumi = "";
+    };
 
     const frame = (_t: number, dt: number, s: Readonly<StoryState>) => {
       const i = ORDER[s.beat];
@@ -272,10 +335,69 @@ export default function ExploreStage() {
       const goldV = k > 0 ? (1 - k).toFixed(3) : "";
       if (gold && goldV !== last.gold) gold.style.opacity = last.gold = goldV;
 
-      /* the scene takes the pointer only when it is fully up. It lets go of its firefly a little
-         before a hand-off starts (LET_GO of beat progress), so the camera is already on its way
-         back to the wide shot, the painted meadow's framing, when the fade begins. */
-      const isLive = k >= 0.999 && bp > IN1 + LET_GO && bp < OUT0 - LET_GO;
+      /* the scroll tour: only with the scene up, never over a role the visitor opened */
+      const touring = here && live.current.ready && !live.current.failed && gate >= 1;
+      const ts: TourState | null = touring ? tourAt(TOUR, bp) : null;
+      // From the hand-in until free explore (so the hint is not shown and then taken away as the tour starts).
+      const shownTour = ts !== null && bp < TOUR.t1;
+      if (shownTour !== T.tour) el.toggleAttribute("data-tour", (T.tour = shownTour));
+      const tour = ts && !live.current.focused ? ts : null;
+      const sh = scene.current;
+      const tid = tour?.target?.id ?? null;
+      if (tid !== T.id) {
+        if (T.id) sh?.setOpen?.(T.id, null);
+        sh?.setChosen?.(null, 0);
+        T.id = tid;
+        T.open = T.lit = "";
+        setTourJob(tour?.target ?? null);
+      }
+      let anchor: FireflyAnchor | null = null;
+      if (tour && tid) {
+        const o = tour.open === null ? "-" : tour.open.toFixed(4);
+        if (o !== T.open) sh?.setOpen?.(tid, tour.open), (T.open = o);
+        const l = tour.lit.toFixed(3);
+        if (l !== T.lit) sh?.setChosen?.(tid, tour.lit), (T.lit = l);
+        anchor = sh?.anchorOf?.(tid) ?? null;
+      }
+      const ready = tour !== null && tid !== null && live.current.slipJob === tid;
+      // Lumi hovers to the right of a flower: at the bellflower and the bud (no card to grow) the slip takes
+      // the left, so the two never cover each other; the top match keeps JobCard's side for its card.
+      const prefer = tour && tour.stop > 0 && anchor && anchor.x < (s.viewport.w || window.innerWidth) * 0.85 ? "left" : "right";
+      slip.current?.set({ anchor, show: ready ? tour.slip : 0, grow: ready ? tour.card : 0, prefer });
+
+      /* Lumi (worldBus.garden): the focused flower, else the tour's flower or its card, else none */
+      if (!here) clearGarden();
+      else {
+        let gx = -999;
+        let gy = -999;
+        let gp = 0;
+        let key = "";
+        const fa = live.current.anchor;
+        if (live.current.focused && fa) {
+          gx = fa.x;
+          gy = fa.y;
+          key = "f:" + live.current.focusId;
+        } else if (tour?.lumi) {
+          const p = tour.lumi.perch ? slip.current?.perch() : null;
+          const a = p ? null : tour.lumi.id === tid ? anchor : (sh?.anchorOf?.(tour.lumi.id) ?? null);
+          if (p) (gx = p.x), (gy = p.y), (gp = 1);
+          else if (a) (gx = a.x), (gy = a.y);
+          key = gx > -900 ? `${tour.lumi.id}:${gp}` : "";
+        }
+        if (key !== T.lumi) {
+          T.lumi = key;
+          garden.seq++;
+        }
+        garden.x = gx;
+        garden.y = gy;
+        garden.perch = gp;
+      }
+
+      /* the scene takes the pointer only when it is fully up, and (with the tour) in free explore. It
+         lets go of its flower a little before a hand-off starts (LET_GO of beat progress), so the
+         camera is already on its way back to the wide shot, the painted meadow's framing, when the
+         fade begins. */
+      const isLive = k >= 0.999 && bp > IN1 + LET_GO && bp < OUT0 - LET_GO && (ts === null || ts.free);
       if (isLive !== last.live) {
         el.toggleAttribute("data-live", (last.live = isLive));
         if (!isLive && live.current.focused) drop();
@@ -289,10 +411,27 @@ export default function ExploreStage() {
     return () => {
       off();
       worldBus.explore.k = 0;
+      clearGarden();
       if (pass) pass.style.opacity = "";
       if (gold) gold.style.opacity = "";
     };
   }, [reduced, drop]);
+
+  /* ── the slip's top inset: under the line slip where the line spans the screen ── */
+  useEffect(() => {
+    const el = root.current;
+    if (reduced || !el) return;
+    const measure = () => {
+      const line = el.querySelector<HTMLElement>(".ex-line");
+      const wide = line ? line.getBoundingClientRect().width > window.innerWidth * 0.6 : false;
+      // offsetTop/Height: the line's own box, not its clip or the stage's scroll position.
+      const top = wide && line ? Math.max(CARD_INSET.top, line.offsetTop + line.offsetHeight + 12) : CARD_INSET.top;
+      setSlipInset((o) => (o.top === top ? o : { top }));
+    };
+    measure();
+    window.addEventListener("resize", measure, { passive: true });
+    return () => window.removeEventListener("resize", measure);
+  }, [reduced, near]);
 
   /* ── reduced motion: a still block, active while it is on screen ── */
   useEffect(() => {
@@ -361,6 +500,7 @@ export default function ExploreStage() {
           </span>
         </p>
       </div>
+      {near && !reduced ? <Slip handle={slip} job={tourJob} anchor={null} show={0} grow={0} inset={slipInset} dockHead className="ex-slip" /> : null}
       {near ? <Card handle={card} job={active ? job : null} anchor={null} onClose={drop} gap={gap} anchorRadius={CARD_ANCHOR_R} inset={CARD_INSET} /> : null}
     </div>
   );
