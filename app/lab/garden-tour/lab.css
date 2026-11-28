@@ -1,0 +1,176 @@
+/* The bench for the garden tour. Tokens only. */
+.gtl {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--c-night);
+  color: var(--c-on-night);
+  font-family: var(--font-text);
+}
+.gtl-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Stand-in flowers: a ring per flower, centred on its heart, sized by how open it is. */
+.gtl-flower {
+  --lit: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  translate: -50% -50%;
+  border-radius: var(--r-round);
+  border: var(--hairline) solid color-mix(in oklab, var(--c-on-night) 70%, transparent);
+  background: color-mix(in oklab, var(--c-night) 55%, transparent);
+  box-shadow: 0 0 0 calc(var(--lit) * 6px) color-mix(in oklab, var(--art-lamp) 45%, transparent);
+}
+.gtl-flower[data-open="half"] {
+  border-style: dashed;
+}
+.gtl-flower[data-open="bud"] {
+  border-style: dotted;
+  background: color-mix(in oklab, var(--c-night) 80%, transparent);
+}
+.gtl-flower[data-target] {
+  border-color: var(--art-lamp);
+}
+.gtl-flower i {
+  font-style: normal;
+  font-size: var(--fs-micro);
+  line-height: 1;
+  font-weight: var(--weight-label);
+  color: var(--c-on-night);
+}
+
+/* Where Lumi is told to go: filled when perched, a ring when hovering. The flight between is Lumi's own. */
+.gtl-lumi {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: var(--r-round);
+  border: 2px solid var(--art-lamp);
+  background: color-mix(in oklab, var(--art-lamp) 25%, transparent);
+  transition: transform 520ms var(--ease-out-soft);
+  z-index: 6;
+  pointer-events: none;
+}
+.gtl-lumi[data-perch] {
+  background: var(--art-lamp);
+}
+.gtl-note {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  padding: 8px 12px;
+  font-family: var(--font-accent);
+  font-size: var(--fs-small);
+  line-height: var(--leading-small);
+  white-space: nowrap;
+  transition: transform 520ms var(--ease-out-soft);
+  z-index: 6;
+  pointer-events: none;
+}
+
+/* The bar: the slider stands in for the scroll. The hold and the tour are marked on its track. */
+.gtl-bar {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  right: 12px;
+  z-index: 7;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  background: var(--c-night);
+  box-shadow: inset 0 0 0 var(--hairline) var(--c-rule-night);
+  font-size: var(--fs-micro);
+  line-height: var(--leading-micro);
+}
+.gtl-track {
+  position: relative;
+  height: 22px;
+}
+.gtl-track input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  accent-color: var(--art-lamp);
+  background: transparent;
+}
+.gtl-hold,
+.gtl-tour {
+  position: absolute;
+  top: 3px;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--c-rule-night);
+}
+.gtl-tour {
+  top: 15px;
+  background: color-mix(in oklab, var(--art-lamp) 60%, transparent);
+}
+.gtl-track i {
+  position: absolute;
+  top: 12px;
+  width: 1.5px;
+  height: 10px;
+  background: var(--c-on-night-2);
+}
+.gtl-read {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--c-on-night-2);
+}
+.gtl-read b {
+  color: var(--c-on-night);
+  font-weight: var(--weight-label);
+}
+.gtl-bar button {
+  appearance: none;
+  grid-row: 1;
+  grid-column: 2;
+  height: 26px;
+  padding: 0 10px;
+  font: inherit;
+  font-weight: var(--weight-label);
+  color: var(--c-on-night);
+  background: var(--c-night-2);
+  border: var(--hairline) solid var(--c-rule-night);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+.gtl-bar button:focus-visible,
+.gtl-track input:focus-visible {
+  outline: 2px solid var(--c-focus-night);
+  outline-offset: 2px;
+}
+/* The real card, for comparing footprints: above the slip. */
+.gtl-compare {
+  --ffc-z: 8;
+}
+.gtl-cap {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  padding: 3px 8px;
+  font-size: var(--fs-micro);
+  line-height: var(--leading-micro);
+  color: var(--c-on-night-2);
+  background: var(--c-night);
+  border-radius: var(--r-xs);
+  pointer-events: none;
+}
