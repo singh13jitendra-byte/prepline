@@ -130,6 +130,8 @@ const ss = (a: number, b: number, x: number) => {
   const t = lin(a, b, x);
   return t * t * (3 - 2 * t);
 };
+/** 0.8 linear + 0.2 smoothstep: peaks at 1.1x the mean rate (a smoothstep peaks at 1.5x). */
+const soft = (a: number, b: number, x: number) => 0.8 * lin(a, b, x) + 0.2 * ss(a, b, x);
 /** Inside each hand-off: the counter is gone (or back) by this point, and the stage's copy unrolls after it. */
 const [IN0, IN1] = EXPLORE_IN;
 const [OUT0, OUT1] = EXPLORE_OUT;
@@ -311,8 +313,14 @@ export default function ExploreStage() {
       }
 
       /* how far the stop has taken over: the copy by the scroll alone, the scene once it is ready */
-      const sc = here ? Math.min(ss(IN0, IN1, bp), 1 - ss(OUT0, OUT1, bp)) : 0;
-      const gone = here ? Math.min(ss(IN0, IN_MID, bp), 1 - ss(OUT_MID, OUT1, bp)) : 0;
+      // The scene's fade is mostly linear (a fifth smoothstep, just to soften its ends): the garden's
+      // flowers fill much of a phone screen, and with a full smoothstep (1.5x the mean rate at its
+      // middle) the flowers and the counter changed too much of the frame per step there
+      // (check-explore, [frames] 390).
+      const sc = here ? Math.min(soft(IN0, IN1, bp), 1 - soft(OUT0, OUT1, bp)) : 0;
+      // The counter's fade is short (about 0.4 of a hand-off) and its "12" fills a phone screen, so it
+      // takes the same gentle curve: it lands on frames where the flowers are still fading.
+      const gone = here ? Math.min(soft(IN0, IN_MID, bp), 1 - soft(OUT_MID, OUT1, bp)) : 0;
       const wipe = here ? Math.min(lin(IN_MID, IN1, bp), 1 - lin(OUT0, OUT_MID, bp)) : 0;
       if (live.current.failed) gate = 0;
       else if (live.current.ready && gate < 1) gate = Math.min(1, gate + dt / READY_S);

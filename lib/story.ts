@@ -287,13 +287,17 @@ export const EXPLORE_VH = 300;
  * meadow; over OUT it comes back, so `ranked` starts from the end state of `pass2`. One pair of
  * numbers, so the Line, the World and the stage agree.
  *
- * Before IN (and after OUT) is a lead of 30 units in which only the Line moves: it lifts away over
- * the top edge and comes back. The scene is active from the top of the beat and needs about 1.3s
- * to bring its fireflies up over the painted meadow; the lead gives it that before the fade shows
- * it. Between IN and OUT is the hold, about two viewports, where the visitor explores.
+ * Before IN (and after OUT) is a lead of about 25 units in which only the Line moves: it lifts away
+ * over the top edge and comes back. The scene is active from the top of the beat and needs about
+ * 1.3s to bring its flowers up over the painted meadow; the lead gives it that before the fade shows
+ * it. Between IN and OUT is the hold, about two viewports: the scroll tour, then free explore.
+ *
+ * Each hand-off is 0.075 of the beat (it was 0.06 with the fireflies): the garden's flowers and the
+ * counter's "12" fill much of a phone screen, and over 0.06 they changed too much of the frame per
+ * step (check-explore, [frames] 390). The hold, [IN[1], OUT[0]], is unchanged: tour.ts mirrors it.
  */
-export const EXPLORE_IN: readonly [number, number] = [0.1, 0.16];
-export const EXPLORE_OUT: readonly [number, number] = [0.84, 0.9];
+export const EXPLORE_IN: readonly [number, number] = [0.085, 0.16];
+export const EXPLORE_OUT: readonly [number, number] = [0.84, 0.915];
 
 const EXPLORE_BEAT: Beat = { id: "explore", act: "read", vh: EXPLORE_VH, kind: "beat" };
 export const BEATS: readonly Beat[] = EXPLORE ? BASE_BEATS.flatMap((b) => (b.id === "ranked" ? [EXPLORE_BEAT, b] : [b])) : BASE_BEATS;

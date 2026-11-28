@@ -62,7 +62,7 @@ to see WebGL at phone size (shots.py does this for `small`).
   buds and dim, kept open as the Line reads them, the twelve bloom fully as their rows' roles, and in
   `ranked` each blossom flies into its row. No-WebGL fallback (`CssField.tsx`) keeps dots in the grass.
 
-## The garden (in progress) — next work
+## The garden (built behind `?explore=1`)
 
 Plan agreed with Jitendra: turn the explore stop (`?explore=1`, `components/acts/explore`, a pinned pause
 between `pass2` and `ranked`) into **the garden**: ~15 real 3D job flowers in front of the painted meadow.
@@ -82,14 +82,29 @@ between `pass2` and `ranked`) into **the garden**: ~15 real 3D job flowers in fr
   `public/garden/README.md` first: the models face +X, are 1 unit tall centred on the origin, and need
   `DoubleSide`. Tripo models are static, so the bloom is a shader transition between the two meshes (bud folds
   away, bloom grows open from its heart); "half open" is a point in that transition.
-- Next: the bloom transition, Lumi's light on the petals, swap the explore stop's fireflies for flowers, the
-  scroll tour, hover/tap, phones/a11y, then turn the stop on by default.
+- **Built since (all behind `?explore=1`)**:
+  - `components/garden/tripoFlower.ts` + `flowerShape.ts`: `createFlower(THREE, kind)`. Each bud/bloom pair
+    is turned to face +Z and pinned at the stem base. Petals and flower heads are found from the texture at
+    load. One `open` value drives the bud tightening, a dithered swap, then the bloom growing from its
+    heart. Half open is the bloom at about 0.7 size, one mesh. Contract: `components/garden/flowers.ts`.
+    Lab: `/lab/garden`.
+  - `components/garden/scene/`: `GardenScene`, a drop-in for FireflyScene (same props and handle, plus
+    `anchorOf`, `setOpen`, `setChosen`). Fifteen roles stand as flowers over the painted meadow (scenery,
+    rig and post are imported from the firefly scene). List picks for roles not on stage fly to the nearest
+    flower of the same kind. Lab: `/lab/garden-scene`.
+  - `components/garden/tour/`: `tour.ts` is a pure schedule of the beat's progress (scrubbed, reversible;
+    `node scripts/check-garden-tour.mjs`). `GardenSlip` grows into a twin of JobCard. Lab: `/lab/garden-tour`.
+  - The top match already rests at full bloom, so its "bloom" beat is light (`setChosen`). Lumi perches on
+    the card's top edge. On phones the sheet grows only to the card's head, so the flower stays in view.
+  - Lumi follows `worldBus.garden` during the stop (`components/lumi`). ExploreStage writes it.
+  - `scripts/check-explore.py` checks the garden (run it with the venv Python; its frame check needs Pillow).
+- Next: turn the stop on by default (its own commit: it changes the beat list for everyone), then hover
+  hints on phones and an accessibility pass of the flowers.
 
 ## Open items
 
-- Pressed flower on the board card and on the beta ticket.
-- Explore-stop hint copy still says "firefly".
-- Nav says "Seat 13 saved" after a claim (conflicts with the no-seat-number rule).
+- Does the pressed flower also belong on the folded prep sheet's cover at nightfall? It rides there today,
+  because the cover is the board card (TileFace).
 - Votes beat says "Thursday · 1:10 PM" over a night painting.
 - Founder decisions pending: early pricing promise, AI provider in the privacy note, deletion contact email,
   real nightly run time and source count, naming Dr Lal PathLabs, founder note photo.
